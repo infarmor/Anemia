@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Info.plist for the .app bundle. Windowed app (Amnezia-style) with a Dock
+     icon plus a menu-bar quick control, so LSUIElement is 0. -->
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Anemia</string>
+    <key>CFBundleDisplayName</key>
+    <string>Anemia</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.loader.vpn</string>
+    <key>CFBundleExecutable</key>
+    <string>LoaderApp</string>
+    <key>CFBundleIconFile</key>
+    <string>AnemiaAppIcon</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>LSUIElement</key>
+    <false/>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <!-- The helper the app is allowed to install (SMAppService/SMJobBless). -->
+    <key>SMPrivilegedExecutables</key>
+    <dict>
+        <key>com.loader.vpn.helper</key>
+        <string>anchor apple generic and identifier "com.loader.vpn.helper" and certificate leaf[subject.OU] = "YOUR_TEAM_ID"</string>
+    </dict>
+</dict>
+</plist>

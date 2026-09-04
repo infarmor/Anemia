@@ -1,0 +1,135 @@
+{
+  "inbounds" : [
+    {
+      "listen" : "127.0.0.1",
+      "port" : 10808,
+      "protocol" : "socks",
+      "settings" : {
+        "auth" : "noauth",
+        "udp" : true
+      },
+      "sniffing" : {
+        "destOverride" : [
+          "http",
+          "tls",
+          "quic"
+        ],
+        "enabled" : true,
+        "routeOnly" : false
+      },
+      "tag" : "socks-in"
+    },
+    {
+      "listen" : "127.0.0.1",
+      "port" : 10809,
+      "protocol" : "http",
+      "sniffing" : {
+        "destOverride" : [
+          "http",
+          "tls",
+          "quic"
+        ],
+        "enabled" : true,
+        "routeOnly" : false
+      },
+      "tag" : "http-in"
+    }
+  ],
+  "log" : {
+    "loglevel" : "warning"
+  },
+  "outbounds" : [
+    {
+      "protocol" : "vless",
+      "settings" : {
+        "vnext" : [
+          {
+            "address" : "example.com",
+            "port" : 443,
+            "users" : [
+              {
+                "encryption" : "none",
+                "flow" : "xtls-rprx-vision",
+                "id" : "b831381d-6324-4d53-ad4f-8cda48b30811",
+                "level" : 0
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings" : {
+        "network" : "tcp",
+        "realitySettings" : {
+          "fingerprint" : "chrome",
+          "publicKey" : "jWXmHIZwALaJR3dlFo9HuKT5d2ix-a2zFnfyc5dS20c",
+          "serverName" : "www.microsoft.com",
+          "shortId" : "0123abcd",
+          "spiderX" : "\/"
+        },
+        "security" : "reality",
+        "sockopt" : {
+          "dialerProxy" : "fragment"
+        }
+      },
+      "tag" : "proxy"
+    },
+    {
+      "protocol" : "freedom",
+      "settings" : {
+        "domainStrategy" : "AsIs",
+        "fragment" : {
+          "interval" : "10-20",
+          "length" : "100-200",
+          "packets" : "tlshello"
+        }
+      },
+      "streamSettings" : {
+        "sockopt" : {
+          "noises" : [
+            {
+              "delay" : "10-16",
+              "packet" : "50-100",
+              "type" : "rand"
+            }
+          ],
+          "tcpFastOpen" : true
+        }
+      },
+      "tag" : "fragment"
+    },
+    {
+      "protocol" : "freedom",
+      "settings" : {
+        "domainStrategy" : "UseIP"
+      },
+      "tag" : "direct"
+    },
+    {
+      "protocol" : "blackhole",
+      "settings" : {
+
+      },
+      "tag" : "block"
+    }
+  ],
+  "routing" : {
+    "domainStrategy" : "AsIs",
+    "rules" : [
+      {
+        "ip" : [
+          "10.0.0.0\/8",
+          "100.64.0.0\/10",
+          "127.0.0.0\/8",
+          "169.254.0.0\/16",
+          "172.16.0.0\/12",
+          "192.168.0.0\/16",
+          "::1\/128",
+          "fc00::\/7",
+          "fe80::\/10"
+        ],
+        "outboundTag" : "direct",
+        "type" : "field"
+      }
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+.DS_Store
+.build/
+build/
+*.o
+*.log
+
+# Reproducible binaries (Scripts/fetch-cores.sh, Scripts/train-ranker.py)
+Resources/xray
+Resources/tun2socks
+Sources/LoaderApp/Resources/kxc.mlmodelc
