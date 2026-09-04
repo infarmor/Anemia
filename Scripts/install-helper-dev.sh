@@ -13,7 +13,8 @@ set -euo pipefail
 if [[ $EUID -ne 0 ]]; then echo "Run with sudo."; exit 1; fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SCRATCH="${SCRATCH:-/private/tmp/claude-501/-Users-inf-Documents-Loader/51df3487-1104-4e61-96e4-7433402b870e/scratchpad/loader-build}"
+# Must match the scratch used for `swift build` (default mirrors build-app.sh).
+SCRATCH="${SCRATCH:-/tmp/loader-build}"
 HELPER_BIN="$SCRATCH/debug/LoaderHelper"
 TUN2SOCKS="$ROOT/Resources/tun2socks"
 LABEL="com.loader.vpn.helper"

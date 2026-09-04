@@ -169,8 +169,9 @@ final class XrayController {
 
     /// Run `xray -test` on a config file. Returns success and, on failure, the
     /// most relevant error line. Blocking by design — call it from a detached
-    /// task (see `start`).
-    private static func validateConfig(binaryPath: String, configPath: String) -> (ok: Bool, message: String) {
+    /// task (see `start`). Nonisolated: the class is @MainActor, but this must
+    /// be callable from any executor.
+    nonisolated private static func validateConfig(binaryPath: String, configPath: String) -> (ok: Bool, message: String) {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: binaryPath)
         proc.arguments = ["run", "-c", configPath, "-test"]

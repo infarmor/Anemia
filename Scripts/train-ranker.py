@@ -9,12 +9,11 @@ via `MLComputePlan` — see /tmp/anecheck style tooling):
     kxc therefore reshapes the same 256-sample window to an image-like
     [1, 3, 16, 16] grid and uses (3,3) convs — the shape the Neural Engine
     actually accepts.
-  * The graph contains NO division. Masked-mean pooling is implemented as
-    mul(mask) -> reduce_sum; the per-sample count is known exactly to the
-    caller, so the final  score = raw / count + head_bias  is applied
-    host-side (nanoseconds, zero ANE ops lost to real_div's CPU fallback).
-    The folded head bias travels in the model's user-defined metadata
-    ("kxc_head_bias") so retrains never require a Swift change.
+  * The graph divides IN-GRAPH: at CH>=128 real_div is ANE-placed too
+    (verified), so the model is fully self-contained — the Swift host reads
+    the score straight from the output, and retrains never require a Swift
+    change. (A legacy division-free export path used the "kxc_head_bias"
+    metadata + host-side normalization; ServerRanker still understands it.)
   * fp16 mlprogram, static shapes, macOS 14 deployment target — the
     remaining graph (conv/relu/mul/reduce_sum) is pure ANE.
 
@@ -115,7 +114,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--epochs", type=int, default=90)
     ap.add_argument("--grid", type=int, default=16, help="grid side; window = grid*grid")
-    ap.add_argument("--channels", type=int, default=96)
+    ap.add_argument("--channels", type=int, default=128,
+                    help="conv width — >=128 is required for ANE placement "
+                         "(96 keeps Core ML on the CPU; verified on M4/macOS 27)")
     ap.add_argument("--out", default=None, help="output dir (default <repo>/build)")
     ap.add_argument("--install", action="store_true",
                     help="compile to .mlmodelc and install into Sources/LoaderApp/Resources")
@@ -180,14 +181,14 @@ def main():
         err = np.abs(pred - Yv.reshape(-1))
         print(f"val_mae={err.mean():.1f} ms  p95={np.percentile(err, 95):.1f} ms", flush=True)
 
-    # ---- Export (ANE-friendly: no div, bias-free head) ----
-    # Graph output = head_weight · masked_sum  ("raw").
-    # Host completes:  score = raw / max(sampleCount, 1) + kxc_head_bias.
+    # ---- Export (ANE-verified shape: [1,3,grid,grid], CH>=128, 3x3 convs,
+    # masked-mean with in-graph division — every op lands on the Neural
+    # Engine on M4/macOS 27; verified via MLComputePlan) ----
     convs = [net.c[i][0] for i in range(4)]
     Ws = [c.weight.detach().numpy().astype(np.float32) for c in convs]
     Bs = [c.bias.detach().numpy().astype(np.float32) for c in convs]
     Wh = net.head.weight.detach().numpy().astype(np.float32)      # [1, CH, 1, 1]
-    Bh = float(net.head.bias.detach().numpy().reshape(1)[0])
+    Bh = net.head.bias.detach().numpy().astype(np.float32).reshape(1)
     sel = np.zeros((1, C, 1, 1), np.float32)
     sel[0, 2, 0, 0] = 1.0                                          # mask = ch2
     z1 = np.zeros(1, np.float32)
@@ -203,8 +204,10 @@ def main():
                        pad_type="valid", dilations=[1, 1], groups=1)
         masked = mb.mul(x=x, y=mask)
         ssum = mb.reduce_sum(x=masked, axes=[2, 3], keep_dims=True)
-        # NOTE: bias-free head. Normalization + bias are applied host-side.
-        return mb.conv(x=ssum, weight=Wh, bias=np.zeros(1, np.float32),
+        cnt = mb.add(x=mb.reduce_sum(x=mask, axes=[2, 3], keep_dims=True),
+                     y=np.float32(1e-6))
+        pooled = mb.real_div(x=ssum, y=cnt)
+        return mb.conv(x=pooled, weight=Wh, bias=Bh,
                        strides=[1, 1], pad_type="valid", dilations=[1, 1], groups=1)
 
     mlm = ct.convert(
@@ -216,16 +219,14 @@ def main():
         outputs=[ct.TensorType(name="score")],
     )
     mlm.short_description = "Anemia kxc server ranker (masked temporal conv, ANE)"
-    mlm.user_defined_metadata["kxc_head_bias"] = repr(Bh)
     mlm.user_defined_metadata["kxc_window"] = str(W)
-    mlm.user_defined_metadata["kxc_host_normalization"] = "score = raw/max(count,1) + kxc_head_bias"
+    mlm.user_defined_metadata["kxc_arch"] = f"grid{grid}x{grid}x ch{ch} 4x(3x3conv+relu)"
 
     pkg = os.path.join(out_dir, "kxc.mlpackage")
     if os.path.exists(pkg):
         shutil.rmtree(pkg)
     mlm.save(pkg)
     print(f"SAVED_OK {pkg}", flush=True)
-    print(f"kxc_head_bias={Bh!r}", flush=True)
 
     # ---- Optional: compile + install into the app bundle resources ----
     if args.install:

@@ -25,11 +25,11 @@ struct LogView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .onChange(of: state.logLines.count) { _, _ in
+                .onChange(of: state.logLines.count, perform: { _ in
                     if let last = state.logLines.indices.last {
                         proxy.scrollTo(last, anchor: .bottom)
                     }
-                }
+                })
             }
             .frame(height: 260)
             .overlay(RoundedRectangle(cornerRadius: 6).stroke(.quaternary))

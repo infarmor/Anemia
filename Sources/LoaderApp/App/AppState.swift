@@ -50,6 +50,9 @@ final class AppState: ObservableObject {
     var rankerBackend: String { ranker.backend }
     /// In-flight auto-reconnect (cancelled by a manual connect/disconnect).
     private var reconnectTask: Task<Void, Never>?
+    /// Post-connect health check (cancelled on teardown so a stale result
+    /// can't land after disconnect).
+    private var healthTask: Task<Void, Never>?
 
     private let persistence: StatePersistence
     private let xray: XrayController
@@ -202,8 +205,17 @@ final class AppState: ObservableObject {
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             let body = String(data: data, encoding: .utf8) ?? ""
-            let result = SubscriptionParser.parse(body)
-            // Preserve existing IDs where names match, so selection survives refresh.
+            var result = SubscriptionParser.parse(body)
+            // Carry stable IDs across refreshes (link text is the identity):
+            // the selected server survives an update and ping history doesn't
+            // orphan.
+            var byLink: [String: UUID] = [:]
+            for old in sub.servers { byLink[old.identityKey] = old.id }
+            for i in result.servers.indices {
+                if let known = byLink[result.servers[i].identityKey] {
+                    result.servers[i].id = known
+                }
+            }
             sub.servers = result.servers
             sub.lastUpdated = Date()
             if !result.failures.isEmpty {
@@ -366,7 +378,7 @@ final class AppState: ObservableObject {
 
         // Bring up the system-wide tunnel via the privileged helper. If the
         // helper isn't installed yet, we stay "connected" in SOCKS-only mode so
-        // the user can still test the proxy at 127.0.0.1:\(xray.socksPort).
+        // the user can still test the proxy at 127.0.0.1:<socksPort>.
         let (ok, err) = await helper.startTunnel(
             socksPort: xray.socksPort, serverAddress: server.address, killSwitch: killSwitchEnabled)
 
@@ -391,10 +403,12 @@ final class AppState: ObservableObject {
     private func startHealthCheck() {
         proxyLatency = nil
         let port = xray.socksPort
-        Task { [weak self] in
+        healthTask?.cancel()
+        healthTask = Task { [weak self] in
             let ms = await ProxyHealth.check(socksPort: port)
+            guard !Task.isCancelled else { return }
             await MainActor.run {
-                guard let self else { return }
+                guard let self, self.isConnected else { return }
                 self.proxyLatency = ms
                 if ms == nil { self.appendLog("health check: no response through proxy") }
             }
@@ -411,6 +425,8 @@ final class AppState: ObservableObject {
 
     /// Stop the engine + tunnel + stats without deciding the resulting state.
     private func teardown() async {
+        healthTask?.cancel()
+        healthTask = nil
         stopStatsPolling()
         if tunnelActive {
             _ = await helper.stopTunnel()
@@ -478,7 +494,9 @@ final class AppState: ObservableObject {
                         self.downlinkTotal = down
                     }
                 }
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                // 2s cadence: each poll spawns an `xray api` subprocess;
+                // 1 Hz was a process spawn per second for a diagnostic read.
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
             }
         }
     }

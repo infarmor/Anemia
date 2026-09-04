@@ -104,10 +104,11 @@ final class CoreMLRanker: ServerRanker, @unchecked Sendable {
     private var outputName: String?
     /// [1, C, H, W] — the ANE-friendly grid layout kxc trains on.
     private var inputShape: [NSNumber]?
-    /// Folded head bias exported in the model's user-defined metadata by the
-    /// training pipeline ("kxc_head_bias"). The graph itself is division-free:
-    /// kxc outputs `Wh·maskedSum` and the host completes the masked mean:
+    /// Legacy path for division-free exports (kxc_head_bias metadata): the
+    /// graph emitted `Wh·maskedSum` and the host completed the masked mean:
     ///   score = raw / max(sampleCount, 1) + headBias.
+    /// Current models divide in-graph (real_div lands on the ANE at CH≥128)
+    /// and carry no metadata — score is read straight from the output.
     private var headBias: Double?
 
     private let fallback = HeuristicRanker()
@@ -161,7 +162,8 @@ final class CoreMLRanker: ServerRanker, @unchecked Sendable {
                 let outName = m.modelDescription.outputDescriptionsByName.keys.first ?? "score"
                 let shape = m.modelDescription.inputDescriptionsByName[inName]?
                     .multiArrayConstraint?.shape ?? [1, 3, 1, 256]
-                // Host-side completion of the masked mean (division-free graph).
+                // Legacy: division-free exports carried the folded head bias
+                // in metadata (current models divide in-graph and don't).
                 let biasStr = m.modelDescription.metadata
                     .first { $0.key.rawValue == "kxc_head_bias" }?.value as? String
                 let bias = biasStr.flatMap { Double($0) }
@@ -200,15 +202,18 @@ final class CoreMLRanker: ServerRanker, @unchecked Sendable {
               let input = try? MLDictionaryFeatureProvider(dictionary: [inputName: arr]) else {
             return await fallback.score(f)
         }
-        // Async prediction: the ANE pipeline is submitted and awaited, never
-        // blocking the calling thread (or the main actor).
-        guard let out = try? await model.prediction(from: input, options: MLPredictionOptions()),
+        // Sync Core ML API: an fp16 conv net over [1,3,1,256] scores in
+        // microseconds-milliseconds, and this already runs inside a TaskGroup
+        // child task, so blocking it is fine. (The async overload of
+        // `prediction` is not actually async on this SDK — compiler warns.)
+        guard let out = try? model.prediction(from: input, options: MLPredictionOptions()),
               let raw = out.featureValue(for: outputName)?.multiArrayValue else {
             return await fallback.score(f)
         }
-        // Division-free graph: complete the masked mean host-side, where the
-        // real sample count is known exactly. Legacy models (no kxc_head_bias
-        // metadata) already return the final score — pass it through.
+        // The graph divides in-graph (masked mean), so the output is the
+        // final badness score already. Legacy division-free exports carried
+        // kxc_head_bias metadata — complete the masked mean host-side for
+        // those only.
         guard let bias = self.currentHeadBias else { return raw[0].doubleValue }
         let window = shape[2].intValue * shape[3].intValue   // H*W samples per channel
         let count = min(f.history.count, window)

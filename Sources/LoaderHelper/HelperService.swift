@@ -32,6 +32,7 @@ final class HelperService: NSObject, LoaderHelperProtocol, @unchecked Sendable {
     // Active tunnel state (guarded by `queue`).
     private var tun2socks: Process?
     private var utun: String?
+    private var serverAddress: String?
     private var gatewayV4: String?
     private var gatewayV6: String?
     private var bypassV4: [String] = []
@@ -39,6 +40,11 @@ final class HelperService: NSObject, LoaderHelperProtocol, @unchecked Sendable {
     private var v6Enabled = false
     private var pfToken: String?
     private var killSwitchOn = false
+    /// Re-resolves the VPN server periodically while the tunnel is up: if the
+    /// server's IP changes mid-session (DNS/CDN), a stale bypass route sends
+    /// the engine's own connection back into the tunnel (loop) — or, with the
+    /// kill switch on, into a blackhole. Guarded by `queue`.
+    private var resolveTimer: DispatchSourceTimer?
 
     // utun IPv6 address (ULA) used when tunneling IPv6.
     private let tunV6Address = "fd00:1972::1"
@@ -103,6 +109,8 @@ final class HelperService: NSObject, LoaderHelperProtocol, @unchecked Sendable {
         tunAddress: String, tunGateway: String,
         mtu: Int, serverAddress: String, killSwitch: Bool
     ) throws {
+        self.serverAddress = serverAddress
+
         // 1. Gateways + server bypass routes (v4 and v6).
         guard let gw4 = SystemCommand.defaultGateway() else {
             throw TunnelError(message: "No default gateway found")
@@ -163,9 +171,41 @@ final class HelperService: NSObject, LoaderHelperProtocol, @unchecked Sendable {
             pfToken = try? KillSwitch.enable(utun: name, serverV4: bypassV4, serverV6: bypassV6)
             killSwitchOn = true
         }
+
+        // 6. Keep the bypass routes pinned to the server's current IPs.
+        startResolveTimer()
+    }
+
+    /// Periodically re-resolve `serverAddress` and swap in bypass routes for
+    /// any new IP (routes for addresses that disappeared are left to expire —
+    /// deleting them mid-flight risks cutting the engine's live connection).
+    private func startResolveTimer() {
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now() + 300, repeating: 300)
+        timer.setEventHandler { [weak self] in
+            guard let self, let host = self.serverAddress, self.utun != nil else { return }
+            guard let gw4 = self.gatewayV4 else { return }
+            let v4 = SystemCommand.resolveIPv4(host)
+            for ip in v4 where !self.bypassV4.contains(ip) {
+                SystemCommand.run("/sbin/route", ["-n", "add", "-host", ip, gw4])
+                self.bypassV4.append(ip)
+            }
+            if let gw6 = self.gatewayV6 {
+                let v6 = SystemCommand.resolveIPv6(host)
+                for ip in v6 where !self.bypassV6.contains(ip) {
+                    SystemCommand.run("/sbin/route", ["-n", "add", "-inet6", "-host", ip, gw6])
+                    self.bypassV6.append(ip)
+                }
+            }
+        }
+        timer.resume()
+        resolveTimer = timer
     }
 
     private func tearDown() {
+        resolveTimer?.cancel()
+        resolveTimer = nil
+        serverAddress = nil
         if killSwitchOn {
             KillSwitch.disable(token: pfToken)
             killSwitchOn = false

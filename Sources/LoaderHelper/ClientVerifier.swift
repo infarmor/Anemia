@@ -21,9 +21,12 @@ enum ClientVerifier {
             return true
         }
 
-        // Identify the caller by pid, then check its code signature against the
-        // requirement. (Audit-token identification is preferred in production;
-        // pid is used here for portability.)
+        // Identify the caller by pid, then check its code signature. Known
+        // limitation: pid can in theory be recycled between the message send
+        // and this check (TOCTOU); the airtight fix — audit tokens — requires
+        // the private xpc_connection_get_audit_token API, which an
+        // NSXPCListener-based helper cannot reach without private headers.
+        // Accepted risk for a personal-use daemon.
         let pid = connection.processIdentifier
         let attrs: CFDictionary = [kSecGuestAttributePid: NSNumber(value: pid)] as CFDictionary
 

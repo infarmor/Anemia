@@ -94,7 +94,7 @@ Xray binary — all four protocols report `Configuration OK`.
 
 - [x] LoaderCore: parsing (vless/vmess/ss/trojan) + subscriptions
 - [x] LoaderCore: Xray config builder with Reality/Vision + fragment + noises + mux
-- [x] Config validated end-to-end against real Xray 26.3 (`xray run -test`)
+- [x] Config validated end-to-end against real Xray v25.8.3 (`xray run -test`)
 - [x] Persistence (servers, subscriptions, selection, anti-DPI options)
 - [x] XrayController (process supervision, log streaming)
 - [x] Menu-bar UI (connect, server list, import, logs)

@@ -112,6 +112,9 @@ public enum ShareLinkParser {
             security: security,
             sni: str("sni").flatMap { $0.isEmpty ? nil : $0 },
             fingerprint: str("fp").flatMap { $0.isEmpty ? nil : $0 },
+            realityPublicKey: str("pbk").flatMap { $0.isEmpty ? nil : $0 },
+            realityShortId: str("sid").flatMap { $0.isEmpty ? nil : $0 },
+            realitySpiderX: str("spx").flatMap { $0.isEmpty ? nil : $0 },
             path: str("path").flatMap { $0.isEmpty ? nil : $0 },
             host: str("host").flatMap { $0.isEmpty ? nil : $0 },
             headerType: str("type").flatMap { $0.isEmpty ? nil : $0 }

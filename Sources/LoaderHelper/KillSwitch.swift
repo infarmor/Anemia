@@ -35,11 +35,10 @@ enum KillSwitch {
     @discardableResult
     static func enable(utun: String, serverV4: [String], serverV6: [String]) throws -> String? {
         let text = ruleset(utun: utun, serverV4: serverV4, serverV6: serverV6)
-        let url = URL(fileURLWithPath: "/private/tmp/loader-killswitch.pf.conf")
-        try text.write(to: url, atomically: true, encoding: .utf8)
+        try writeRuleset(text)
 
         // -E enables pf (ref-counted, prints a token) and -f loads our rules.
-        let r = SystemCommand.run("/sbin/pfctl", ["-E", "-f", url.path])
+        let r = SystemCommand.run("/sbin/pfctl", ["-E", "-f", rulesetPath])
         // Token appears in output as: "Token : 1234567890"
         var token: String?
         for line in r.output.split(separator: "\n") {
@@ -55,11 +54,12 @@ enum KillSwitch {
 
     /// Restore the system's default pf ruleset and release our enable reference.
     static func disable(token: String?) {
+        // Reload the default ruleset rather than disabling pf entirely: a bare
+        // `pfctl -d` would also switch off rules from other security tools
+        // (e.g. Little Snitch / LuLu) that share the packet filter.
         restoreDefaultRuleset()
         if let token {
             SystemCommand.run("/sbin/pfctl", ["-X", token])
-        } else {
-            SystemCommand.run("/sbin/pfctl", ["-d"])
         }
         try? FileManager.default.removeItem(atPath: Self.tokenFile)
     }
@@ -79,14 +79,32 @@ enum KillSwitch {
     }
 
     /// Where the enable token is persisted between helper generations.
-    private static var tokenFile: String { "/private/tmp/loader-killswitch.token" }
+    /// Root-owned state directory (created 0700), not /tmp: the token is a
+    /// capability — anyone who can read it can disarm our pf reference.
+    private static var stateDir: String { "/var/db/Loader" }
+    private static var tokenFile: String { stateDir + "/killswitch.token" }
+    private static var rulesetPath: String { stateDir + "/killswitch.pf.conf" }
+
+    /// Write the ruleset into the root-only state directory (0700), so an
+    /// unprivileged process can't swap rules that pfctl will load as root.
+    private static func writeRuleset(_ text: String) throws {
+        let fm = FileManager.default
+        try? fm.createDirectory(atPath: stateDir, withIntermediateDirectories: true,
+                                attributes: [.posixPermissions: 0o700])
+        let url = URL(fileURLWithPath: rulesetPath)
+        try text.write(to: url, atomically: true, encoding: .utf8)
+        try? fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: rulesetPath)
+    }
 
     /// Load the system's default ruleset, flushing ours. If /etc/pf.conf is
-    /// absent (nonstandard setup), load an empty ruleset instead — either way
-    /// our "block out all" rules are gone.
+    /// absent (nonstandard setup), flush to an empty ruleset instead — either
+    /// way our "block out all" rules are gone.
     private static func restoreDefaultRuleset() {
         let defaultConf = "/etc/pf.conf"
-        let path = FileManager.default.fileExists(atPath: defaultConf) ? defaultConf : "/dev/null"
-        SystemCommand.run("/sbin/pfctl", ["-f", path])
+        if FileManager.default.fileExists(atPath: defaultConf) {
+            SystemCommand.run("/sbin/pfctl", ["-f", defaultConf])
+        } else {
+            SystemCommand.run("/sbin/pfctl", ["-F", "all"])
+        }
     }
 }

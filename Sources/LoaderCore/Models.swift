@@ -121,6 +121,15 @@ public struct ProxyServer: Codable, Sendable, Identifiable, Equatable {
     }
 }
 
+extension ProxyServer {
+    /// Config-independent identity of a server (what the admin would rotate):
+    /// protocol, endpoint and credential. Used to keep IDs stable across
+    /// subscription refreshes, so selection and ping history survive.
+    public var identityKey: String {
+        [proto.rawValue, address, String(port), credential, method ?? "", flow ?? ""].joined(separator: "|")
+    }
+}
+
 /// Errors surfaced while parsing share links or subscriptions.
 public enum ParseError: Error, Equatable, Sendable {
     case unsupportedScheme(String)

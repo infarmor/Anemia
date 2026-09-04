@@ -75,9 +75,30 @@ public struct StatePersistence: Sendable {
     }
 
     /// Load state, returning an empty default if the file is absent/unreadable.
+    /// A malformed or schema-drifted file is backed up first — the lenient
+    /// decoder never throws on field mismatches (it falls back per-field), so
+    /// a silent data loss must be detected by comparing the raw JSON with what
+    /// the decode recovered.
     public func load() -> PersistedState {
         guard let data = try? Data(contentsOf: fileURL) else { return PersistedState() }
-        return (try? JSONDecoder().decode(PersistedState.self, from: data)) ?? PersistedState()
+        let decoded = try? JSONDecoder().decode(PersistedState.self, from: data)
+
+        // Schema drift detector: the raw store still carries server entries,
+        // but the decode recovered none (or failed outright) → the previous
+        // contents are about to be replaced. Preserve the raw bytes.
+        var droppedEntries = false
+        if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let rawServers = obj["servers"] {
+            // A non-array value (e.g. drift to a scalar) counts as one entry.
+            let rawCount = (rawServers as? [Any])?.count ?? 1
+            droppedEntries = rawCount > 0 && (decoded?.servers.isEmpty ?? true)
+        }
+        if decoded == nil || droppedEntries {
+            let backup = fileURL.deletingPathExtension()
+                .appendingPathExtension("json.corrupt-\(Int(Date().timeIntervalSince1970)).bak")
+            try? data.write(to: backup, options: [.atomic])
+        }
+        return decoded ?? PersistedState()
     }
 
     public func save(_ state: PersistedState) throws {
