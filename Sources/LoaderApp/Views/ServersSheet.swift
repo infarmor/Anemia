@@ -1,109 +1,213 @@
 import SwiftUI
 import LoaderCore
 
-/// Server picker: choose the active server, import links/subscriptions, refresh.
+/// Server picker: a native inset list with the sheet's actions in its
+/// toolbar — choose, ping, connect the fastest, import, refresh.
 struct ServersSheet: View {
     @EnvironmentObject var state: AppState
     @Environment(\.dismiss) private var dismiss
     @State private var showImport = false
+    @State private var refreshing = false
 
     var body: some View {
-        ZStack {
-            Theme.background.ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Text("Servers").font(.system(size: 18, weight: .bold))
-                    Spacer()
-                    Button { dismiss() } label: { Image(systemName: "xmark.circle.fill") }
-                        .buttonStyle(.plain).foregroundStyle(Theme.textLo)
-                }
-
+        NavigationStack {
+            Group {
                 if state.allServers.isEmpty {
                     emptyState
                 } else {
-                    ScrollView {
-                        VStack(spacing: 8) {
-                            ForEach(state.allServers) { server in
-                                row(server)
-                            }
-                        }
-                    }
+                    serverList
                 }
+            }
+            .background(GroundBackground())
+            .navigationTitle("Servers")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                        .keyboardShortcut(.cancelAction)
+                }
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button {
+                        Task {
+                            refreshing = true
+                            // The full round, not per-subscription refreshes:
+                            // it also reselects a vanished server, ends a
+                            // session whose server is gone and prunes history.
+                            await state.refreshAllSubscriptions()
+                            refreshing = false
+                        }
+                    } label: {
+                        Label("Refresh Subscriptions", systemImage: "arrow.clockwise")
+                    }
+                    .disabled(state.subscriptions.isEmpty || refreshing)
+                    .help("Refresh subscriptions")
 
-                HStack {
+                    Button { Task { await state.pingAll() } } label: {
+                        Label("Ping All", systemImage: "gauge.with.dots.needle.bottom.50percent")
+                    }
+                    .disabled(state.allServers.isEmpty || state.isPinging)
+                    .help("Re-measure latency to every server")
+
                     Button { showImport = true } label: {
                         Label("Import", systemImage: "plus")
                     }
-                    .buttonStyle(.borderedProminent).tint(Theme.accentDim)
-                    Button { Task { await state.pingAll() } } label: {
-                        HStack(spacing: 4) {
-                            if state.isPinging { ProgressView().controlSize(.mini) }
-                            else { Image(systemName: "gauge.with.dots.needle.bottom.50percent") }
-                            Text("Ping all")
-                        }
-                    }
-                    .buttonStyle(.bordered).tint(Theme.textLo)
-                    .disabled(state.allServers.isEmpty || state.isPinging)
-                    Button { Task { await state.connectFastest(); dismiss() } } label: {
-                        Label("Fastest", systemImage: "bolt.fill")
-                    }
-                    .buttonStyle(.bordered).tint(Theme.accent)
-                    .disabled(state.allServers.isEmpty || state.isPinging)
-                    Spacer()
+                    .help("Import a share link or subscription")
                 }
             }
-            .padding(20)
-            .foregroundStyle(Theme.textHi)
+            .safeAreaInset(edge: .bottom) {
+                if !state.allServers.isEmpty {
+                    HStack {
+                        if state.isPinging || refreshing {
+                            ProgressView().controlSize(.small)
+                            Text(refreshing ? "Refreshing…" : "Measuring…")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("\(state.allServers.count) servers")
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button {
+                            state.requestConnectFastest()
+                            dismiss()
+                        } label: {
+                            Label("Connect Fastest", systemImage: "bolt.fill")
+                        }
+                        .nativeButtonStyle(prominent: true)
+                        .disabled(state.isPinging)
+                    }
+                    .font(.callout)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.bar)
+                }
+            }
         }
-        .frame(width: 420, height: 520)
-        .preferredColorScheme(.dark)
+        .frame(width: 480, height: 560)
         .sheet(isPresented: $showImport) { ImportView().environmentObject(state) }
     }
 
-    private var emptyState: some View {
-        VStack(spacing: 8) {
-            Spacer()
-            Image(systemName: "tray").font(.system(size: 34)).foregroundStyle(Theme.textLo)
-            Text("No servers yet").foregroundStyle(Theme.textHi)
-            Text("Import a vless:// / vmess:// / ss:// / trojan:// link or a subscription URL.")
-                .font(.caption).foregroundStyle(Theme.textLo)
-                .multilineTextAlignment(.center)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
+    private var selection: Binding<UUID?> {
+        Binding(get: { state.selectedServerID },
+                set: { if let id = $0 { state.select(id) } })
     }
 
-    private func row(_ server: ProxyServer) -> some View {
-        let selected = server.id == state.selectedServerID
-        return Button {
-            state.select(server.id)
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: selected ? "largecircle.fill.circle" : "circle")
-                    .foregroundStyle(selected ? Theme.accent : Theme.textLo)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(server.name).font(.system(size: 14, weight: .medium)).lineLimit(1)
-                    Text("\(server.proto.rawValue.uppercased()) · \(server.address):\(server.port)")
-                        .font(.caption2).foregroundStyle(Theme.textLo).lineLimit(1)
-                }
-                Spacer()
-                PingBadge(result: state.pings[server.id])
-                if state.servers.contains(where: { $0.id == server.id }) {
-                    Button { state.removeServer(server.id) } label: {
-                        Image(systemName: "trash").font(.caption)
+    private var serverList: some View {
+        List(selection: selection) {
+            if !state.servers.isEmpty {
+                Section("Added manually") {
+                    ForEach(state.servers) { server in
+                        ServerRow(server: server)
+                            .tag(server.id)
+                            .contextMenu { rowMenu(server, removable: true) }
                     }
-                    .buttonStyle(.plain).foregroundStyle(Theme.danger)
+                    .onDelete { offsets in
+                        // IDs first: each removal shifts the indices the
+                        // remaining offsets point at (and can run past the end).
+                        let ids = offsets.map { state.servers[$0].id }
+                        for id in ids { state.removeServer(id) }
+                    }
                 }
             }
-            .padding(12)
-            .background(selected ? Theme.cardHi : Theme.card, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? Theme.accent.opacity(0.5) : Theme.stroke))
-            .contentShape(Rectangle())
+            ForEach(state.subscriptions) { sub in
+                Section {
+                    ForEach(sub.servers) { server in
+                        ServerRow(server: server)
+                            .tag(server.id)
+                            .contextMenu { rowMenu(server, removable: false) }
+                    }
+                } header: {
+                    HStack {
+                        Text(sub.name)
+                        Spacer()
+                        if let updated = sub.lastUpdated {
+                            Text(updated, style: .relative).foregroundStyle(.tertiary)
+                        }
+                        Button {
+                            Task {
+                                refreshing = true
+                                await state.refreshSubscription(sub.id)
+                                refreshing = false
+                            }
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .help("Refresh \(sub.name)")
+                        .disabled(refreshing)
+                        Button(role: .destructive) {
+                            state.removeSubscription(sub.id)
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .help("Delete \(sub.name)")
+                    }
+                }
+            }
         }
-        .buttonStyle(.plain)
+        .listStyle(.inset)
+        .scrollContentBackground(.hidden)
+        .onDeleteCommand {
+            if let id = state.selectedServerID, state.servers.contains(where: { $0.id == id }) {
+                state.removeServer(id)
+            }
+        }
     }
 
-    private func refreshAll() async {
-        for sub in state.subscriptions { await state.refreshSubscription(sub.id) }
+    @ViewBuilder
+    private func rowMenu(_ server: ProxyServer, removable: Bool) -> some View {
+        Button("Connect") {
+            state.quickConnect(server.id)
+            dismiss()
+        }
+        Button("Select") { state.select(server.id) }
+        if removable {
+            Divider()
+            Button("Delete", role: .destructive) { state.removeServer(server.id) }
+        }
+    }
+
+    @ViewBuilder
+    private var emptyState: some View {
+        if #available(macOS 14.0, *) {
+            ContentUnavailableView {
+                Label("No Servers", systemImage: "server.rack")
+            } description: {
+                Text("Import a vless, vmess, ss, trojan, hysteria2 or AmneziaWG link, or a subscription URL.")
+            } actions: {
+                Button("Import…") { showImport = true }
+                    .nativeButtonStyle(prominent: true)
+            }
+        }
+    }
+}
+
+/// One server row: name over protocol and endpoint, quality badges trailing.
+private struct ServerRow: View {
+    @EnvironmentObject var state: AppState
+    let server: ProxyServer
+
+    var body: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(server.name).lineLimit(1)
+                HStack(spacing: 6) {
+                    Text("\(server.proto.rawValue.uppercased()) · \(server.address):\(String(server.port))")
+                        .lineLimit(1)
+                    if let tier = state.qualityTier(server.id) { QualityTag(tier: tier) }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            if server.id == state.recommendedServerID {
+                BestBadge(neural: state.mlRankingEnabled && state.kxcLoaded)
+            }
+            if let s = state.stability[server.id] { StabilityBars(score: s) }
+            PingBadge(result: state.pings[server.id])
+                .frame(minWidth: 44, alignment: .trailing)
+        }
+        .padding(.vertical, 3)
     }
 }

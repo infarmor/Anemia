@@ -768,7 +768,12 @@ final class AppState: ObservableObject {
             lastImportError = "Bad subscription URL"; return false
         }
         do {
-            let (data, response) = try await Self.subscriptionSession.data(from: url)
+            var req = URLRequest(url: url)
+            // Most subscription panels (3x-ui, Marzban, RealityEZPZ) gate on
+            // User-Agent and return an HTML error page for unknown clients.
+            // v2rayN is the most widely allow-listed header across providers.
+            req.setValue("v2rayN/6.26", forHTTPHeaderField: "User-Agent")
+            let (data, response) = try await Self.subscriptionSession.data(for: req)
             // URLSession throws only on transport failures: a 403 for an
             // expired token or a 502 from a restarting panel arrives as data.
             if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
