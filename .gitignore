@@ -7,4 +7,10 @@ build/
 # Reproducible binaries (Scripts/fetch-cores.sh, Scripts/train-ranker.py)
 Resources/xray
 Resources/tun2socks
+Resources/amneziawg-go
+Resources/hysteria
 Sources/LoaderApp/Resources/kxc.mlmodelc
+# Access log of the test xray server used to verify the Android tunnel
+# (Android/Scripts/verify-tunnel.sh) — it lands in the directory the server
+# was started from, so the repo never sees it.
+tunnel-access.log
