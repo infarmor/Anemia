@@ -51,6 +51,7 @@ func usage() -> Never {
            LoaderTool split-tunnel <file> # one bypass rule set per line
            LoaderTool sub <file>          # subscription bodies, one per line
            LoaderTool subinfo <file>      # subscription headers, one set per line
+           LoaderTool subdue <file>       # auto-refresh verdict, one panel per line
            LoaderTool state <dir>         # PersistedState cases: decode, load, backups
            LoaderTool state-read <file…>  # a state file from another platform
 
@@ -502,6 +503,90 @@ case "subinfo":
             "web=" + (info?.webPageURL?.absoluteString ?? "—"),
             "announce=" + (info?.announcement ?? "—"),
         ].joined(separator: "\t"))
+    }
+
+case "subdue":
+    // Golden source for the auto-refresh decision: one case per line —
+    // `label  url  lastUpdated  now  panelInterval  defaultAge  allowInsecure`,
+    // empty field meaning nil (and an empty `defaultAge` meaning the default
+    // argument itself, so changing that default breaks the golden). Prints the
+    // clamped interval and the verdict: the age alone would let a broken clamp
+    // hide behind cases that stay on one side of it.
+    guard args.count >= 2, let text = try? String(contentsOfFile: args[1], encoding: .utf8) else { usage() }
+    /// `Int(Double)` traps on NaN and on infinity, and a trap in the middle of
+    /// a fixture would leave the golden truncated — so non-finite prints by name.
+    func ageText(_ value: TimeInterval) -> String {
+        if value.isNaN { return "nan" }
+        if value == .infinity { return "inf" }
+        if value == -.infinity { return "-inf" }
+        return String(Int(value))
+    }
+    for rawLine in text.split(separator: "\n") {
+        let line = String(rawLine)
+        let parts = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+        guard let label = parts.first, !label.isEmpty else {
+            print("error\tno label\t\(line)")
+            continue
+        }
+        // `readLines()` на JVM съедает CR, Swift — нет: без отказа одна и та же
+        // фикстура прочиталась бы на двух сторонах по-разному.
+        if line.contains("\r") {
+            print("\(label)\terror\tcr")
+            continue
+        }
+        guard parts.count == 7 else {
+            print("\(label)\terror\tcolumns \(parts.count)")
+            continue
+        }
+        guard !parts[1].isEmpty else {
+            print("\(label)\terror\tno url")
+            continue
+        }
+        guard parts[6].isEmpty || parts[6] == "0" || parts[6] == "1" else {
+            print("\(label)\terror\tallowInsecure")
+            continue
+        }
+        // Empty means nil; a value that does not parse is the case's error, not
+        // a silent "never fetched" — a truncated fixture line must not be read
+        // as a decision. The first bad column is the reason reported.
+        var problem: String?
+        func optionalNumber(_ index: Int, _ name: String) -> Double? {
+            let raw = parts[index]
+            if raw.isEmpty { return nil }
+            guard let value = number(raw) else {
+                if problem == nil { problem = name }
+                return nil
+            }
+            return value
+        }
+        let lastFetched = optionalNumber(2, "lastUpdated")
+        let now = optionalNumber(3, "now")
+        let interval = optionalNumber(4, "panelInterval")
+        let defaultAge = optionalNumber(5, "defaultAge")
+        if let problem {
+            print("\(label)\terror\t\(problem)")
+            continue
+        }
+        guard let now else {
+            print("\(label)\terror\tnow")
+            continue
+        }
+        let sub = Subscription(
+            name: label,
+            url: parts[1],
+            lastUpdated: lastFetched.map { Date(timeIntervalSince1970: $0) }
+        )
+        let press = parts[6] == "1"
+        // Пустой столбец `defaultAge` отдаёт дефолт самого аргумента, а не
+        // удвоенную константу: иначе правка дефолта золотой бы не заметила.
+        let maxAge = defaultAge.map { sub.refreshMaxAge(panelInterval: interval, defaultAge: $0) }
+            ?? sub.refreshMaxAge(panelInterval: interval)
+        let due = defaultAge.map {
+            sub.refreshIsDue(now: Date(timeIntervalSince1970: now), panelInterval: interval,
+                             defaultAge: $0, allowInsecure: press)
+        } ?? sub.refreshIsDue(now: Date(timeIntervalSince1970: now), panelInterval: interval,
+                              allowInsecure: press)
+        print("\(label)\tmaxAge=\(ageText(maxAge))\tdue=\(due ? 1 : 0)")
     }
 
 case "state":
