@@ -1,38 +1,48 @@
 import Foundation
 import LoaderCore
 
-/// Confirms the tunnel actually carries traffic by fetching a tiny 204 endpoint
+/// Confirms the tunnel actually carries traffic by fetching a tiny endpoint
 /// through the local SOCKS proxy, and reports the real round-trip latency.
 enum ProxyHealth {
-    /// Probe endpoints, ordered by DNS dependency. IP-literal probes come
-    /// first: SOCKS5 sends them as ATYP=IPv4, so xray routes them without
-    /// issuing any DNS query — which matters early in a session when xray's
-    /// proxied DoH is still warming up (the first few DoH round-trips can
-    /// time out while the tunnel's outbound connection is being established,
-    /// causing health misses even though the SOCKS proxy itself is working).
-    /// Domain-based probes race alongside and win if DNS is already live.
+    /// HTTPS only: App Transport Security refuses plain-HTTP loads before they
+    /// reach the proxy, so http:// probes never ran (only the HSTS-upgraded
+    /// cp.cloudflare.com did). The IP-literal probes carry no hostname — SOCKS
+    /// sends ATYP=IPv4 and they need no DNS at all (Cloudflare's 1.1.1.1
+    /// certificate covers both addresses).
     static let probeURLs: [URL] = [
-        URL(string: "http://1.1.1.1/")!,      // Cloudflare DNS IP — no DNS, SOCKS ATYP=IPv4
-        URL(string: "http://1.0.0.1/")!,      // Cloudflare alt IP  — no DNS, SOCKS ATYP=IPv4
-        URL(string: "http://cp.cloudflare.com/generate_204")!,
-        URL(string: "http://www.gstatic.com/generate_204")!
+        URL(string: "https://1.1.1.1/cdn-cgi/trace")!,
+        URL(string: "https://1.0.0.1/cdn-cgi/trace")!,
+        URL(string: "https://cp.cloudflare.com/generate_204")!,
+        URL(string: "https://www.gstatic.com/generate_204")!
     ]
 
-    static func check(socksPort: Int, timeout: TimeInterval = 6) async -> Int? {
+    /// Round-trip latency in ms through the proxy, or why every probe failed.
+    static func check(socksPort: Int, timeout: TimeInterval = 6) async -> (ms: Int?, failure: String?) {
         let session = URLSession(configuration: proxied(socksPort: socksPort, timeout: timeout))
         defer { session.invalidateAndCancel() }
         let start = DispatchTime.now()
+        let failures = FailureLog()
         let probes = probeURLs.map { url in
             { @Sendable () async -> Int? in
                 // URLSession's async API cancels the request with its task, so
                 // the losing probe stops the moment the winner lands.
-                guard let (_, resp) = try? await session.data(from: url),
-                      let http = resp as? HTTPURLResponse, (200...399).contains(http.statusCode)
-                else { return nil }
-                return Int((DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1_000_000)
+                do {
+                    let (_, resp) = try await session.data(from: url)
+                    let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
+                    guard (200...399).contains(status) else {
+                        failures.record("\(url.host ?? "probe"): HTTP \(status)")
+                        return nil
+                    }
+                    return Int((DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1_000_000)
+                } catch {
+                    let code = (error as? URLError).map { " (\($0.code.rawValue))" } ?? ""
+                    failures.record("\(url.host ?? "probe"): \(error.localizedDescription)\(code)")
+                    return nil
+                }
             }
         }
-        return await AsyncRace.firstNonNil(probes)
+        let ms = await AsyncRace.firstNonNil(probes)
+        return (ms, ms == nil ? failures.first : nil)
     }
 
     /// One-shot capacity probe: download `bytes` through the live SOCKS proxy
@@ -68,5 +78,23 @@ enum ProxyHealth {
             "SOCKSPort": socksPort
         ]
         return cfg
+    }
+}
+
+/// Failures reported by concurrently running probes, first one kept for the log.
+private final class FailureLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var reasons: [String] = []
+
+    func record(_ reason: String) {
+        lock.lock()
+        reasons.append(reason)
+        lock.unlock()
+    }
+
+    var first: String? {
+        lock.lock()
+        defer { lock.unlock() }
+        return reasons.first
     }
 }

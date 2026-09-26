@@ -1,4 +1,6 @@
 import AppKit
+// Only the one type: Combine's `Subscription` would shadow LoaderCore's.
+import class Combine.AnyCancellable
 import Foundation
 import SwiftUI
 import LoaderCore
@@ -233,8 +235,41 @@ final class AppState: ObservableObject {
     private var recoveryTried: Set<UUID> = []
     private var escalatedProfile: MaskingProfile?
     private var activeProfile: MaskingProfile = .balanced
-    /// Masking profile learned to keep each server (by identityKey) flowing.
+    /// Masking profile learned to keep each server flowing — by identityKey,
+    /// and by identityKey#network for what a kind of network needed
+    /// (PersistedState.learnedMaskingKey).
     private var learnedMasking: [String: MaskingProfile] = [:]
+
+    // Statistics, Speed Test, Leak Test and subscription reminders: each its
+    // own observable, so a stats sample doesn't redraw every AppState view.
+    let usage = UsageStats()
+    let speedTest = SpeedTestModel()
+    let leakTest = LeakTestModel()
+    let alerts = SubscriptionAlerts()
+    /// Block ads: the engine's DNS asks AdGuard DNS (and, for AmneziaWG
+    /// sessions, so does the system resolver). Applies at connect.
+    @Published private(set) var adBlockEnabled = UserDefaults.standard.bool(forKey: "adBlock")
+    /// What each subscription's panel says about it (traffic, expiry…),
+    /// from its response headers.
+    @Published private(set) var subscriptionInfo: [UUID: SubscriptionInfo] = [:] {
+        didSet {
+            if let data = try? JSONEncoder().encode(subscriptionInfo) {
+                UserDefaults.standard.set(data, forKey: "subscriptionInfo")
+            }
+            alerts.scheduleSoon()
+        }
+    }
+    /// Check Servers: a real request through each server (ProxyCheck).
+    @Published private(set) var verdicts: [UUID: ProxyCheck.Verdict] = [:]
+    struct CheckProgress: Equatable {
+        var done: Int
+        var total: Int
+    }
+    /// Non-nil while Check Servers runs.
+    @Published private(set) var checkProgress: CheckProgress?
+    /// The main window shows the leak test's last word and Settings the
+    /// reminders' permission: their changes redraw AppState's views too.
+    private var forwarders: Set<AnyCancellable> = []
 
     init(
         persistence: StatePersistence = StatePersistence(fileURL: StatePersistence.defaultURL()),
@@ -256,6 +291,17 @@ final class AppState: ObservableObject {
             Task { @MainActor in self?.handleXrayExit(status) }
         }
         load()
+        if let data = UserDefaults.standard.data(forKey: "subscriptionInfo"),
+           let saved = try? JSONDecoder().decode([UUID: SubscriptionInfo].self, from: data) {
+            subscriptionInfo = saved
+        }
+        alerts.source = { [weak self] in self?.reminderSource() ?? [] }
+        Task { [weak self] in await self?.alerts.reschedule() }
+        for publisher in [leakTest.objectWillChange, alerts.objectWillChange] {
+            publisher
+                .sink { [weak self] _ in MainActor.assumeIsolated { self?.objectWillChange.send() } }
+                .store(in: &forwarders)
+        }
         // Restore per-server ping history for the temporal ranker.
         for (k, v) in historyStore.load() {
             if let id = UUID(uuidString: k) { pingHistory[id] = v }
@@ -369,7 +415,7 @@ final class AppState: ObservableObject {
             // ask the helper whether the engine and its utun survived.
             let stillAlive = self.activeSessionIsWG
                 ? await self.helper.isTunnelUp()
-                : await ProxyHealth.check(socksPort: self.xray.socksPort, timeout: 2) != nil
+                : await ProxyHealth.check(socksPort: self.xray.socksPort, timeout: 2).ms != nil
             guard !Task.isCancelled, self.isConnected, !self.intentionalStop else { return }
             if stillAlive {
                 self.appendLog("network changed — tunnel still healthy, keeping connection")
@@ -469,8 +515,9 @@ final class AppState: ObservableObject {
         }
     }
 
-    func persist() {
-        let state = PersistedState(
+    /// What `persist()` writes — also the source of a transfer bundle.
+    func persistedSnapshot() -> PersistedState {
+        PersistedState(
             servers: servers,
             subscriptions: subscriptions,
             selectedServerID: selectedServerID,
@@ -484,8 +531,51 @@ final class AppState: ObservableObject {
             learnedMasking: learnedMasking.mapValues { $0.rawValue },
             splitTunnel: splitTunnel
         )
-        do { try persistence.save(state) }
+    }
+
+    func persist() {
+        do { try persistence.save(persistedSnapshot()) }
         catch { appendLog("persist error: \(error.localizedDescription)") }
+    }
+
+    // MARK: - Transfer (Mac ↔ iPhone)
+
+    /// Servers, subscriptions and shared settings for Anemia on another
+    /// device (LoaderCore/SyncBundle).
+    func syncBundle() -> SyncBundle {
+        var bundle = SyncBundle(state: persistedSnapshot(), device: Host.current().localizedName ?? "Mac")
+        bundle.settings?.adBlock = adBlockEnabled
+        return bundle
+    }
+
+    /// Adds what a bundle from another device brings; new subscriptions are
+    /// fetched here. Settings are taken over only with `applySettings`.
+    @discardableResult
+    func importSync(_ bundle: SyncBundle, applySettings: Bool) async -> SyncBundle.Summary {
+        var snapshot = persistedSnapshot()
+        let summary = bundle.merge(into: &snapshot, applySettings: applySettings)
+        servers = snapshot.servers
+        subscriptions = snapshot.subscriptions
+        if selectedServerID == nil { selectedServerID = snapshot.selectedServerID }
+        if applySettings {
+            if snapshot.maskingProfile != maskingProfile { setMaskingProfile(snapshot.maskingProfile) }
+            killSwitchEnabled = snapshot.killSwitchEnabled
+            splitTunnel = snapshot.splitTunnel
+            subscriptionAutoRefresh = snapshot.subscriptionAutoRefresh
+            learnedMasking = snapshot.learnedMasking.reduce(into: [:]) { acc, kv in
+                if let profile = MaskingProfile(rawValue: kv.value) { acc[kv.key] = profile }
+            }
+            if let adBlock = bundle.settings?.adBlock { setAdBlock(adBlock) }
+        }
+        persist()
+        appendLog("imported from \(bundle.device): +\(summary.addedServers) servers, "
+                  + "+\(summary.newSubscriptions.count) subscriptions\(summary.settingsApplied ? ", settings" : "")")
+        let fresh = Set(summary.newSubscriptions.map(\.url))
+        for sub in subscriptions where fresh.contains(sub.url) {
+            await refreshSubscription(sub.id)
+        }
+        startSubscriptionAutoRefresh()
+        return summary
     }
 
     /// Toggle auto-refresh; starts/stops the loop immediately.
@@ -523,6 +613,22 @@ final class AppState: ObservableObject {
     func setKillSwitch(_ on: Bool) {
         killSwitchEnabled = on
         persist()
+    }
+
+    func setAdBlock(_ on: Bool) {
+        adBlockEnabled = on
+        UserDefaults.standard.set(on, forKey: "adBlock")
+        if isConnected || connection == .connecting {
+            appendLog("block ads \(on ? "on" : "off") — applies on the next connect")
+        }
+    }
+
+    /// Where the app's own requests (Speed Test, Leak Test) reach the VPN:
+    /// nil while the system tunnel carries them or nothing is connected, the
+    /// engine's SOCKS inbound in proxy-only mode.
+    var appProxy: LocalProxy? {
+        guard isConnected, !tunnelActive, !activeSessionIsWG else { return nil }
+        return LocalProxy(port: xray.socksPort)
     }
 
     /// Apply a masking preset, preserving the user's Advanced tweaks
@@ -725,8 +831,17 @@ final class AppState: ObservableObject {
 
     /// Refresh every subscription and log the deltas. Keeps the selection
     /// valid if its server vanished from the list.
-    func refreshAllSubscriptions() async {
+    ///
+    /// `allowInsecure` marks a round the user asked for. The automatic round
+    /// (10 s after launch, then every 6 h) keeps only TLS panels: an http
+    /// answer is written by whoever controls the path, and a swapped server
+    /// list is tomorrow's traffic through someone else's exit.
+    func refreshAllSubscriptions(allowInsecure: Bool = false) async {
         for sub in subscriptions {
+            if !sub.tlsProtected, !allowInsecure {
+                appendLog("subscription '\(sub.name)' skipped by auto-refresh: no TLS — update it manually")
+                continue
+            }
             let before = Set(sub.servers.map(\.identityKey))
             await refreshSubscription(sub.id)
             guard let updated = subscriptions.first(where: { $0.id == sub.id }) else { continue }
@@ -782,15 +897,25 @@ final class AppState: ObservableObject {
             }
             let body = String(data: data, encoding: .utf8) ?? ""
             let result = SubscriptionParser.parse(body)
+            // Traffic, expiry, the panel's links — in the response headers.
+            let info = (response as? HTTPURLResponse).flatMap { SubscriptionInfo.parse($0) }
             // An error page, a captive portal or a body of unusable lines is a
             // failed fetch, not "the provider lists no servers now": storing
             // the empty result wiped the saved list — and the vanished-server
             // check then dropped the live session — on every provider outage.
             guard !result.servers.isEmpty else {
+                // An expired subscription often answers with an empty list;
+                // its headers still say why.
+                if let info, let expires = info.expires, expires < Date() {
+                    if subscriptions.contains(where: { $0.id == sub.id }) { subscriptionInfo[sub.id] = info }
+                    lastImportError = "The subscription expired on \(expires.formatted(date: .abbreviated, time: .omitted))"
+                    return false
+                }
                 lastImportError = result.failures.first.map { "Subscription has no usable servers (\($0.error))" }
                     ?? "Subscription has no usable servers"
                 return false
             }
+            if let info { subscriptionInfo[sub.id] = info }
             // Carry stable IDs across refreshes (link text is the identity):
             // the selected server survives an update and ping history doesn't
             // orphan.
@@ -814,6 +939,7 @@ final class AppState: ObservableObject {
             && subscriptions.first(where: { $0.id == id })?
                 .servers.contains { $0.id == sessionServerID } == true
         subscriptions.removeAll { $0.id == id }
+        subscriptionInfo[id] = nil
         if selectedServer == nil { selectedServerID = allServers.first?.id }
         pruneHistory()
         persist()
@@ -823,6 +949,24 @@ final class AppState: ObservableObject {
             connectionTask?.cancel()
             connectionTask = Task { [weak self] in await self?.disconnect() }
         }
+    }
+
+    /// What reminders are planned from: every subscription whose panel said
+    /// something about it.
+    private func reminderSource() -> [(id: UUID, name: String, info: SubscriptionInfo)] {
+        subscriptions.compactMap { sub in
+            subscriptionInfo[sub.id].map { (id: sub.id, name: displayName(of: sub), info: $0) }
+        }
+    }
+
+    /// The panel's own name for a subscription, else the one it was added with.
+    func displayName(of sub: Subscription) -> String {
+        subscriptionInfo[sub.id]?.title ?? sub.name
+    }
+
+    /// The subscription a server came from; nil for manually added ones.
+    func subscription(containing serverID: UUID) -> Subscription? {
+        subscriptions.first { $0.servers.contains { $0.id == serverID } }
     }
 
     /// Drop ping history for servers that no longer exist so the persisted
@@ -843,7 +987,11 @@ final class AppState: ObservableObject {
         // removed from this map, so it grew without bound across refreshes).
         let liveKeys = Set(allServers.map { $0.identityKey })
         let before = learnedMasking.count
-        learnedMasking = learnedMasking.filter { liveKeys.contains($0.key) }
+        learnedMasking = learnedMasking.filter {
+            liveKeys.contains(PersistedState.serverKey(ofLearnedMaskingKey: $0.key))
+        }
+        let liveIDs = Set(allServers.map(\.id))
+        verdicts = verdicts.filter { liveIDs.contains($0.key) }
         if learnedMasking.count != before { persist() }
         saveHistory()
         // Re-derive the recommendation from what remains.
@@ -960,6 +1108,65 @@ final class AppState: ObservableObject {
         }
         saveHistory()
         await updateRanking()
+    }
+
+    // MARK: - Check Servers
+
+    /// A real request through every server a throwaway engine can dial
+    /// (ProxyCheck). Servers that answer pings but carry nothing drop out of
+    /// the automatic picks. A blocked TCP server gets retried with stronger
+    /// masking, and what gets it through is learned for this network.
+    func checkServers() async {
+        guard checkProgress == nil, let binary = xray.resolveBinary() else { return }
+        let candidates = allServers.filter(ProxyCheck.supports)
+        guard !candidates.isEmpty else { return }
+        checkProgress = CheckProgress(done: 0, total: candidates.count)
+        defer { checkProgress = nil }
+        // Under an armed kill switch nothing leaves around the tunnel: the
+        // checks then go through it, which still tells a dead server apart.
+        let interface = killSwitchEnabled && tunnelActive
+            ? nil
+            : await XrayController.withTimeout(seconds: 2, fallback: nil) { PhysicalInterface.primary() }
+        let items = candidates.map { server in
+            let learned = learnedMasking(for: server)
+            return ProxyCheck.Item(server: server, anti: learned.map { withUserTweaks($0.options) } ?? anti)
+        }
+        await ProxyCheck.run(items, binary: binary, dialerInterface: interface) { [weak self] id, verdict in
+            await self?.checked(id, verdict, counts: true)
+        }
+
+        // Answers, yet blocked: DPI at work. Stronger masking may get through.
+        var blocked = candidates.filter { server in
+            guard case .broken(let why) = verdicts[server.id], ProxyCheck.maskable(server) else { return false }
+            return why != "Unsupported configuration" && !why.hasPrefix("The engine")
+        }
+        for profile in [MaskingProfile.maximum, .ruYandex] where !blocked.isEmpty {
+            let retry = blocked.filter { (learnedMasking(for: $0) ?? maskingProfile).strength < profile.strength }
+            guard !retry.isEmpty else { continue }
+            let rescued = RescueList()
+            await ProxyCheck.run(retry.map { ProxyCheck.Item(server: $0, anti: withUserTweaks(profile.options)) },
+                                 binary: binary, dialerInterface: interface) { [weak self] id, verdict in
+                guard verdict.works else { return }
+                rescued.add(id)
+                await self?.checked(id, verdict, counts: false)
+            }
+            for server in retry where rescued.contains(server.id) {
+                learnMasking(profile, for: server)
+                appendLog("check: \(server.name) gets through with \(profile.title) masking — kept for this network")
+            }
+            blocked.removeAll { rescued.contains($0.id) }
+        }
+        let working = candidates.filter { verdicts[$0.id]?.works == true }.count
+        appendLog("checked \(candidates.count) servers: \(working) carry traffic")
+        await updateRanking()
+    }
+
+    private func checked(_ id: UUID, _ verdict: ProxyCheck.Verdict, counts: Bool) {
+        verdicts[id] = verdict
+        if counts, var progress = checkProgress {
+            progress.done += 1
+            checkProgress = progress
+        }
     }
 
     // MARK: - Background ping maintenance
@@ -1238,11 +1445,15 @@ final class AppState: ObservableObject {
                                  stability: [UUID: Double],
                                  current: UUID?) -> UUID? {
         let stableBar = 0.6
-        let nonRussian = ordered.filter { !isRussianExit($0.id) }
+        // A server a real request couldn't get through answers pings for
+        // nothing — unless nothing else is left.
+        let working = ordered.filter { verdicts[$0.id]?.works != false }
+        let candidates = working.isEmpty ? ordered : working
+        let nonRussian = candidates.filter { !isRussianExit($0.id) }
         let foreign = nonRussian.filter { isForeignExit($0.id) }
         let pool = foreign.isEmpty ? nonRussian : foreign
         let steady = pool.filter { (stability[$0.id] ?? 0) >= stableBar }
-        guard let challenger = steady.first ?? pool.first ?? ordered.first else { return nil }
+        guard let challenger = steady.first ?? pool.first ?? candidates.first else { return nil }
         // Stick with the current pick if it's still eligible and no worse than
         // 12% (badness) behind the challenger — avoids churn on tiny wobbles.
         if let current, let cur = pool.first(where: { $0.id == current }),
@@ -1282,6 +1493,18 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Whether the installed helper answered with a version other than this
+    /// app's — its tunnel code predates fixes the session depends on. Asked
+    /// live: the launch-time query may not have landed yet. A helper that
+    /// doesn't answer isn't reported here; its start call fails on its own.
+    private func helperNeedsUpdate() async -> Bool {
+        guard helperInstalled, !helperCurrent else { return false }
+        guard let version = await helper.version() else { return false }
+        helperVersion = version
+        helperCurrent = version == LoaderHelperVersion
+        return !helperCurrent
+    }
+
     /// Toggle coexist mode. Applies live: if connected in SOCKS-only mode, set
     /// or clear the system proxy immediately.
     func setSystemProxyEnabled(_ on: Bool) {
@@ -1317,6 +1540,8 @@ final class AppState: ObservableObject {
     /// recover it.
     func shutdownForTermination() {
         intentionalStop = true
+        // Check Servers' throwaway engines would outlive the app.
+        ProxyCheck.stopAll()
         // Kill the in-flight connect/reconnect work FIRST and move the
         // generation, so any of their XPC calls still straddling the quit
         // bail at their post-await guards instead of committing state over
@@ -1498,6 +1723,7 @@ final class AppState: ObservableObject {
         activeProfile = profile
         let bypassEntries = splitTunnel.activeEntries
         xray.bypass = bypassEntries
+        xray.adBlock = adBlockEnabled
         sessionServerID = server.id
         connection = .connecting
         // The bundled engine (Xray-core 26.x) validates certificates
@@ -1634,10 +1860,19 @@ final class AppState: ObservableObject {
         tunnelEpoch &+= 1
         let tunEpoch = tunnelEpoch
         let (ok, err): (Bool, String?)
+        // A helper older than this app can't carry the tunnel: ≤ 0.9.1 never
+        // pinned the server's bypass route (every full-tunnel session died
+        // within seconds) and can't start AmneziaWG on macOS at all.
+        let staleHelper = await helperNeedsUpdate()
         if isWG {
             guard helperInstalled else {
                 guard !Task.isCancelled, commandGeneration == gen else { return }
                 connection = .error("WireGuard-family servers need the privileged helper — install it in Settings")
+                return
+            }
+            guard !staleHelper else {
+                guard !Task.isCancelled, commandGeneration == gen else { return }
+                connection = .error("Update the privileged helper in Settings → Network — the installed version can't start AmneziaWG")
                 return
             }
             guard let enginePath = AWGController.resolveBinary() else {
@@ -1689,6 +1924,10 @@ final class AppState: ObservableObject {
             // On success the reply's message carries the kernel-assigned utun
             // name (see the XPC contract) — the netstat counters key off it.
             if ok { awg.beginSession(utun: err) } else { awg.endSession() }
+        } else if staleHelper {
+            ok = false
+            err = "the installed privileged helper is outdated — update it in Settings → Network"
+            activeSessionIsWG = false
         } else {
             let r = await helper.startTunnel(
                 socksPort: xray.socksPort, serverAddress: server.address, killSwitch: killSwitchEnabled)
@@ -1785,7 +2024,11 @@ final class AppState: ObservableObject {
             // (reached inside the tunnel via the /1 routes), falling back to
             // an open resolver when the profile lists none.
             let r: (ok: Bool, error: String?)
-            if isWG, let dns = server.wgProfile?.dns.first(where: { !$0.isEmpty }) {
+            if isWG, adBlockEnabled {
+                // Block ads: AdGuard DNS instead of the profile's own,
+                // reached inside the tunnel like it.
+                r = await helper.setSystemDNS(server: AdBlockDNS.servers[0])
+            } else if isWG, let dns = server.wgProfile?.dns.first(where: { !$0.isEmpty }) {
                 r = await helper.setSystemDNS(server: dns)
             } else if isWG {
                 appendLog("profile lists no DNS servers — leaving the system resolver untouched")
@@ -1868,10 +2111,13 @@ final class AppState: ObservableObject {
                 // AND the engine process is alive). Latency stays nil there:
                 // ProxyHealth's SOCKS dial would just fail against nothing.
                 let ms: Int?
+                var failure: String?
                 if self.activeSessionIsWG {
                     ms = await self.helper.isTunnelUp() ? -1 : nil
                 } else {
-                    ms = await ProxyHealth.check(socksPort: port)
+                    let probe = await ProxyHealth.check(socksPort: port)
+                    ms = probe.ms
+                    failure = probe.failure
                 }
                 guard !Task.isCancelled, self.isConnected else { return }
                 // -1 marks "alive, latency not measured" (WG sessions) — the
@@ -1883,7 +2129,8 @@ final class AppState: ObservableObject {
                 self.proxyReachable = consecutiveFailures < 2
                 if consecutiveFailures == 2 {
                     self.proxyUnreachableSince = Date()
-                    self.appendLog("proxy unreachable — engine up but no route to server")
+                    self.appendLog("proxy unreachable — engine up but no route to server"
+                        + (failure.map { " (\($0))" } ?? ""))
                 }
 
                 if ms != nil {
@@ -1934,6 +2181,12 @@ final class AppState: ObservableObject {
                     // engine restart, so no traffic leaks while it retries.
                     if consecutiveFailures >= 3 {
                         self.appendLog("server unreachable with tunnel up — recovering connectivity")
+                        // The helper's view of the routes (is the server's
+                        // bypass pinned?) is what explains a dead tunnel.
+                        if self.helperCurrent, let view = await self.helper.networkDiagnostics() {
+                            self.appendLog("helper view: " + view.replacingOccurrences(of: "\n", with: "; "))
+                        }
+                        guard !Task.isCancelled, self.isConnected else { return }
                         self.attemptReconnect()
                         return
                     }
@@ -1954,10 +2207,7 @@ final class AppState: ObservableObject {
     /// The current connection has held for a while: remember the masking that
     /// works for this server and clear the recovery ladder.
     private func onStableConnection() {
-        if let s = sessionServer, learnedMasking[s.identityKey] != activeProfile {
-            learnedMasking[s.identityKey] = activeProfile
-            persist()
-        }
+        if let s = sessionServer { learnMasking(activeProfile, for: s) }
         resetRecoveryState()
     }
 
@@ -2160,6 +2410,7 @@ final class AppState: ObservableObject {
             .filter { s in
                 qualityScore[s.id] != nil && !recoveryTried.contains(s.id)
                     && !isRussianExit(s.id) && isForeignExit(s.id)
+                    && verdicts[s.id]?.works != false
             }
             .sorted { (qualityScore[$0.id] ?? .greatestFiniteMagnitude)
                     < (qualityScore[$1.id] ?? .greatestFiniteMagnitude) }
@@ -2172,10 +2423,25 @@ final class AppState: ObservableObject {
     /// user's fingerprint and mux/TFO tweaks always carry through.
     private func maskingForConnect(_ server: ProxyServer) -> (AntiCensorshipOptions, MaskingProfile) {
         if let esc = escalatedProfile { return (withUserTweaks(esc.options), esc) }
-        if let learned = learnedMasking[server.identityKey], learned != maskingProfile {
+        if let learned = learnedMasking(for: server), learned != maskingProfile {
             return (withUserTweaks(learned.options), learned)
         }
         return (anti, maskingProfile)
+    }
+
+    /// What kept `server` flowing on this kind of network (Wi‑Fi/Ethernet or
+    /// mobile data), else on any.
+    func learnedMasking(for server: ProxyServer) -> MaskingProfile? {
+        networkWatcher.kind.flatMap { learnedMasking[PersistedState.learnedMaskingKey(for: server, on: $0)] }
+            ?? learnedMasking[server.identityKey]
+    }
+
+    /// Keeps what worked for `server` on the network the Mac is on now.
+    private func learnMasking(_ profile: MaskingProfile, for server: ProxyServer) {
+        let key = PersistedState.learnedMaskingKey(for: server, on: networkWatcher.kind)
+        guard learnedMasking[key] != profile else { return }
+        learnedMasking[key] = profile
+        persist()
     }
 
     private func withUserTweaks(_ base: AntiCensorshipOptions) -> AntiCensorshipOptions {
@@ -2199,6 +2465,8 @@ final class AppState: ObservableObject {
         // must not flip a mid-flight poll into the other engine's path.
         let wgSession = activeSessionIsWG
         let wgInterface = awg.utunName
+        // One run of the usage ledger: its totals start again here.
+        let runStart = Date()
         uplinkTotal = 0; downlinkTotal = 0; uplinkSpeed = 0; downlinkSpeed = 0
         statsTask?.cancel()
         statsTask = Task { [weak self] in
@@ -2261,6 +2529,8 @@ final class AppState: ObservableObject {
                         // session's bytes when the helper re-armed its utun.
                         self.uplinkTotal = max(0, up - baseUp)
                         self.downlinkTotal = max(0, down - baseDown)
+                        self.usage.record(runStartedAt: runStart, received: self.downlinkTotal,
+                                          sent: self.uplinkTotal, server: self.sessionServer)
                         // Session history for the map tile's sparkline: a
                         // fixed ring, oldest dropped first.
                         self.trafficHistory.append(TrafficSample(down: downSpeed, up: upSpeed))
@@ -2290,6 +2560,7 @@ final class AppState: ObservableObject {
     private func stopStatsPolling() {
         statsTask?.cancel()
         statsTask = nil
+        usage.sessionEnded()
         uplinkSpeed = 0; downlinkSpeed = 0
         // Totals too: leaving the previous session's cumulative bytes in the
         // dimmed stats row while disconnected read as live traffic.
@@ -2353,6 +2624,9 @@ extension AppState {
         case .connected:
             connection = .connected
             tunnelActive = true
+            sessionServerID = selectedServerID
+            if let first = allServers.first { verdicts[first.id] = .works(286) }
+            if allServers.count > 1 { verdicts[allServers[1].id] = .broken("TLS error") }
             connectedSince = Date().addingTimeInterval(-754)
             proxyLatency = 48
             proxyThroughput = 12_400_000

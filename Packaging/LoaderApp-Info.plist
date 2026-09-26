@@ -20,11 +20,40 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>LSMinimumSystemVersion</key>
-    <string>13.0</string>
+    <string>14.0</string>
     <key>LSUIElement</key>
     <false/>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
+    <!-- Import schemes: clicking a share link (vpn:// from the Amnezia app,
+         hysteria links, or any of the WireGuard-family schemes) opens the
+         import pipeline. -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.loader.vpn.import</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>vpn</string>
+                <string>hysteria</string>
+                <string>hysteria2</string>
+                <string>hy2</string>
+                <string>amnezia</string>
+                <string>awg</string>
+                <string>wireguard</string>
+                <string>wg</string>
+            </array>
+        </dict>
+    </array>
+    <!-- Subscription panels often serve plain http:// (a bare IP and port);
+         App Transport Security would refuse those fetches before they leave
+         the app. -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
     <!-- The helper the app is allowed to install (SMAppService/SMJobBless). -->
     <key>SMPrivilegedExecutables</key>
     <dict>

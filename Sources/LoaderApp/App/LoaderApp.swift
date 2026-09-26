@@ -1,7 +1,44 @@
 import SwiftUI
+import AppKit
+
+/// Bridges AppKit's terminate callback to AppState, so the privileged tunnel is
+/// torn down synchronously on quit. Set by AppState.init.
+@MainActor enum AppTermination {
+    static var handler: (() -> Void)?
+}
+
+/// Bridges the GURL Apple Event (clicking a `vpn://` / `hysteria://` /
+/// `amnezia://` … link) to AppState.importLink. Set by AppState.init.
+@MainActor enum AppURLOpen {
+    static var handler: ((String) -> Void)?
+}
+
+/// Minimal delegate: run the tunnel teardown when the app is quitting so the
+/// machine is never left offline behind a still-armed tunnel/kill switch, and
+/// route opened share links into the import pipeline.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    override init() {
+        super.init()
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleGetURL(_:withReplyEvent:)),
+            forEventClass: AEEventClass(kInternetEventClass),
+            andEventID: AEEventID(kAEGetURL))
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        MainActor.assumeIsolated { AppTermination.handler?() }
+    }
+
+    @objc private func handleGetURL(_ event: NSAppleEventDescriptor, withReplyEvent reply: NSAppleEventDescriptor) {
+        guard let raw = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue else { return }
+        Task { @MainActor in AppURLOpen.handler?(raw) }
+    }
+}
 
 @main
 struct LoaderApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var state = AppState()
 
     var body: some Scene {
@@ -10,8 +47,18 @@ struct LoaderApp: App {
             RootView()
                 .environmentObject(state)
         }
+        .windowToolbarStyle(.unified(showsTitle: false))
         .windowResizability(.contentSize)
-        .defaultSize(width: 400, height: 640)
+        // Compact column: the default frame hugs the content's own minimum
+        // (RootView .frame(minWidth: 560, minHeight: 470)) — an oversized
+        // default height leaves a tall blank band under the last tile.
+        .defaultSize(width: 560, height: 600)
+
+        // Native Settings window (⌘,).
+        Settings {
+            SettingsView()
+                .environmentObject(state)
+        }
 
         // Menu-bar quick control.
         MenuBarExtra {
@@ -19,8 +66,8 @@ struct LoaderApp: App {
                 .environmentObject(state)
                 .frame(width: 340)
         } label: {
-            if let logo = AppAssets.logo {
-                Image(nsImage: logo).resizable().scaledToFit()
+            if let icon = AppAssets.menuBarIcon {
+                Image(nsImage: icon).resizable().scaledToFit()
                     .frame(width: 18, height: 18)
                     .opacity(state.isConnected ? 1 : 0.55)
             } else {

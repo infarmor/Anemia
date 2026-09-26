@@ -1,6 +1,7 @@
 import SwiftUI
 import LoaderCore
 import LoaderShared
+import UserNotifications
 
 enum SettingsTab: Hashable {
     case general, protection, network, diagnostics, about
@@ -173,6 +174,10 @@ private extension View {
     }
 }
 
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
+}
+
 private extension AppState {
     /// "kxc v4 · CPU" once loaded (device omitted until it's known); the
     /// loader's status otherwise.
@@ -205,6 +210,15 @@ private struct GeneralSettingsPane: View {
         return state.selectedServer.map { "\(mode) · \($0.name)" } ?? mode
     }
 
+    private var reminderCaption: String {
+        let base = "Three days and a day before it ends, and when 90 % of its traffic is used."
+        switch state.alerts.permission {
+        case .denied: return base + " Notifications are off for Anemia in System Settings."
+        case .provisional, .notDetermined: return base + " Delivered quietly to Notification Center."
+        default: return base
+        }
+    }
+
     private var helperChip: (String, Bool) {
         if !state.helperInstalled { return ("No helper", false) }
         return state.helperCurrent ? ("Helper \(LoaderHelperVersion)", true) : ("Helper update", false)
@@ -230,13 +244,34 @@ private struct GeneralSettingsPane: View {
                     HStack(spacing: 10) {
                         GlyphTile(symbol: "arrow.triangle.2.circlepath", active: true)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(sub.name)
-                                .foregroundStyle(Theme.textHi)
-                                .lineLimit(1)
-                            Text(sub.url)
-                                .font(.caption)
-                                .foregroundStyle(Theme.textLo)
-                                .lineLimit(1)
+                            HStack(spacing: 4) {
+                                Text(state.displayName(of: sub))
+                                    .foregroundStyle(Theme.textHi)
+                                    .lineLimit(1)
+                                if !sub.tlsProtected {
+                                    Image(systemName: "lock.open.fill")
+                                        .foregroundStyle(.orange)
+                                        .help("No TLS — never refreshed automatically, only on press")
+                                }
+                            }
+                            if let info = state.subscriptionInfo[sub.id],
+                               let line = [info.trafficText, info.expiryText].compactMap({ $0 }).joined(separator: " · ").nilIfEmpty {
+                                Text(line)
+                                    .font(.caption)
+                                    .foregroundStyle(info.needsAttention() ? Theme.accent : Theme.textLo)
+                                    .lineLimit(1)
+                                if let fraction = info.usedFraction {
+                                    ProgressView(value: fraction)
+                                        .progressViewStyle(.linear)
+                                        .tint(fraction > 0.9 ? Theme.accent : Theme.textHi)
+                                        .frame(maxWidth: 220)
+                                }
+                            } else {
+                                Text(sub.url)
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.textLo)
+                                    .lineLimit(1)
+                            }
                         }
                         Spacer(minLength: 8)
                         if refreshingSubID == sub.id {
@@ -281,6 +316,8 @@ private struct GeneralSettingsPane: View {
                 }
             }
 
+            TransferSettingsSection()
+
             Section("Startup") {
                 Toggle(isOn: Binding(get: { state.launchAtLogin }, set: { state.setLaunchAtLogin($0) })) {
                     SettingLabel(symbol: "power", title: "Launch at login",
@@ -295,6 +332,19 @@ private struct GeneralSettingsPane: View {
                 Toggle(isOn: Binding(get: { state.subscriptionAutoRefresh }, set: { state.setSubscriptionAutoRefresh($0) })) {
                     SettingLabel(symbol: "arrow.triangle.2.circlepath", title: "Refresh subscriptions",
                                  caption: "On launch and every 6 hours.", active: state.subscriptionAutoRefresh)
+                }
+                Toggle(isOn: Binding(get: { state.alerts.isEnabled }, set: { state.alerts.isEnabled = $0 })) {
+                    SettingLabel(symbol: "bell.badge.fill", title: "Remind before a subscription ends",
+                                 caption: reminderCaption, active: state.alerts.isEnabled)
+                }
+                if state.alerts.isEnabled, state.alerts.permission == .provisional || state.alerts.permission == .notDetermined {
+                    Button("Show Reminders as Banners…") { Task { await state.alerts.askForBanners() } }
+                } else if state.alerts.isEnabled, state.alerts.permission == .denied {
+                    Button("Allow Notifications in System Settings…") {
+                        if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
                 }
             }
 
@@ -321,7 +371,8 @@ private struct GeneralSettingsPane: View {
                 Text("Server ranking")
             }
         }
-        .settingsForm(height: 660)
+        .settingsForm(height: 760)
+        .task { await state.alerts.refreshPermission() }
         .sheet(isPresented: $showAddSubscription) {
             ImportView(initialMode: .subscription).environmentObject(state)
         }
@@ -375,6 +426,16 @@ private struct ProtectionSettingsPane: View {
             }
 
             Section {
+                Toggle(isOn: Binding(get: { state.adBlockEnabled }, set: { state.setAdBlock($0) })) {
+                    SettingLabel(symbol: "hand.raised.fill", title: "Block ads",
+                                 caption: "The engine asks AdGuard DNS, through the VPN: ad and tracker domains don't resolve. Works under the system tunnel; applies at connect.",
+                                 active: state.adBlockEnabled)
+                }
+            } header: {
+                Text("Ads and trackers")
+            }
+
+            Section {
                 Picker(selection: Binding(get: { state.maskingProfile }, set: { state.setMaskingProfile($0) })) {
                     ForEach(MaskingProfile.allCases, id: \.self) { Text($0.title).tag($0) }
                 } label: {
@@ -395,13 +456,14 @@ private struct ProtectionSettingsPane: View {
             } header: {
                 Text("DPI masking")
             } footer: {
-                Text(state.isConnected
+                Text((state.isConnected
                      ? state.maskingProfile.subtitle + ". Applies on the next connect."
                      : state.maskingProfile.subtitle + ".")
+                     + " What keeps a server flowing is learned per network — Wi‑Fi or Ethernet, and an iPhone hotspot apart — and Check Servers tries stronger masking on servers that are blocked.")
                     .foregroundStyle(Theme.textLo)
             }
         }
-        .settingsForm(height: 560)
+        .settingsForm(height: 660)
     }
 }
 

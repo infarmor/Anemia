@@ -1,3 +1,4 @@
+import LoaderCore
 import SwiftUI
 
 /// Import a share link (or a pasted list / WireGuard config), or add a
@@ -24,6 +25,8 @@ struct ImportView: View {
     @State private var working = false
     @State private var clipboardLinks: [String] = []
     @State private var dropping = false
+    /// Text that turned out to be a transfer bundle from another device.
+    @State private var incoming: IncomingSync?
 
     var body: some View {
         NavigationStack {
@@ -126,6 +129,10 @@ struct ImportView: View {
             mode = .link
             return true
         } isTargeted: { dropping = $0 }
+        .sheet(item: $incoming) { incoming in
+            SyncImportView(bundle: incoming.bundle, onDone: { dismiss() })
+                .environmentObject(state)
+        }
     }
 
     private var canSubmit: Bool {
@@ -138,6 +145,18 @@ struct ImportView: View {
     private func submit() {
         switch mode {
         case .link:
+            // A transfer bundle (an iPhone's QR text or an .anemia file
+            // dropped on the window) gets a preview instead.
+            if SyncBundle.looksLikeBundle(linkText) {
+                do {
+                    incoming = IncomingSync(bundle: try SyncBundle.decode(Data(linkText.utf8)))
+                } catch SyncBundle.DecodeError.newerVersion {
+                    state.lastImportError = "That comes from a newer Anemia — update this one first."
+                } catch {
+                    state.lastImportError = "That transfer data is damaged."
+                }
+                return
+            }
             state.importLink(linkText)
             if state.lastImportError == nil { dismiss() }
         case .subscription:
