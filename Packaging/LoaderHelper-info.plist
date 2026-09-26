@@ -1,17 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Embedded in the helper binary's __TEXT,__info_plist section (SMJobBless).
-     SMAuthorizedClients restricts which signed app may install/talk to it. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleIdentifier</key>
-    <string>com.loader.vpn.helper</string>
-    <key>CFBundleName</key>
-    <string>Loader VPN Helper</string>
-    <key>CFBundleVersion</key>
-    <string>0.1.0</string>
-    <key>SMAuthorizedClients</key>
-    <array>
-        <string>anchor apple generic and identifier "com.loader.vpn" and certificate leaf[subject.OU] = "YOUR_TEAM_ID"</string>
-    </array>
+	<key>CFBundleIdentifier</key>
+	<string>com.loader.vpn.helper</string>
+	<key>CFBundleName</key>
+	<string>Loader VPN Helper</string>
+	<key>CFBundleVersion</key>
+	<string>0.9.2</string>
+	<key>SMAuthorizedClients</key>
+	<array>
+		<string>anchor apple generic and identifier "com.loader.vpn" and certificate leaf[subject.OU] = "YOUR_TEAM_ID"</string>
+	</array>
 </dict>
 </plist>

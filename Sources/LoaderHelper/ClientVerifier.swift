@@ -9,24 +9,29 @@ import Security
 ///   anchor apple generic and identifier "com.loader.vpn"
 ///   and certificate leaf[subject.OU] = "TEAMID"
 ///
-/// If no requirement is configured (local dev with unsigned builds), the helper
-/// accepts the connection but logs that it is running unverified.
+/// A missing requirement REJECTS the connection: this daemon runs as root and
+/// exposes route-table, DNS, proxy and pf controls — failing closed on a
+/// misconfigured plist is the only safe default. Dev installs set the env var
+/// in Scripts/install-helper-dev.sh, so local development is unaffected.
+///
+/// Dev builds use an identifier-only requirement, which an ad-hoc signature can
+/// satisfy (`codesign -s - -i <id>`); that is the accepted personal-machine
+/// risk. Release builds must ship a TeamID-anchored requirement instead.
 enum ClientVerifier {
     static let requirement: String? = ProcessInfo.processInfo.environment["LOADER_CLIENT_REQUIREMENT"]
 
     static func isValid(_ connection: NSXPCConnection) -> Bool {
         guard let req = requirement, !req.isEmpty else {
             FileHandle.standardError.write(Data(
-                "[helper] WARNING: no LOADER_CLIENT_REQUIREMENT set — accepting client unverified\n".utf8))
-            return true
+                "[helper] ERROR: no LOADER_CLIENT_REQUIREMENT set — rejecting client (fail closed)\n".utf8))
+            return false
         }
 
-        // Identify the caller by pid, then check its code signature. Known
-        // limitation: pid can in theory be recycled between the message send
-        // and this check (TOCTOU); the airtight fix — audit tokens — requires
-        // the private xpc_connection_get_audit_token API, which an
-        // NSXPCListener-based helper cannot reach without private headers.
-        // Accepted risk for a personal-use daemon.
+        // Identify the caller by pid, then check its code signature. A pid
+        // can be recycled between the connect and this check, so this is only
+        // the accept-time gate: `enforce(on:)` binds the same requirement to
+        // the connection, and the XPC runtime checks it against the audit
+        // token of every message.
         let pid = connection.processIdentifier
         let attrs: CFDictionary = [kSecGuestAttributePid: NSNumber(value: pid)] as CFDictionary
 
@@ -39,5 +44,14 @@ enum ClientVerifier {
               let secReq else { return false }
 
         return SecCodeCheckValidity(code, SecCSFlags(), secReq) == errSecSuccess
+    }
+
+    /// Have the XPC runtime check the requirement on every incoming message
+    /// against the sender's audit token (NSXPCConnection, macOS 13+); a
+    /// message from any other process invalidates the connection. Closes the
+    /// pid-reuse window the accept-time `isValid` check leaves open.
+    static func enforce(on connection: NSXPCConnection) {
+        guard let req = requirement, !req.isEmpty else { return }
+        connection.setCodeSigningRequirement(req)
     }
 }

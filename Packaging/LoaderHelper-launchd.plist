@@ -2,7 +2,8 @@
 <!-- launchd plist embedded in the helper binary's __TEXT,__launchd_plist
      section (SMJobBless) or installed to /Library/LaunchDaemons for a
      SMAppService daemon. The MachServices name must match
-     LoaderIdentifiers.helperMachService. -->
+     LoaderIdentifiers.helperMachService. Keep in sync with
+     HelperInstaller.launchdPlist and Scripts/install-helper-dev.sh. -->
 <plist version="1.0">
 <dict>
     <key>Label</key>
@@ -14,9 +15,34 @@
     </dict>
     <key>Program</key>
     <string>/Library/PrivilegedHelperTools/com.loader.vpn.helper</string>
+    <!-- Start at boot: the helper replays its network journal before anything
+         else, so a machine that lost power mid-session boots back online. -->
     <key>RunAtLoad</key>
     <true/>
+    <!-- Respawn only after a crash (non-zero exit / signal): the new
+         generation restores what the crashed one left. A clean stop
+         (bootout → SIGTERM → graceful teardown → exit 0) is not respawned. -->
     <key>KeepAlive</key>
-    <false/>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <!-- The helper supervises the packet path (tun2socks inherits its
+         scheduling class): no background throttling, performance cores. -->
+    <key>ProcessType</key>
+    <string>Interactive</string>
+    <!-- Room for the graceful SIGTERM teardown (bounded at 10 s internally). -->
+    <key>ExitTimeOut</key>
+    <integer>20</integer>
+    <!-- Only the genuine app may talk to the root helper (ClientVerifier
+         enforces this requirement on every connection, and REJECTS when the
+         variable is missing — fail closed). Dev builds use the bare
+         identifier; a Developer ID release must replace it with the TeamID
+         form: identifier "com.loader.vpn" and certificate leaf[subject.OU] = "TEAMID" -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>LOADER_CLIENT_REQUIREMENT</key>
+        <string>identifier "com.loader.vpn"</string>
+    </dict>
 </dict>
 </plist>
