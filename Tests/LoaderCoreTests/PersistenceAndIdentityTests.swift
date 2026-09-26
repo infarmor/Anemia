@@ -1,25 +1,34 @@
-import XCTest
+import Foundation
+import Testing
 @testable import LoaderCore
 
-final class PersistenceTests: XCTestCase {
+struct PersistenceTests {
     private func tempURL() -> URL {
         URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("loader-persist-tests-\(UUID().uuidString).json")
     }
 
-    func testLoadMissingFileReturnsDefaults() {
+    @Test func testLoadMissingFileReturnsDefaults() throws {
         let url = tempURL()
         defer { try? FileManager.default.removeItem(at: url) }
         let state = StatePersistence(fileURL: url).load()
-        XCTAssertTrue(state.servers.isEmpty)
-        XCTAssertNil(state.selectedServerID)
+        #expect(state.servers.isEmpty)
+        #expect(state.selectedServerID == nil)
     }
 
-    func testMalformedStateIsBackedUpAndReset() throws {
+    @Test func testMalformedStateIsBackedUpAndReset() throws {
         let url = tempURL()
+        let base = url.deletingPathExtension().lastPathComponent
         defer {
             try? FileManager.default.removeItem(at: url)
-            try? FileManager.default.removeItem(at: url.appendingPathExtension("bak"))
+            // The corrupt-store backup too — a stale .corrupt-*.bak would let
+            // a later regression pass via prefix leftovers.
+            let fm = FileManager.default
+            if let files = try? fm.contentsOfDirectory(atPath: url.deletingLastPathComponent().path) {
+                for f in files where f.hasPrefix(base + ".json.corrupt-") {
+                    try? fm.removeItem(at: url.deletingLastPathComponent().appendingPathComponent(f))
+                }
+            }
         }
         let server = ProxyServer(name: "kept", proto: .vless, address: "a.example.com", port: 443, credential: "u")
         let good = PersistedState(servers: [server], selectedServerID: server.id)
@@ -30,40 +39,98 @@ final class PersistenceTests: XCTestCase {
         try Data(#"{"servers": 42}"#.utf8).write(to: url)
 
         let reloaded = StatePersistence(fileURL: url).load()
-        XCTAssertTrue(reloaded.servers.isEmpty, "corrupt state must fall back to defaults")
+        #expect(reloaded.servers.isEmpty, "corrupt state must fall back to defaults")
 
         // …but the previous data is recoverable from the timestamped backup.
         let files = try FileManager.default.contentsOfDirectory(atPath: url.deletingLastPathComponent().path)
-        XCTAssertTrue(files.contains { $0.hasPrefix(url.deletingPathExtension().lastPathComponent + ".json.corrupt-") },
-                      "a .corrupt-*.bak backup of the malformed store must exist")
+        let backup = files.first { $0.hasPrefix(base + ".json.corrupt-") }
+        #expect(backup != nil, "a .corrupt-*.bak backup of the malformed store must exist")
+        if let backup {
+            let raw = try? Data(contentsOf: url.deletingLastPathComponent().appendingPathComponent(backup))
+            #expect(raw == Data(#"{"servers": 42}"#.utf8), "the backup must contain the raw malformed bytes")
+        }
     }
 
-    func testRoundTripPreservesState() throws {
+    @Test func testRoundTripPreservesState() throws {
         let url = tempURL()
         defer { try? FileManager.default.removeItem(at: url) }
         let server = ProxyServer(name: "n", proto: .trojan, address: "h", port: 1, credential: "p")
         let original = PersistedState(servers: [server], selectedServerID: server.id)
         try StatePersistence(fileURL: url).save(original)
-        XCTAssertEqual(StatePersistence(fileURL: url).load(), original)
+        #expect(StatePersistence(fileURL: url).load() == original)
+    }
+
+    /// The learned per-server masking map survives a save/load round-trip, and a
+    /// store written before the field existed still decodes (empty map).
+    @Test func testLearnedMaskingRoundTripAndLegacyDecode() throws {
+        let url = tempURL()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let server = ProxyServer(name: "n", proto: .vless, address: "h", port: 443, credential: "u")
+        let original = PersistedState(servers: [server],
+                                      learnedMasking: [server.identityKey: MaskingProfile.ruYandex.rawValue])
+        try StatePersistence(fileURL: url).save(original)
+        let reloaded = StatePersistence(fileURL: url).load()
+        #expect(reloaded.learnedMasking[server.identityKey] == MaskingProfile.ruYandex.rawValue)
+
+        // Legacy store without the key → empty map, no data loss.
+        try #"{"servers":[],"subscriptions":[]}"#.data(using: .utf8)!.write(to: url)
+        #expect(StatePersistence(fileURL: url).load().learnedMasking.isEmpty)
     }
 }
 
-final class ServerIdentityTests: XCTestCase {
-    func testIdentityKeyIgnoresCosmeticFields() {
+struct ServerIdentityTests {
+    @Test func testIdentityKeyIgnoresCosmeticFields() {
         let a = ProxyServer(name: "Alpha", proto: .vless, address: "h", port: 443, credential: "u",
                             network: .tcp, security: .tls, sni: "sni.example.com")
         let b = ProxyServer(name: "Beta", proto: .vless, address: "h", port: 443, credential: "u",
                             network: .ws, security: .none, path: "/ws")
-        XCTAssertEqual(a.identityKey, b.identityKey, "name/sni/transport must not change identity")
+        #expect(a.identityKey == b.identityKey, "name/sni/transport must not change identity")
     }
 
-    func testIdentityKeyDistinguishesCredentialsAndProtocols() {
+    @Test func testIdentityKeyDistinguishesCredentialsAndProtocols() {
         let base = ProxyServer(name: "A", proto: .vless, address: "h", port: 443, credential: "u1")
-        XCTAssertNotEqual(base.identityKey,
-                          ProxyServer(name: "A", proto: .vless, address: "h", port: 443, credential: "u2").identityKey)
-        XCTAssertNotEqual(base.identityKey,
-                          ProxyServer(name: "A", proto: .trojan, address: "h", port: 443, credential: "u1").identityKey)
-        XCTAssertNotEqual(base.identityKey,
-                          ProxyServer(name: "A", proto: .vless, address: "h", port: 8443, credential: "u1").identityKey)
+        #expect(base.identityKey != ProxyServer(name: "A", proto: .vless, address: "h", port: 443, credential: "u2").identityKey)
+        #expect(base.identityKey != ProxyServer(name: "A", proto: .trojan, address: "h", port: 443, credential: "u1").identityKey)
+        #expect(base.identityKey != ProxyServer(name: "A", proto: .vless, address: "h", port: 8443, credential: "u1").identityKey)
+    }
+
+    /// A refresh keeps known servers' IDs, and a link listed twice never
+    /// shares one ID between both copies (duplicate IDs break every id-keyed
+    /// list, selection and lookup).
+    @Test func testRefreshCarriesIDsWithoutDuplicates() {
+        let a = ProxyServer(name: "A", proto: .vless, address: "a.example.com", port: 443, credential: "u")
+        let b = ProxyServer(name: "B", proto: .trojan, address: "b.example.com", port: 443, credential: "p")
+        let renamed = ProxyServer(name: "A (renamed)", proto: .vless, address: "a.example.com", port: 443, credential: "u")
+        let again = ProxyServer(name: "A again", proto: .vless, address: "a.example.com", port: 443, credential: "u")
+        let bFresh = ProxyServer(name: "B", proto: .trojan, address: "b.example.com", port: 443, credential: "p")
+        let c = ProxyServer(name: "C", proto: .shadowsocks, address: "c.example.com", port: 8388, credential: "s")
+        let result = SubscriptionParser.carryingIDs(from: [a, b], into: [renamed, again, bFresh, c])
+        #expect(result[0].id == a.id)
+        #expect(result[1].id != a.id)
+        #expect(result[2].id == b.id)
+        #expect(result[3].id == c.id)
+        #expect(Set(result.map(\.id)).count == 4)
+
+        // Duplicates an older build already persisted are split apart too.
+        var twin = a
+        twin.name = "twin"
+        let healed = SubscriptionParser.carryingIDs(from: [a, twin], into: [renamed, again])
+        #expect(healed[0].id == a.id)
+        #expect(Set(healed.map(\.id)).count == 2)
+    }
+
+    @Test func testSubscriptionTLSgateForAutomaticRefresh() {
+        // Автоматический проход берёт только TLS-панели; нажатие пользователя
+        // может и http. Единственное, на что это опирается, — `tlsProtected`.
+        func protected(_ url: String) -> Bool {
+            Subscription(name: "n", url: url).tlsProtected
+        }
+        #expect(protected("https://panel.example/abc"))
+        #expect(protected("HTTPS://panel.example/abc"))          // регистр схемы не значим
+        #expect(!protected("http://panel.example/abc"))
+        #expect(!protected("ftp://panel.example/abc"))
+        #expect(!protected("panel.example/abc"))                 // без схемы — не TLS
+        #expect(!protected("httpsx://panel.example/abc"))        // не обманчивый префикс
+        #expect(!protected(""))
     }
 }

@@ -28,8 +28,17 @@ public enum SubscriptionParser {
         // If the body looks like a single base64 blob (no scheme markers and no
         // newlines), decode it first.
         let text: String
+        var undecodable = false
         if !trimmed.contains("://"), let decoded = Base64.decodeToString(trimmed) {
             text = decoded
+        } else if !trimmed.contains("://") {
+            // A blob that decodes to nothing is garbage, not an empty
+            // subscription: returning all-empty used to make the refresh
+            // path WIPE the subscription's saved server list, silently, and
+            // auto-refresh would repeat that every 6 h. Surface a failure
+            // instead so the caller can keep the old servers.
+            text = trimmed
+            undecodable = true
         } else {
             text = trimmed
         }
@@ -37,11 +46,23 @@ public enum SubscriptionParser {
         var servers: [ProxyServer] = []
         var failures: [(String, ParseError)] = []
 
-        for rawLine in text.split(whereSeparator: { $0 == "\n" || $0 == "\r" }) {
+        // One entry per distinct server: panels hand out the same link on
+        // several lines (and subscription re-publishes repeat them), which
+        // showed as duplicate rows, doubled every probe and grew the state file
+        // on each refresh. identityKey is the same "is this the same server"
+        // test that carryingIDs already uses.
+        var seen: Set<String> = []
+        // `isNewline`, not `== "\n" || == "\r"`: a CRLF is one grapheme cluster,
+        // so comparing it to either half never matches and a body with Windows
+        // line endings collapsed into a single "link" — one server with the rest
+        // of the subscription glued onto its name, and every panel link after
+        // the first silently dropped.
+        for rawLine in text.split(whereSeparator: \.isNewline) {
             let line = rawLine.trimmingCharacters(in: .whitespaces)
             guard !line.isEmpty, line.contains("://") else { continue }
             do {
-                servers.append(try ShareLinkParser.parse(line))
+                let server = try ShareLinkParser.parse(line)
+                if seen.insert(server.identityKey).inserted { servers.append(server) }
             } catch let e as ParseError {
                 failures.append((line, e))
             } catch {
@@ -49,6 +70,35 @@ public enum SubscriptionParser {
             }
         }
 
+        if undecodable, servers.isEmpty, failures.isEmpty {
+            failures.append((String(trimmed.prefix(80)), .malformedURI(
+                "subscription body is not decodable base64 and contains no share links")))
+        }
+
         return Result(servers: servers, failures: failures)
+    }
+
+    /// Carry server IDs across a refresh: a server whose identity (link text)
+    /// was already listed keeps that entry's ID, so the selection survives an
+    /// update and ping history doesn't orphan. Each old ID is handed out at
+    /// most once — a subscription listing the same link twice used to give
+    /// both copies one ID, and duplicate IDs break every id-keyed list,
+    /// selection and lookup. Extra copies keep their fresh IDs.
+    public static func carryingIDs(from old: [ProxyServer], into fresh: [ProxyServer]) -> [ProxyServer] {
+        var pool: [String: [UUID]] = [:]
+        for server in old { pool[server.identityKey, default: []].append(server.id) }
+        var used = Set<UUID>()
+        return fresh.map { server in
+            var carried = server
+            while var ids = pool[carried.identityKey], !ids.isEmpty {
+                let id = ids.removeFirst()
+                pool[carried.identityKey] = ids
+                if used.insert(id).inserted {
+                    carried.id = id
+                    break
+                }
+            }
+            return carried
+        }
     }
 }
