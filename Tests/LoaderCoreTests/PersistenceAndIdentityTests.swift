@@ -133,4 +133,73 @@ struct ServerIdentityTests {
         #expect(!protected("httpsx://panel.example/abc"))        // не обманчивый префикс
         #expect(!protected(""))
     }
+
+    @Test func testSubscriptionAutoRefreshDecision() {
+        // Всё решение «обновлять ли панель без пользователя» — в одном
+        // предикате, и он же золотой для Kotlin (`sub/due.golden.txt`).
+        // Здесь те же границы, но независимым тестом: чтобы порча предиката
+        // была красной и на Swift-стороне, а не только в сравнении портов.
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        func due(_ url: String, age: TimeInterval?, interval: TimeInterval? = nil,
+                 defaultAge: TimeInterval = 6 * 3_600, allowInsecure: Bool = false) -> Bool {
+            Subscription(name: "n", url: url, lastUpdated: age.map { now.addingTimeInterval(-$0) })
+                .refreshIsDue(now: now, panelInterval: interval, defaultAge: defaultAge,
+                              allowInsecure: allowInsecure)
+        }
+        func maxAge(_ url: String, interval: TimeInterval?,
+                    defaultAge: TimeInterval = 6 * 3_600) -> TimeInterval {
+            Subscription(name: "n", url: url)
+                .refreshMaxAge(panelInterval: interval, defaultAge: defaultAge)
+        }
+
+        // Без TLS раунд не трогает панель вовсе — какой бы свежее она ни была.
+        #expect(!due("http://p/sub", age: nil))
+        #expect(!due("http://p/sub", age: 30 * 3_600))
+        // …а нажатие пользователя — трогает.
+        #expect(due("http://p/sub", age: 30 * 3_600, allowInsecure: true))
+        // TLS: нет истории — пора; за секунду до срока — ещё нет; ровно в срок — да.
+        #expect(due("https://p/sub", age: nil))
+        #expect(!due("https://p/sub", age: 21_599))
+        #expect(due("https://p/sub", age: 21_600))
+        // Ушедшая вперёд дата (часовой пояс, кривые часы, бандл с другого
+        // устройства) — не «ждать окончания перекоса», а «пора».
+        #expect(due("https://p/sub", age: -3_600))
+        // Нечисловая просьба панели — это сломанная просьба: она не должна
+        // выключать обновление навсегда (`age >= NaN` ложно всегда).
+        #expect(due("https://p/sub", age: 30 * 3_600, interval: .nan))
+        #expect(maxAge("https://p/sub", interval: .nan) == 21_600)
+        #expect(maxAge("https://p/sub", interval: .infinity) == 21_600)
+        #expect(maxAge("https://p/sub", interval: 1e400) == 21_600)
+        // Панель не может попросить чаще часа и реже суток; врать знаком — тоже.
+        #expect(!due("https://p/sub", age: 2_000, interval: 1_800))
+        #expect(due("https://p/sub", age: 400_000, interval: 365 * 24 * 3_600))
+        #expect(!due("https://p/sub", age: 2_000, interval: -5))
+        // Явный defaultAge зажимается наравне с просьбой панели.
+        #expect(!due("https://p/sub", age: 20, defaultAge: 10))
+        #expect(due("https://p/sub", age: 100_000, defaultAge: 1_000_000))
+        #expect(maxAge("https://p/sub", interval: nil) == 21_600)
+        #expect(maxAge("https://p/sub", interval: 60) == 3_600)
+        #expect(maxAge("https://p/sub", interval: 900_000) == 86_400)
+        #expect(maxAge("https://p/sub", interval: nil, defaultAge: 1) == 3_600)
+    }
+
+    @Test func testPanelIntervalSurvivesALyingHeader() {
+        // `profile-update-interval: 1e400` — это Infinity. Он переживает
+        // `hours > 0` и попадает в `[UUID: SubscriptionInfo]`, который macOS и
+        // iOS пишут через `try? JSONEncoder().encode(...)`: одна бесконечность
+        // роняет кодирование ВСЕГО словаря, и заголовки всех панелей
+        // (остаток, срок, имя) перестают сохраняться — молча, без строчки в
+        // журнале. Поэтому не-число отсекается на входе.
+        func parsed(_ value: String) -> SubscriptionInfo? {
+            SubscriptionInfo.parse(headers: ["profile-update-interval": value])
+        }
+        #expect(parsed("24")?.updateInterval == 86_400)
+        #expect(parsed("1e400")?.updateInterval == nil)
+        #expect(parsed("inf")?.updateInterval == nil)
+        #expect(parsed("nan")?.updateInterval == nil)
+        #expect(parsed("-5")?.updateInterval == nil)
+        #expect(parsed("0")?.updateInterval == nil)
+        // Остальное из того же ответа не портится: панель остаётся подписанной.
+        #expect(parsed("1e400")?.used == nil)
+    }
 }

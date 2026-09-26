@@ -103,7 +103,13 @@ public struct SubscriptionInfo: Codable, Equatable, Sendable {
             }
         }
         info.title = value("profile-title").map(text)
-        if let hours = value("profile-update-interval").flatMap(Double.init), hours > 0 {
+        // `hours > 0` alone lets `inf` through (`Double("1e400")` is infinity),
+        // and one infinity in this dictionary is enough to break persistence:
+        // the `try? JSONEncoder().encode([UUID: SubscriptionInfo])` that macOS
+        // and iOS use throws on a non-finite Double and silently drops *every*
+        // panel's headers — quota, expiry and the requested interval included.
+        if let hours = value("profile-update-interval").flatMap(Double.init), hours > 0,
+            (hours * 3600).isFinite {
             info.updateInterval = hours * 3600
         }
         info.supportURL = value("support-url").flatMap(link)

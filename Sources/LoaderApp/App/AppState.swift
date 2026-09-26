@@ -832,15 +832,25 @@ final class AppState: ObservableObject {
     /// Refresh every subscription and log the deltas. Keeps the selection
     /// valid if its server vanished from the list.
     ///
-    /// `allowInsecure` marks a round the user asked for. The automatic round
-    /// (10 s after launch, then every 6 h) keeps only TLS panels: an http
-    /// answer is written by whoever controls the path, and a swapped server
-    /// list is tomorrow's traffic through someone else's exit.
+    /// `allowInsecure` marks a round the user asked for. An automatic round
+    /// (10 s after launch, then every 6 h) asks ``Subscription/refreshIsDue``
+    /// per panel instead: unencrypted panels are never due, because an http
+    /// answer is written by whoever controls the path and a swapped server
+    /// list is tomorrow's traffic through someone else's exit, and a panel
+    /// fetched more recently than it asked to be is left alone.
     func refreshAllSubscriptions(allowInsecure: Bool = false) async {
+        let now = Date()
         for sub in subscriptions {
-            if !sub.tlsProtected, !allowInsecure {
-                appendLog("subscription '\(sub.name)' skipped by auto-refresh: no TLS — update it manually")
-                continue
+            if !allowInsecure {
+                guard sub.refreshIsDue(
+                    now: now,
+                    panelInterval: subscriptionInfo[sub.id]?.updateInterval
+                ) else {
+                    if !sub.tlsProtected {
+                        appendLog("subscription '\(sub.name)' skipped by auto-refresh: no TLS — update it manually")
+                    }
+                    continue
+                }
             }
             let before = Set(sub.servers.map(\.identityKey))
             await refreshSubscription(sub.id)

@@ -152,9 +152,15 @@ Shared with the iPhone app through LoaderCore (`LeakCheck`, `SpeedTester`,
   launch refresh and the 6-hourly one — fetch only `https://` panels and log
   the skipped ones: a plain-http answer is written by whoever controls the
   path, and a swapped server list is tomorrow's traffic through someone
-  else's exit. **Refresh Subscriptions** and the per-subscription button load
-  http too, because that's a press you made; rows for unencrypted panels
-  carry an open-lock mark.
+  else's exit. A panel is also left alone until its own
+  `profile-update-interval` has passed — honoured on iOS, where the round runs
+  every half-hour and on any return to the foreground; on macOS the round
+  itself runs every 6 h, so a panel asking for hourly still waits 6 h, and a
+  panel asking for a month is never allowed past 24 h. **Refresh Subscriptions**
+  and the per-subscription button load http too, because that's a press you
+  made; rows for unencrypted panels carry an open-lock mark. The decision is
+  one function (`Subscription.refreshIsDue`) shared with the iOS store and
+  mirrored byte-for-byte in the Kotlin port.
 
 ## Transfer to iPhone
 
