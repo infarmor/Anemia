@@ -1,0 +1,91 @@
+diff -ru a/app/proxyman/inbound/always.go b/app/proxyman/inbound/always.go
+--- a/app/proxyman/inbound/always.go	2026-09-17 04:58:24
++++ b/app/proxyman/inbound/always.go	2026-09-17 04:58:25
+@@ -185,6 +185,11 @@
+ 	for _, worker := range h.workers {
+ 		errs = append(errs, worker.Close())
+ 	}
++	// Anemia patch: workers close their proxy; a listener-less inbound (tun)
++	// has no worker, so close it here.
++	if len(h.workers) == 0 {
++		errs = append(errs, common.Close(h.proxy))
++	}
+ 	errs = append(errs, h.mux.Close())
+ 	if err := errors.Combine(errs...); err != nil {
+ 		return errors.New("failed to close all resources").Base(err)
+diff -ru a/proxy/tun/handler.go b/proxy/tun/handler.go
+--- a/proxy/tun/handler.go	2026-09-17 04:58:24
++++ b/proxy/tun/handler.go	2026-09-17 04:58:25
+@@ -23,6 +23,7 @@
+ 	ctx             context.Context
+ 	config          *Config
+ 	stack           Stack
++	tun             Tun
+ 	policyManager   policy.Manager
+ 	dispatcher      routing.Dispatcher
+ 	tag             string
+@@ -95,9 +96,24 @@
+ 	}
+ 
+ 	t.stack = tunStack
++	t.tun = tunInterface
+ 
+ 	errors.LogInfo(t.ctx, tunName, " up")
+ 	return nil
++}
++
++// Close stops the ip stack and releases the interface.
++// Anemia patch: upstream has no Close, so after Instance.Close the stack kept
++// reading the tunnel and an in-process restart raced it for every packet.
++func (t *Handler) Close() error {
++	var errs []error
++	if t.stack != nil {
++		errs = append(errs, t.stack.Close())
++	}
++	if t.tun != nil {
++		errs = append(errs, t.tun.Close())
++	}
++	return errors.Combine(errs...)
+ }
+ 
+ // HandleConnection pass the connection coming from the ip stack to the routing dispatcher
+diff -ru a/proxy/tun/stack_gvisor.go b/proxy/tun/stack_gvisor.go
+--- a/proxy/tun/stack_gvisor.go	2026-09-17 04:58:24
++++ b/proxy/tun/stack_gvisor.go	2026-09-17 04:58:25
+@@ -22,13 +22,15 @@
+ const (
+ 	defaultNIC tcpip.NICID = 1
+ 
++	// Anemia patch: iOS packet-tunnel extensions live under a ~50 MB memory
++	// limit; upstream's 1 MiB default / 8+6 MiB max per connection exhausts it.
+ 	tcpRXBufMinSize = tcp.MinBufferSize
+-	tcpRXBufDefSize = tcp.DefaultSendBufferSize
+-	tcpRXBufMaxSize = 8 << 20 // 8MiB
++	tcpRXBufDefSize = 256 << 10 // 256KiB
++	tcpRXBufMaxSize = 2 << 20   // 2MiB
+ 
+ 	tcpTXBufMinSize = tcp.MinBufferSize
+-	tcpTXBufDefSize = tcp.DefaultReceiveBufferSize
+-	tcpTXBufMaxSize = 6 << 20 // 6MiB
++	tcpTXBufDefSize = 256 << 10 // 256KiB
++	tcpTXBufMaxSize = 2 << 20   // 2MiB
+ )
+ 
+ // stackGVisor is ip stack implemented by gVisor package
+diff -ru a/proxy/tun/tun_darwin.go b/proxy/tun/tun_darwin.go
+--- a/proxy/tun/tun_darwin.go	2026-09-17 04:58:24
++++ b/proxy/tun/tun_darwin.go	2026-09-17 04:58:25
+@@ -61,10 +61,12 @@
+ 			return nil, err
+ 		}
+ 
++		// Anemia patch: the descriptor is a dup handed over for this instance
++		// (NetworkExtension keeps the original), so the tun owns and closes it.
+ 		return &DarwinTun{
+ 			tunFile: os.NewFile(uintptr(fd), "utun"),
+ 			options: options,
+-			ownsFd:  false,
++			ownsFd:  true,
+ 		}, nil
+ 	}
+ 

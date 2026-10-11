@@ -1,0 +1,10 @@
+// Swift sees the Go archive as `import AnemiaEngine`. The link lines cover
+// what the Go runtime calls into dynamically (the resolver and the system
+// certificate store), so the Xcode target needs no extra linker flags.
+module AnemiaEngine {
+    header "libanemia.h"
+    link "resolv"
+    link framework "CoreFoundation"
+    link framework "Security"
+    export *
+}

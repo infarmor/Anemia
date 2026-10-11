@@ -1,0 +1,22 @@
+// Anemia для iOS: общие настройки обоих таргетов.
+
+// Bundle ID приложения должен совпадать с App ID из профиля, которым
+// подписывает GBox (application-identifier = Z72UR7V57D.app.capricorn1136.rose5722,
+// без префикса команды). Сменили сертификат — поменяйте только эту строку.
+// Расширение получает тот же ID с суффиксом .tunnel.
+ANEMIA_BUNDLE_ID = app.capricorn1136.rose5722
+
+MARKETING_VERSION = 0.1
+CURRENT_PROJECT_VERSION = 1
+IPHONEOS_DEPLOYMENT_TARGET = 18.0
+TARGETED_DEVICE_FAMILY = 1
+SWIFT_VERSION = 5.0
+// Движок для симулятора собран только под Apple Silicon.
+EXCLUDED_ARCHS[sdk=iphonesimulator*] = x86_64
+
+// Подписывает GBox на телефоне, поэтому для устройства Xcode собирает без
+// подписи, а Scripts/build-ipa.sh ставит ad hoc подпись с entitlements.
+// Сборка для симулятора подписывается локально, как обычно.
+CODE_SIGN_STYLE = Manual
+CODE_SIGNING_ALLOWED[sdk=iphoneos*] = NO
+CODE_SIGN_IDENTITY[sdk=iphonesimulator*] = -

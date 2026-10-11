@@ -1,0 +1,634 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AE00000000000000000000D1 /* AnemiaTunnel.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AE00000000000000000000C2 /* AnemiaTunnel.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AE00000000000000000000D4 /* AnemiaEngine.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = AE00000000000000000000C9 /* AnemiaEngine.xcframework */; };
+		AE0000000000000000000301 /* AnemiaEngine.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = AE00000000000000000000C9 /* AnemiaEngine.xcframework */; };
+		AE00000000000000000000D5 /* LoaderCore in Frameworks */ = {isa = PBXBuildFile; productRef = AE00000000000000000000D8 /* LoaderCore */; };
+		AE00000000000000000000D6 /* LoaderCore in Frameworks */ = {isa = PBXBuildFile; productRef = AE00000000000000000000D9 /* LoaderCore */; };
+		AE0000000000000000000203 /* AnemiaWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AE0000000000000000000201 /* AnemiaWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		AE00000000000000000000D2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AE00000000000000000000A0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AE00000000000000000000F2;
+			remoteInfo = AnemiaTunnel;
+		};
+		AE0000000000000000000204 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AE00000000000000000000A0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AE0000000000000000000206;
+			remoteInfo = AnemiaWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		AE00000000000000000000E1 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				AE00000000000000000000D1 /* AnemiaTunnel.appex in Embed Foundation Extensions */,
+				AE0000000000000000000203 /* AnemiaWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		AE00000000000000000000C1 /* Anemia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Anemia.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AE00000000000000000000C2 /* AnemiaTunnel.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AnemiaTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		AE00000000000000000000C3 /* Anemia.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Anemia.xcconfig; sourceTree = "<group>"; };
+		AE00000000000000000000C4 /* Anemia.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Anemia.entitlements; sourceTree = "<group>"; };
+		AE00000000000000000000C5 /* AnemiaTunnel.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AnemiaTunnel.entitlements; sourceTree = "<group>"; };
+		AE00000000000000000000C6 /* AnemiaTunnel-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "AnemiaTunnel-Info.plist"; sourceTree = "<group>"; };
+		AE00000000000000000000C7 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		AE00000000000000000000C8 /* build-ipa.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "build-ipa.sh"; sourceTree = "<group>"; };
+		AE00000000000000000000C9 /* AnemiaEngine.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = build/AnemiaEngine.xcframework; sourceTree = "<group>"; };
+		AE00000000000000000000CA /* engine.go */ = {isa = PBXFileReference; lastKnownFileType = text; path = engine.go; sourceTree = "<group>"; };
+		AE00000000000000000000CB /* go.mod */ = {isa = PBXFileReference; lastKnownFileType = text; path = go.mod; sourceTree = "<group>"; };
+		AE00000000000000000000CC /* module.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
+		AE00000000000000000000CD /* xray-v1.260327.0-ios.patch */ = {isa = PBXFileReference; lastKnownFileType = text; path = "xray-v1.260327.0-ios.patch"; sourceTree = "<group>"; };
+		AE00000000000000000000CE /* build-engine.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "build-engine.sh"; sourceTree = "<group>"; };
+		AE00000000000000000000CF /* go-env.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "go-env.sh"; sourceTree = "<group>"; };
+		AE0000000000000000000201 /* AnemiaWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AnemiaWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		AE0000000000000000000202 /* AnemiaWidgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "AnemiaWidgets-Info.plist"; sourceTree = "<group>"; };
+		AE0000000000000000000210 /* Anemia-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Anemia-Info.plist"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		AE00000000000000000000B1 /* Anemia */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Anemia;
+			sourceTree = "<group>";
+		};
+		AE00000000000000000000B2 /* AnemiaTunnel */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AnemiaTunnel;
+			sourceTree = "<group>";
+		};
+		AE00000000000000000000B3 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		AE000000000000000000020D /* Activity */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Activity;
+			sourceTree = "<group>";
+		};
+		AE000000000000000000020E /* ActivityIntents */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ActivityIntents;
+			sourceTree = "<group>";
+		};
+		AE000000000000000000020F /* AnemiaWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AnemiaWidgets;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		AE00000000000000000000E3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AE00000000000000000000D5 /* LoaderCore in Frameworks */,
+				AE0000000000000000000301 /* AnemiaEngine.xcframework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AE00000000000000000000E6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AE00000000000000000000D6 /* LoaderCore in Frameworks */,
+				AE00000000000000000000D4 /* AnemiaEngine.xcframework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AE0000000000000000000208 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		AE00000000000000000000A1 = {
+			isa = PBXGroup;
+			children = (
+				AE00000000000000000000C7 /* README.md */,
+				AE00000000000000000000B1 /* Anemia */,
+				AE00000000000000000000B2 /* AnemiaTunnel */,
+				AE000000000000000000020F /* AnemiaWidgets */,
+				AE00000000000000000000B3 /* Shared */,
+				AE000000000000000000020D /* Activity */,
+				AE000000000000000000020E /* ActivityIntents */,
+				AE00000000000000000000A5 /* Engine */,
+				AE00000000000000000000A3 /* Config */,
+				AE00000000000000000000A4 /* Scripts */,
+				AE00000000000000000000A2 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		AE00000000000000000000A2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AE00000000000000000000C1 /* Anemia.app */,
+				AE00000000000000000000C2 /* AnemiaTunnel.appex */,
+				AE0000000000000000000201 /* AnemiaWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AE00000000000000000000A3 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				AE00000000000000000000C3 /* Anemia.xcconfig */,
+				AE0000000000000000000210 /* Anemia-Info.plist */,
+				AE00000000000000000000C4 /* Anemia.entitlements */,
+				AE00000000000000000000C5 /* AnemiaTunnel.entitlements */,
+				AE00000000000000000000C6 /* AnemiaTunnel-Info.plist */,
+				AE0000000000000000000202 /* AnemiaWidgets-Info.plist */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		AE00000000000000000000A4 /* Scripts */ = {
+			isa = PBXGroup;
+			children = (
+				AE00000000000000000000CE /* build-engine.sh */,
+				AE00000000000000000000C8 /* build-ipa.sh */,
+				AE00000000000000000000CF /* go-env.sh */,
+			);
+			path = Scripts;
+			sourceTree = "<group>";
+		};
+		AE00000000000000000000A5 /* Engine */ = {
+			isa = PBXGroup;
+			children = (
+				AE00000000000000000000CA /* engine.go */,
+				AE00000000000000000000CB /* go.mod */,
+				AE00000000000000000000CC /* module.modulemap */,
+				AE00000000000000000000A6 /* patches */,
+				AE00000000000000000000C9 /* AnemiaEngine.xcframework */,
+			);
+			path = Engine;
+			sourceTree = "<group>";
+		};
+		AE00000000000000000000A6 /* patches */ = {
+			isa = PBXGroup;
+			children = (
+				AE00000000000000000000CD /* xray-v1.260327.0-ios.patch */,
+			);
+			path = patches;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AE00000000000000000000F1 /* Anemia */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AE0000000000000000000102 /* Build configuration list for PBXNativeTarget "Anemia" */;
+			buildPhases = (
+				AE00000000000000000000E2 /* Sources */,
+				AE00000000000000000000E3 /* Frameworks */,
+				AE00000000000000000000E4 /* Resources */,
+				AE00000000000000000000E1 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AE00000000000000000000D3 /* PBXTargetDependency */,
+				AE0000000000000000000205 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				AE00000000000000000000B1 /* Anemia */,
+				AE00000000000000000000B3 /* Shared */,
+				AE000000000000000000020D /* Activity */,
+				AE000000000000000000020E /* ActivityIntents */,
+			);
+			name = Anemia;
+			packageProductDependencies = (
+				AE00000000000000000000D8 /* LoaderCore */,
+			);
+			productName = Anemia;
+			productReference = AE00000000000000000000C1 /* Anemia.app */;
+			productType = "com.apple.product-type.application";
+		};
+		AE00000000000000000000F2 /* AnemiaTunnel */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AE0000000000000000000103 /* Build configuration list for PBXNativeTarget "AnemiaTunnel" */;
+			buildPhases = (
+				AE00000000000000000000E5 /* Sources */,
+				AE00000000000000000000E6 /* Frameworks */,
+				AE00000000000000000000E7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				AE00000000000000000000B2 /* AnemiaTunnel */,
+				AE00000000000000000000B3 /* Shared */,
+			);
+			name = AnemiaTunnel;
+			packageProductDependencies = (
+				AE00000000000000000000D9 /* LoaderCore */,
+			);
+			productName = AnemiaTunnel;
+			productReference = AE00000000000000000000C2 /* AnemiaTunnel.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		AE0000000000000000000206 /* AnemiaWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AE000000000000000000020A /* Build configuration list for PBXNativeTarget "AnemiaWidgets" */;
+			buildPhases = (
+				AE0000000000000000000207 /* Sources */,
+				AE0000000000000000000208 /* Frameworks */,
+				AE0000000000000000000209 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				AE000000000000000000020F /* AnemiaWidgets */,
+				AE000000000000000000020D /* Activity */,
+				AE000000000000000000020E /* ActivityIntents */,
+			);
+			name = AnemiaWidgets;
+			packageProductDependencies = (
+			);
+			productName = AnemiaWidgets;
+			productReference = AE0000000000000000000201 /* AnemiaWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AE00000000000000000000A0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					AE00000000000000000000F1 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					AE00000000000000000000F2 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					AE0000000000000000000206 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+				};
+			};
+			buildConfigurationList = AE0000000000000000000101 /* Build configuration list for PBXProject "Anemia" */;
+			developmentRegion = ru;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				ru,
+				Base,
+			);
+			mainGroup = AE00000000000000000000A1;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AE00000000000000000000D7 /* XCLocalSwiftPackageReference ".." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = AE00000000000000000000A2 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AE00000000000000000000F1 /* Anemia */,
+				AE00000000000000000000F2 /* AnemiaTunnel */,
+				AE0000000000000000000206 /* AnemiaWidgets */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		AE00000000000000000000E4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AE00000000000000000000E7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AE0000000000000000000209 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AE00000000000000000000E2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AE00000000000000000000E5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AE0000000000000000000207 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AE00000000000000000000D3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AE00000000000000000000F2 /* AnemiaTunnel */;
+			targetProxy = AE00000000000000000000D2 /* PBXContainerItemProxy */;
+		};
+		AE0000000000000000000205 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AE0000000000000000000206 /* AnemiaWidgets */;
+			targetProxy = AE0000000000000000000204 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		AE0000000000000000000111 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = AE00000000000000000000C3 /* Anemia.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		AE0000000000000000000112 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = AE00000000000000000000C3 /* Anemia.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		AE0000000000000000000121 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Anemia.entitlements;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Anemia-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Anemia;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(ANEMIA_BUNDLE_ID)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		AE0000000000000000000122 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Anemia.entitlements;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Anemia-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Anemia;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(ANEMIA_BUNDLE_ID)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+		AE0000000000000000000131 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/AnemiaTunnel.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/AnemiaTunnel-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = AnemiaTunnel;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(ANEMIA_BUNDLE_ID).tunnel";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		AE0000000000000000000132 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/AnemiaTunnel.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/AnemiaTunnel-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = AnemiaTunnel;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(ANEMIA_BUNDLE_ID).tunnel";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+		AE000000000000000000020B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/AnemiaWidgets.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/AnemiaWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Anemia;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(ANEMIA_BUNDLE_ID).widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		AE000000000000000000020C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/AnemiaWidgets.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/AnemiaWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Anemia;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(ANEMIA_BUNDLE_ID).widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AE0000000000000000000101 /* Build configuration list for PBXProject "Anemia" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AE0000000000000000000111 /* Debug */,
+				AE0000000000000000000112 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AE0000000000000000000102 /* Build configuration list for PBXNativeTarget "Anemia" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AE0000000000000000000121 /* Debug */,
+				AE0000000000000000000122 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AE0000000000000000000103 /* Build configuration list for PBXNativeTarget "AnemiaTunnel" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AE0000000000000000000131 /* Debug */,
+				AE0000000000000000000132 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AE000000000000000000020A /* Build configuration list for PBXNativeTarget "AnemiaWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AE000000000000000000020B /* Debug */,
+				AE000000000000000000020C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		AE00000000000000000000D7 /* XCLocalSwiftPackageReference ".." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AE00000000000000000000D8 /* LoaderCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LoaderCore;
+		};
+		AE00000000000000000000D9 /* LoaderCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LoaderCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = AE00000000000000000000A0 /* Project object */;
+}
