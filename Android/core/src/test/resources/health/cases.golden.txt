@@ -1,0 +1,38 @@
+xray-no-answer	start=0	from=nil	outcome=measured	ms=-1	failed=1	health=-1	failures=1
+xray-fast	start=0	from=nil	outcome=measured	ms=42	failed=0	health=42	failures=0
+xray-slow	start=0	from=nil	outcome=measured	ms=3001	failed=1	health=3001	failures=1
+xray-limit-exact	start=0	from=nil	outcome=measured	ms=3000	failed=0	health=3000	failures=0
+xray-zero	start=0	from=nil	outcome=measured	ms=0	failed=0	health=0	failures=0
+xray-custom-limit-over	start=0	from=nil	outcome=measured	ms=800	failed=1	health=800	failures=1
+xray-custom-limit-exact	start=0	from=nil	outcome=measured	ms=500	failed=0	health=500	failures=0
+xray-resets-streak	start=3	from=nil	outcome=measured	ms=42	failed=0	health=42	failures=0
+xray-grows-streak	start=2	from=nil	outcome=measured	ms=-1	failed=1	health=-1	failures=3
+xray-ignores-counters	start=0	from=nil	outcome=measured	ms=42	failed=0	health=42	failures=0
+awg-first-reading	start=0	from=nil	outcome=silence	health=nil	failures=0
+awg-received-latency-nil	start=0	from=nil	outcome=measured	ms=1	failed=0	health=1	failures=0
+awg-received-with-latency	start=0	from=nil	outcome=measured	ms=88	failed=0	health=88	failures=0
+awg-engine-silent	start=3	from=nil	outcome=silence	health=nil	failures=3
+awg-sent-over-floor	start=0	from=nil	outcome=measured	ms=-1	failed=1	health=-1	failures=1
+awg-sent-floor-exact	start=1	from=nil	outcome=silence	health=nil	failures=1
+awg-idle	start=4	from=nil	outcome=silence	health=nil	failures=4
+awg-counters-reset	start=1	from=nil	outcome=silence	health=nil	failures=1
+awg-received-wins	start=2	from=nil	outcome=measured	ms=1	failed=0	health=1	failures=0
+awg-custom-floor-over	start=0	from=nil	outcome=measured	ms=-1	failed=1	health=-1	failures=1
+awg-custom-floor-exact	start=0	from=nil	outcome=silence	health=nil	failures=0
+awg-resets-streak	start=5	from=nil	outcome=measured	ms=5	failed=0	health=5	failures=0
+awg-grows-streak	start=1	from=nil	outcome=measured	ms=-1	failed=1	health=-1	failures=2
+awg-silence-keeps-streak	start=0	from=nil	outcome=silence	health=nil	failures=0
+awg-silence-keeps-report	start=4	from=77	outcome=silence	health=77	failures=4
+awg-first-reading-with-report	start=0	from=12	outcome=silence	health=12	failures=0
+xray-overwrites-report	start=0	from=999	outcome=measured	ms=42	failed=0	health=42	failures=0
+xray-no-answer-over-report	start=2	from=999	outcome=measured	ms=-1	failed=1	health=-1	failures=3
+bad-starthealth	error	startHealth
+bad-mode	error	mode
+bad-ms	error	ms
+half-previous	error	prev pair
+half-counters	error	counters pair
+no-start	error	startFailures
+counters-over-int32	error	curUp
+nan-limit	error	limit
+few-columns	error	startFailures
+error	no label		xray	42								0	

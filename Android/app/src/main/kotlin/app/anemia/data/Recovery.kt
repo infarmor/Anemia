@@ -26,9 +26,9 @@ import java.util.UUID
  * с известным quality-скором, потому что у него замеры идут фоном каждые
  * несколько минут; на Android фонового замера нет, поэтому кандидатами становятся
  * и те, кого ещё не мерили, — иначе после чистой установки переключаться было бы
- * «не на что». И здоровье сессии (iOS `AutoSwitch`: ≥2 отказа проверки здоровья)
- * здесь не проверяется: android-сборка движка ответа о здоровье не даёт, это
- * ждёт решения по пробам в `probe.go`.
+ * «не на что». И эпизод, начатый отказом проверки здоровья (`viaHealth`), идёт
+ * сразу на другой сервер: повторять подключение к выходу, который дважды подряд
+ * не пропустил GET, — то же, чего на iOS не делает `AutoSwitch`.
  */
 class Recovery(private val maxReconnects: Int = 3, private val maxHolds: Int = 12) {
 
@@ -48,8 +48,22 @@ class Recovery(private val maxReconnects: Int = 3, private val maxHolds: Int = 1
     private var holds = 0
     private var escalated: MaskingProfile? = null
 
-    /** Идёт ли эпизод (экран по этому признаку не считает отказ новым). */
-    val inProgress: Boolean get() = attempts > 0
+    /**
+     * Эпизод начался не с обрыва, а с «туннель стоит, трафик не идёт». Первая
+     * ступенька такого — сразу уход на другой сервер: повторять подключение к
+     * выходу, который дважды подряд не пропустил проверку, бессмысленно, и ровно
+     * так же поступает iOS (`.go` → `switchToFastest`, а не `attemptReconnect`).
+     */
+    private var viaHealth = false
+
+    /**
+     * Идёт ли эпизод. Пауза «нет линка» — тоже эпизод: attempts после неё
+     * возвращается на ноль, и если считать её простоем, любое стороннее
+     * сообщение об отказе (ручное «Подключить» офлайн — оно приходит с
+     * `dropped=false`) сбрасывало бы лестницу, а после возвращения сети
+     * переподключаться было бы некому.
+     */
+    val inProgress: Boolean get() = attempts > 0 || holds > 0
 
     /**
      * Начать эпизод или шагнуть в нём. `losing` — сервер, на котором всё умерло;
@@ -58,8 +72,13 @@ class Recovery(private val maxReconnects: Int = 3, private val maxHolds: Int = 1
      * попытку, а заглушить шаг означало бы оставить эпизод без назначенной
      * переподготовки — потолок попыток от этого никуда не девается.
      */
-    fun begin(losing: UUID?) {
-        if (!inProgress) losing?.let { tried.add(it) }
+    fun begin(losing: UUID?, viaHealth: Boolean = false) {
+        if (!inProgress) {
+            losing?.let { tried.add(it) }
+            // Начало нового эпизода решает, с какой ступеньки он пойдёт; шаг
+            // внутри идущего эпизода пути не меняет — лестница его уже выбрала.
+            this.viaHealth = viaHealth
+        }
         attempts += 1
     }
 
@@ -87,23 +106,28 @@ class Recovery(private val maxReconnects: Int = 3, private val maxHolds: Int = 1
         // attempt: `establish()` либо даёт туннель, либо нет. Так ошибка в
         // оценке стоит одну лишнюю паузу, а не зависший эпизод.
         holds = 0
-        if (attempts > maxReconnects + 5) return Step.GiveUp("соединение потеряно")
-        if (attempts == 2 && escalated == null) {
+        // Отдельная причина: экран печатает «соединение потеряно — <reason>», и
+        // то же слово внутри причины дублировалось в строке статуса.
+        if (attempts > maxReconnects + 5) return Step.GiveUp("ступеньки кончились")
+        if (attempts == 2 && escalated == null && !viaHealth) {
             val stronger = currentProfile.escalated
             if (stronger != null) {
                 escalated = stronger
                 return Step.Escalate(stronger, backoff())
             }
         }
-        if (attempts >= 2) {
+        if (attempts >= 2 || viaHealth) {
             val target = candidates
                 .filter { (server, _) -> server.id != current?.id && server.id !in tried && !isRussianExit(server) }
                 .minByOrNull { (_, score) -> score ?: Double.MAX_VALUE }
                 ?.first
             if (target == null) return Step.GiveUp("нет рабочего сервера")
             tried.add(target.id)
-            // Новый сервер — свой профиль, не чужая эскалация.
+            // Новый сервер — свой профиль, не чужая эскалация. И больше не
+            // «проход сразу на другой»: причина эпизода отработана, дальше
+            // лестница ведёт себя как при обрыве (сначала повтор на новом).
             escalated = null
+            viaHealth = false
             return Step.Switch(target, backoff())
         }
         return Step.Same(backoff())
@@ -115,6 +139,7 @@ class Recovery(private val maxReconnects: Int = 3, private val maxHolds: Int = 1
         holds = 0
         tried.clear()
         escalated = null
+        viaHealth = false
     }
 
     /** Профиль, который лестница навязала текущему серверу (null — обычный). */

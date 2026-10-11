@@ -1,0 +1,22 @@
+target	usable=1 port=443 sni=nl.example.com tls=1
+target	usable=1 port=443 sni=www.microsoft.com tls=1
+target	usable=1 port=443 sni=- tls=1
+target	usable=1 port=443 sni=www.microsoft.com tls=1
+target	usable=1 port=443 sni=- tls=1
+target	usable=1 port=443 sni=- tls=1
+target	usable=1 port=443 sni=- tls=1
+target	usable=0 port=443 sni=- tls=1
+target	usable=0 port=0 sni=- tls=1
+target	usable=0 port=65536 sni=- tls=1
+target	usable=1 port=65535 sni=host tls=0
+target	usable=1 port=443 sni=- tls=1
+target	usable=0 port=-1 sni=- tls=1
+target	usable=1 port=443 sni=- tls=1
+collect	10,12,11,13,10 всего=5
+collect	—,—,— всего=3
+collect	—,—,10,—,— всего=5
+collect	—,—,—,—,— всего=5
+collect	— всего=1
+collect	— всего=1
+collect	—,— всего=2
+collect	10,— всего=2

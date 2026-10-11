@@ -1,0 +1,4 @@
+problem: H2 range 5 overlaps H1 range — packets would be dropped as unclassifiable
+problem: H3 range 6 overlaps H1 range — packets would be dropped as unclassifiable
+problem: H4 range 7 overlaps H1 range — packets would be dropped as unclassifiable
+warning: RandomTrailers with wide H1–H3 ranges drops ~100.0% of packets (amneziawg-go #186) — the server should narrow those ranges

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Подписки и ссылки приходят от провайдера каким URL, тем и URL: на macOS за
+  это отвечает NSAllowsArbitraryLoads в LoaderApp-Info.plist (= true). Android
+  с API 28 по умолчанию режет обычный http://, и панель, которая на Mac
+  работает, на телефоне давала бы «Fetch failed: CLEARTEXT communication …».
+  Трафик туннеля от этого не зависит — он такой, каким его описал сервер.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

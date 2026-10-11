@@ -1,0 +1,34 @@
+bind-privileged	Failed to start: app/proxyman/inbound: failed to listen TCP on 1 > transport/internet: failed to listen on address: 127.0.0.1:1 > transport/internet/tcp: failed to listen TCP on 127.0.0.1:1 > listen tcp 127.0.0.1:1: bind: permission denied
+unknown-protocol	Failed to start: main: failed to load config files: [/private/tmp/bad-proto.json] > infra/conf: failed to build outbound config with tag proxy > infra/conf: failed to build outbound detour config for protocol nope > infra/conf: unknown config id: nope
+removed-feature	Failed to start: main: failed to load config files: [loader-xray-1.json] > infra/conf: failed to build stream settings for outbound detour > infra/conf: Failed to build TLS config. > common/errors: The feature "allowInsecure" has been removed and migrated to "pinnedPeerCertSha256". Please update your config(s) according to release note and documentation.
+log-tail-with-banner	Xray 26.3.27 (Xray, Penetrates Everything.)\n2026/09/27 02:40:40 [Info] infra/conf/serial: Reading config\nFailed to start: app/proxyman/inbound: failed to listen TCP on 1 > transport/internet: failed to listen on address: 127.0.0.1:1 > transport/internet/tcp: failed to listen TCP on 127.0.0.1:1 > listen tcp 127.0.0.1:1: bind: permission denied
+failed-not-wrapper	app/proxyman: Failed to build > c/d: root cause
+prefix-with-space	a/b: outer > d/e f: inner cause
+invalid-not-last	handshake> invalid certificate\nstarting
+android-returned-error	xray config: infra/conf: failed to build outbound config with tag proxy > infra/conf: unknown config id: nope
+bind-chain-no-wrapper	app/proxyman/inbound: failed to listen TCP on 1 > transport/internet: failed to listen on address: 127.0.0.1:1 > transport/internet/tcp: failed to listen TCP on 127.0.0.1:1 > listen tcp 127.0.0.1:1: bind: permission denied
+no-chain-prefixed	infra/conf: unknown config id: nope
+chain-two-links	a/b: outer wrapper > c/d: inner cause
+chain-tail-without-prefix	a/b: outer > listen tcp 127.0.0.1:443: bind: address already in use
+chain-empty-links	a/b: one >  > c/d: two
+chain-padded-links	  a/b: one   >    c/d: two   
+colon-at-the-end	a/b: 
+wrapper-only	Failed to start: boom
+wrapper-single-link	Failed to start: infra/conf: bad
+empty-after-trim	   
+fallback-failed-line	starting\nproxy/vless: failed to dial 1.2.3.4:443\nnoise
+fallback-uppercase	FAILED: app/proxyman: something
+fallback-invalid	handshake> invalid certificate
+fallback-last-resort	starting\nlistening\nbye
+failure-with-cyrillic	ОШИБКА: proxy/vless: failed to dial
+dotted-i-not-failed	FAİLED: İ not I
+	Failed to start: boom
+uppercase-not-last	FAILED: app/proxyman: something\nnoise
+upper-mixed-not-last	Starting XRAY: INVALID config\nnoise
+no-lines	<empty>
+fullwidth-not-ascii	ＦＡＩＬＥＤ: fullwidth shout\nstarting
+fullwidth-invalid	ＮＯ: ＩＮＶＡＬＩＤ config\nstarting
+empty-body	
+columns-1
+columns-3	x	y
+dotted-capital-I	İnvalid token here\nengine ready

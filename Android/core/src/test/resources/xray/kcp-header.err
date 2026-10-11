@@ -1,0 +1,1 @@
+error: mKCP header obfuscation and seed were removed from Xray-core 26.x (header=srtp) — this server needs a ws/grpc/tcp variant.

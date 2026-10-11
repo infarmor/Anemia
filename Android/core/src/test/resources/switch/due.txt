@@ -1,0 +1,42 @@
+off-disabled	0	1	0	2	2	120	
+off-one-server	1	1	0	1	2	120	
+off-zero-servers	1	1	0	0	5	120	
+not-connected	1	0	0	2	3	120	
+busy	1	1	1	2	3	120	
+off-beats-busy	0	1	1	1	2	120	
+not-connected-beats-busy	1	0	1	2	2	120	
+no-signal	1	1	0	2		120	
+zero-failures	1	1	0	2	0	120	
+one-failure	1	1	0	2	1	120	
+two-failures	1	1	0	2	2	120	
+many-failures	1	1	0	5	40	900	
+minus-one-failure	1	1	0	2	-1	120	
+no-signal-and-fresh-session	1	1	0	2		5	
+session-exactly-minute	1	1	0	2	2	60	
+session-over-minute	1	1	0	2	2	60.5	
+session-zero	1	1	0	2	2	0	
+session-negative	1	1	0	2	2	-5	
+budget-two-old	1	1	0	2	2	120	300,600
+budget-three	1	1	0	2	2	120	300,600,800
+window-edge-in	1	1	0	2	2	120	900,300,400
+window-edge-out	1	1	0	2	2	120	901,300,400
+gap-under	1	1	0	2	2	120	179
+gap-exact	1	1	0	2	2	120	180
+gap-over	1	1	0	2	2	120	181
+gap-unsorted	1	1	0	2	2	120	1000,100
+gap-negative-age	1	1	0	2	2	120	-1
+gap-future-ages	1	1	0	2	2	120	-30,-10
+large-numbers	1	1	0	2147483647	2147483647	1000000000	
+bad-flag	0x	1	0	2	2	120	
+bad-count	1	1	0	two	2	120	
+bad-failures	1	1	0	2	x	120	
+failures-over-int32	1	1	0	2	2147483648	120	
+count-over-int32	1	1	0	2147483648	2	120	
+no-age	1	1	0	2	2		
+nan-age	1	1	0	2	2	nan	
+inf-age	1	1	0	2	2	inf	
+bad-recent	1	1	0	2	2	120	300,abc
+nan-recent	1	1	0	2	2	120	nan
+trailing-comma	1	1	0	2	2	120	300,
+few-columns	1	1	0	2	2	120
+	1	1	0	2	2	120	

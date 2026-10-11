@@ -1,0 +1,1 @@
+error: The Shadowsocks link carries no cipher method (ss://:password@host) — re-import it from the panel, which writes e.g. aes-256-gcm:password.

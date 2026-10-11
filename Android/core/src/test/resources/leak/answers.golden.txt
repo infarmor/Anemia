@@ -1,0 +1,52 @@
+ipsb	ip=203.0.113.9 cc=DE country=Germany city=Berlin isp=Telekom
+ipsb	ip=203.0.113.9 cc=- country=- city=- isp=Hetzner
+ipsb	throw
+ipsb	throw
+ipsb	throw
+ipsb	ip=1.1.1.1 cc=RU country=- city=- isp=-
+ipsb	ip=1.1.1.1 cc=- country=- city=Ёкатеринбург isp=-
+ipsb	ip=1.1.1.1 cc=   country=- city=- isp=-
+trace	ip=203.0.113.9 cc=NL country=- city=- isp=-
+trace	ip=1.1.1.1 cc=US country=- city=- isp=-
+trace	throw
+trace	throw
+trace	throw
+trace	ip=9.9.9.9 cc=JP country=- city=- isp=-
+trace	ip=1.1.1.1 cc=- country=- city=- isp=-
+trace	ip=1.1.1.1 cc=- country=- city=- isp=-
+bashws	ip=94.140.15.15 cc=DE country=Germany org=Selectel
+bashws	ip=1.1.1.1 cc=- country=- org=-
+bashws	ip=1.1.1.1 cc=US country=USA org=AS13335
+bashws	ip=1.1.1.1 cc=- country=- org=-
+bashws	throw
+bashws	throw
+bashws	
+findings	tunnelBypassed
+findings	чисто
+findings	чисто
+findings	чисто
+findings	чисто
+findings	ipv6Leak(ip=3.3.3.3 cc=nl country=- city=- isp=-)
+findings	dnsLeak(ip=94.140.15.15 cc=NL country=- org=-)
+findings	ipv6Leak(ip=3.3.3.3 cc=NL country=- city=- isp=-) dnsLeak(ip=9.9.9.9 cc=NL country=- org=-)
+findings	tunnelBypassed
+trace	ip=1.1.1.1 cc=- country=- city=- isp=-
+trace	ip=1.1.1.1 cc=- country=- city=- isp=-
+ipsb	ip=1.1.1.1 cc= country=- city=- isp=
+bashws	ip=1.1.1.1 cc= country=- org=-
+trace	ip=8.8.8.8 cc=- country=- city=- isp=-
+trace	ip=8.8.8.8 cc=- country=- city=- isp=-
+ipsb	ip=8.8.8.8 cc= country= city= isp=
+ipsb	ip=8.8.8.8 cc=- country=- city=- isp=AS Null
+ipsb	throw
+bashws	ip=1.1.1.1 cc=- country=- org=-;ip=2.2.2.2 cc=- country=- org=-
+bashws	ip=   cc=- country=- org=-
+bashws	throw
+bashws	throw
+findings	чисто
+findings	tunnelBypassed
+trace	throw
+trace	ip=198.51.100.7 cc=PT country=- city=- isp=-
+trace	throw
+trace	ip=198.51.100.8 cc=IE country=- city=- isp=-
+bashws	ip=1.1.1.1 cc=- country=- org=-

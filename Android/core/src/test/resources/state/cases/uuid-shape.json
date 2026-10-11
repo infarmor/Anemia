@@ -1,0 +1,70 @@
+{
+ "selectedServerID": "1-2-3-4-5",
+ "servers": [
+  {
+   "id": "0-0-0-0-0",
+   "name": "короткий id",
+   "proto": "ss",
+   "address": "a",
+   "port": 1,
+   "credential": "c",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false
+  },
+  {
+   "id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "верхний регистр",
+   "proto": "ss",
+   "address": "a",
+   "port": 1,
+   "credential": "c",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false
+  },
+  {
+   "id": "1b564d2f51174c8c9b0d9e2f8a3f1c22",
+   "name": "без дефисов",
+   "proto": "ss",
+   "address": "a",
+   "port": 1,
+   "credential": "c",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false
+  },
+  {
+   "id": " 1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "с пробелом",
+   "proto": "ss",
+   "address": "a",
+   "port": 1,
+   "credential": "c",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false
+  },
+  {
+   "id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C2Z",
+   "name": "не hex",
+   "proto": "ss",
+   "address": "a",
+   "port": 1,
+   "credential": "c",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false
+  }
+ ]
+}

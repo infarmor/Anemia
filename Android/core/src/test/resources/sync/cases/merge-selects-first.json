@@ -1,0 +1,57 @@
+{
+ "kind": "merge",
+ "bundle": {
+  "version": 1,
+  "exportedAt": "2026-02-02T02:40:00Z",
+  "device": "m",
+  "servers": [
+   {
+    "id": "3B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+    "name": "Trojan",
+    "proto": "trojan",
+    "address": "cdn.example.com",
+    "port": 8443,
+    "credential": "p@ss",
+    "alterId": 0,
+    "network": "ws",
+    "security": "tls",
+    "alpn": [],
+    "allowInsecure": false,
+    "path": "/t"
+   }
+  ],
+  "subscriptions": []
+ },
+ "state": {
+  "servers": [
+   {
+    "id": "BB564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+    "name": "🇺🇸 Reality",
+    "proto": "vless",
+    "address": "example.com",
+    "port": 443,
+    "credential": "1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22",
+    "alterId": 0,
+    "network": "ws",
+    "security": "reality",
+    "alpn": [],
+    "allowInsecure": false,
+    "sni": "www.microsoft.com",
+    "realityPublicKey": "SbVKOEMjK0sIlbwg4akyBg5mL5KZwwAr-edNzES9saU",
+    "flow": "xtls-rprx-vision",
+    "path": "/ws",
+    "host": "cdn.example.com"
+   }
+  ],
+  "subscriptions": [],
+  "selectedServerID": "BB564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+  "maskingProfile": "balanced",
+  "killSwitchEnabled": false,
+  "subscriptionAutoRefresh": true,
+  "learnedMasking": {},
+  "splitTunnel": {
+   "enabled": true,
+   "entries": []
+  }
+ }
+}

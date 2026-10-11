@@ -1,0 +1,8 @@
+problem: MTU (0) is not usable — leave it unset or pick 576…1500
+problem: PersistentKeepalive (-3) is outside the 0…65535 the daemon parses
+problem: Jc (-5) is outside the 0…4294967295 the daemon parses
+problem: S1 (70000) is outside the 0…65535 the daemon parses
+problem: Jmax (20) ≥ MTU (0) — junk packets will be fragmented; set Jmax below 0
+problem: S4 (300) is above the 255-byte transport-padding limit
+problem: H1 = -5-999 is not a number or range
+problem: H2 = ١٢٣ is not a number or range

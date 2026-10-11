@@ -1,0 +1,88 @@
+{
+ "servers": [
+  {
+   "id": "AD564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "наследие",
+   "proto": "awg",
+   "address": "203.0.113.7",
+   "port": 51820,
+   "credential": "c",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false,
+   "awg": {
+    "contentPaddingAddition": 42,
+    "specialHandshakes": null,
+    "junkPackets": 0
+   }
+  },
+  {
+   "id": "AE564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "строка вместо числа",
+   "proto": "awg",
+   "address": "203.0.113.7",
+   "port": 51820,
+   "credential": "c",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false,
+   "awg": {
+    "junkPackets": "5"
+   }
+  },
+  {
+   "id": "AF564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "alpn:null",
+   "proto": "awg",
+   "address": "203.0.113.7",
+   "port": 51820,
+   "credential": "c",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false
+  },
+  {
+   "id": "B0564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "мусор",
+   "proto": "awg",
+   "address": "203.0.113.7",
+   "port": 51820,
+   "credential": "c",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false,
+   "awg": {
+    "specialHandshakes": [
+     "a",
+     1
+    ]
+   }
+  },
+  {
+   "id": "B1564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "порядок ключей",
+   "proto": "awg",
+   "address": "203.0.113.7",
+   "port": 51820,
+   "credential": "c",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false,
+   "userData": {},
+   "awg": {
+    "junkMax": 1,
+    "junkMin": 2
+   }
+  }
+ ]
+}

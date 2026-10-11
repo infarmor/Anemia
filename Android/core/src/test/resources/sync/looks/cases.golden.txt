@@ -1,0 +1,9 @@
+anemia://sync/q1ZKrSjILypJTXEsUbJS	да
+ANEMIA://SYNC/q1ZKrSjILypJTXEsUbJS	да
+  anemia://sync/abc  	да
+{"device":"Mac","exportedAt":"2026-02-02T02:40:00Z","version":1}	да
+{"exportedAt":"2026-02-02T02:40:00Z"}	нет
+{"device":"Mac"}	нет
+vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443#A	нет
+   	нет
+{ "exportedAt" : "x", "device" : "m" }	да

@@ -1,0 +1,36 @@
+fresh	due=1	fresh=0
+never-polled	due=0	fresh=0
+never-watched	due=0	fresh=0
+never-measured	due=1	fresh=0
+watch-edge-under	due=1	fresh=1
+watch-edge-exact	due=0	fresh=1
+watch-old	due=0	fresh=1
+want-edge-under	due=1	fresh=1
+want-edge-exact	due=0	fresh=1
+want-old	due=0	fresh=1
+check-edge-exact	due=1	fresh=1
+check-edge-under	due=0	fresh=1
+check-over	due=1	fresh=1
+check-much-over	due=1	fresh=0
+clock-jumped-back	due=0	fresh=0
+custom-watch-window	due=1	fresh=1
+custom-want-window	due=1	fresh=1
+custom-interval-short	due=1	fresh=1
+custom-interval-long	due=0	fresh=1
+custom-interval-exact	due=1	fresh=1
+zero-ages	due=0	fresh=1
+large-ages	due=0	fresh=0
+stale-edge-under	due=1	fresh=1
+stale-edge-exact	due=1	fresh=1
+stale-edge-over	due=1	fresh=0
+stale-custom	due=1	fresh=1
+stale-custom-over	due=1	fresh=0
+stale-negative	due=0	fresh=0
+stale-never	due=1	fresh=0
+bad-watched	error	watchedAge
+nan-watched	error	watchedAge
+inf-interval	error	interval
+hex-window	due=1	fresh=1
+bad-stale	error	staleAfter
+few-columns	error	columns 6
+error	no label		10	10					

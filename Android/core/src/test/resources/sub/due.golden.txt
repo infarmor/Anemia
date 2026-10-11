@@ -1,0 +1,40 @@
+http-never-fetched	maxAge=21600	due=0
+http-old	maxAge=21600	due=0
+http-old-user-press	maxAge=21600	due=1
+http-upper-scheme	maxAge=21600	due=0
+http-host-uppercase	maxAge=21600	due=0
+ftp-scheme	maxAge=21600	due=0
+https-slash-missing	maxAge=21600	due=0
+https-upper	maxAge=21600	due=1
+https-never-fetched	maxAge=21600	due=1
+https-fresh	maxAge=21600	due=0
+https-just-under	maxAge=21600	due=0
+https-boundary	maxAge=21600	due=1
+https-stale	maxAge=21600	due=1
+https-future	maxAge=21600	due=1
+panel-half-hour	maxAge=3600	due=0
+panel-hour	maxAge=3600	due=0
+panel-day	maxAge=86400	due=0
+panel-hundred-hours	maxAge=86400	due=1
+panel-negative	maxAge=3600	due=0
+default-two-hours	maxAge=7200	due=0
+default-tiny	maxAge=3600	due=0
+default-huge	maxAge=86400	due=1
+user-press-fresh	maxAge=21600	due=0
+epoch-year-9999	maxAge=21600	due=0
+panel-fractional-hours	maxAge=3600	due=1
+bad-now	error	now
+empty-now	error	now
+no-url	error	no url
+interval-nan	maxAge=21600	due=1
+interval-inf	maxAge=21600	due=1
+interval-minus-inf	maxAge=21600	due=0
+default-nan	maxAge=21600	due=1
+interval-fraction	maxAge=7200	due=1
+now-nan	maxAge=21600	due=0
+lu-inf-now-inf	maxAge=21600	due=0
+short-line	error	columns 4
+long-line	error	columns 8
+bad-allow-insecure	error	allowInsecure
+error	no label		https://p/sub	1799892000	1800000000			
+two-bad	error	panelInterval

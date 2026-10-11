@@ -1,0 +1,7 @@
+problem: Jmax (1400) ≥ MTU (1280) — junk packets will be fragmented; set Jmax below 1280
+problem: S1 + 56 = S2 (40 + 56 = 96) — initiation and response packets become indistinguishable by size; change one
+problem: S4 (300) is above the 255-byte transport-padding limit
+problem: ContentPaddingAddition = 70000 is not a number or range up to 65535
+problem: RekeyAfterTime = 10-20-30 is not a number or range up to 65535
+problem: H2 range 150-250 overlaps H1 range — packets would be dropped as unclassifiable
+problem: H3 = не-число is not a number or range

@@ -1,0 +1,24 @@
+note-prunes-old	op=note	marks=999.0,1000.0	ages=1.0,0.0
+note-keeps-boundary	op=note	marks=100.0,1000.0	ages=900.0,0.0
+note-from-empty	op=note	marks=1000.0	ages=0.0
+note-keeps-future	op=note	marks=1500.0,1000.0	ages=-500.0,0.0
+refund-one-of-two	op=refund	marks=500.0	ages=0.0
+refund-last-of-three	op=refund	marks=500.0,500.0	ages=0.0,0.0
+refund-absent	op=refund	marks=400.0,700.0	ages=600.0,300.0
+refund-only-match	op=refund	marks=400.0	ages=300.0
+refund-does-not-prune	op=refund	marks=5.0	ages=-
+prune-drops-old	op=prune	marks=100.0,999.0	ages=900.0,1.0
+prune-keeps-boundary	op=prune	marks=100.0	ages=900.0
+prune-all	op=prune	marks=-	ages=-
+ages-mixed	op=ages	marks=50.0,900.0,999.0	ages=100.0,1.0
+ages-negative-kept	op=ages	marks=2000.0	ages=-1000.0
+ages-empty	op=ages	marks=-	ages=-
+ages-unsorted	op=ages	marks=999.0,500.0,100.0	ages=1.0,500.0,900.0
+custom-window-tight	op=note	marks=995.0,1000.0	ages=5.0,0.0
+custom-window-wide	op=note	marks=10.0,1000.0	ages=990.0,0.0
+bad-op	error	op
+bad-now	error	now
+bad-mark	error	marks
+bad-window	error	window
+few-columns	error	columns 4
+error	no label		note	1000	900	500

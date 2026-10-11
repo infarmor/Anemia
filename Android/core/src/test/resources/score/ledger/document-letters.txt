@@ -1,0 +1,4 @@
+rec	1000	100	10	deadbeef-1234-5678-9abc-0a1b2c3d4e5f	буквы	1000	Europe/Berlin
+rec	1000	300	30	0000aaaa-bbbb-cccc-dddd-eeeeeeeeeeee	ноль	1005	Europe/Berlin
+top
+json

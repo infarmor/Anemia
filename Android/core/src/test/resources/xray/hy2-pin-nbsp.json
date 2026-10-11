@@ -1,0 +1,177 @@
+{
+  "dns" : {
+    "disableCache" : false,
+    "enableParallelQuery" : true,
+    "queryStrategy" : "UseIPv4",
+    "serveExpiredTTL" : 3600,
+    "servers" : [
+      "https:\/\/1.1.1.1\/dns-query",
+      "https:\/\/8.8.8.8\/dns-query",
+      "1.1.1.1"
+    ],
+    "serveStale" : true
+  },
+  "inbounds" : [
+    {
+      "port" : 0,
+      "protocol" : "tun",
+      "settings" : {
+        "MTU" : 1500
+      },
+      "sniffing" : {
+        "destOverride" : [
+          "http",
+          "tls",
+          "quic"
+        ],
+        "enabled" : true,
+        "routeOnly" : false
+      },
+      "tag" : "tun-in"
+    }
+  ],
+  "log" : {
+    "loglevel" : "warning"
+  },
+  "outbounds" : [
+    {
+      "protocol" : "hysteria",
+      "settings" : {
+        "address" : "example.com",
+        "port" : 443,
+        "version" : 2
+      },
+      "streamSettings" : {
+        "hysteriaSettings" : {
+          "auth" : "token",
+          "version" : 2
+        },
+        "network" : "hysteria",
+        "security" : "tls",
+        "tlsSettings" : {
+          "pinnedPeerCertSha256" : " aa3faf1e0d2b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5 ",
+          "serverName" : "cdn.example.com"
+        }
+      },
+      "tag" : "proxy"
+    },
+    {
+      "protocol" : "freedom",
+      "settings" : {
+        "domainStrategy" : "AsIs",
+        "fragment" : {
+          "interval" : "10-20",
+          "length" : "100-200",
+          "packets" : "tlshello"
+        },
+        "noises" : [
+          {
+            "delay" : "10-16",
+            "packet" : "50-100",
+            "type" : "rand"
+          }
+        ]
+      },
+      "streamSettings" : {
+        "sockopt" : {
+          "tcpKeepAliveIdle" : 30,
+          "tcpKeepAliveInterval" : 10,
+          "tcpNoDelay" : true
+        }
+      },
+      "tag" : "fragment"
+    },
+    {
+      "protocol" : "freedom",
+      "settings" : {
+        "domainStrategy" : "UseIP"
+      },
+      "tag" : "direct"
+    },
+    {
+      "protocol" : "blackhole",
+      "settings" : {
+
+      },
+      "tag" : "block"
+    },
+    {
+      "protocol" : "dns",
+      "settings" : {
+
+      },
+      "tag" : "dns-out"
+    }
+  ],
+  "policy" : {
+    "levels" : {
+      "0" : {
+        "bufferSize" : 4,
+        "connIdle" : 300,
+        "handshake" : 4
+      }
+    },
+    "system" : {
+      "statsInboundDownlink" : true,
+      "statsInboundUplink" : true,
+      "statsOutboundDownlink" : true,
+      "statsOutboundUplink" : true
+    }
+  },
+  "routing" : {
+    "domainStrategy" : "AsIs",
+    "rules" : [
+      {
+        "inboundTag" : [
+          "tun-in"
+        ],
+        "outboundTag" : "dns-out",
+        "port" : 53,
+        "type" : "field"
+      },
+      {
+        "domain" : [
+          "domain:local",
+          "domain:lan",
+          "domain:home.arpa",
+          "domain:internal"
+        ],
+        "outboundTag" : "direct",
+        "type" : "field"
+      },
+      {
+        "ip" : [
+          "10.0.0.0\/8",
+          "100.64.0.0\/10",
+          "127.0.0.0\/8",
+          "169.254.0.0\/16",
+          "172.16.0.0\/12",
+          "192.168.0.0\/16",
+          "::1\/128",
+          "fc00::\/7",
+          "fe80::\/10"
+        ],
+        "outboundTag" : "direct",
+        "type" : "field"
+      },
+      {
+        "ip" : [
+          "224.0.0.0\/4",
+          "255.255.255.255\/32",
+          "ff00::\/8"
+        ],
+        "outboundTag" : "block",
+        "type" : "field"
+      },
+      {
+        "network" : "udp",
+        "outboundTag" : "block",
+        "port" : 443,
+        "type" : "field"
+      }
+    ]
+  },
+  "stats" : {
+
+  }
+}

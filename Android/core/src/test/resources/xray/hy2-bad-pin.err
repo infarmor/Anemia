@@ -1,0 +1,1 @@
+error: pinSHA256 'zz3f' is not a 32-byte SHA-256 written in hex (64 digits, ':' separators allowed, several pins separated by ',') — re-import the link from the panel.

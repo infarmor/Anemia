@@ -1,0 +1,22 @@
+target	nl.example.com	443	-	1
+target	nl.example.com	443	www.microsoft.com	1
+target	203.0.113.9	443	-	1
+target	203.0.113.9	443	www.microsoft.com	1
+target	203.0.113.9	443	203.0.113.9	1
+target	fd42::1	443	-	1
+target	fd42::1	443	fd42::2	1
+target		443	-	1
+target	host	0	-	1
+target	host	65536	-	1
+target	host	65535	-	0
+target	host	443		1
+target	host	-1	sni	1
+target	198.18.0.7	443	-	1
+collect	5	-	10,12,11,13,10
+collect	5	3	-,-,-,-,-
+collect	5	3	-,-,10,-,-
+collect	5	-	-,-,-,-,-
+collect	0	2	-
+collect	1	5	-,-
+collect	6	2	-,-,-,-,-,-
+collect	5	1	10,-,-,-,-

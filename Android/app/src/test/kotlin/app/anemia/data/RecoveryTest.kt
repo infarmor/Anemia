@@ -35,9 +35,53 @@ class RecoveryTest {
         current: ProxyServer?,
         profile: MaskingProfile = MaskingProfile.balanced,
         candidates: List<Pair<ProxyServer, Double?>>,
+        viaHealth: Boolean = false,
     ): Recovery.Step {
-        ladder.begin(current?.id)
+        ladder.begin(current?.id, viaHealth = viaHealth)
         return ladder.step(current, profile, candidates)
+    }
+
+    @Test fun `отказ здоровья не повторяет подключение к мёртвому выходу`() {
+        val ladder = Recovery()
+        val a = server("🇳🇱 A")
+        val b = server("🇩🇪 B")
+        // Обрыв: первая ступенька — повтор на том же сервере (миганье канала).
+        assertEquals(
+            Recovery.Step.Same(1_000L),
+            climb(ladder, a, candidates = listOf(a to null, b to null)),
+        )
+        // Здоровье: тот же выход дважды подряд не пропустил настоящий запрос, и
+        // переподключаться к нему — ничего не менять. Эпизод от `Go` начинался с
+        // `Same`, гас на втором тике («поднят») и слот бюджета тратил впустую,
+        // из-за чего переключение не наступало никогда.
+        val byHealth = Recovery()
+        assertEquals(
+            Recovery.Step.Switch(b, 1_000L),
+            climb(byHealth, a, candidates = listOf(a to null, b to null), viaHealth = true),
+        )
+    }
+
+    @Test fun `здоровье без другого выхода сдаётся сразу`() {
+        val ladder = Recovery()
+        val a = server("🇳🇱 A")
+        assertEquals(
+            Recovery.Step.GiveUp("нет рабочего сервера"),
+            climb(ladder, a, candidates = listOf(a to null), viaHealth = true),
+        )
+    }
+
+    @Test fun `уход на другой сервер возвращает лестницу к обычным ступенькам`() {
+        val ladder = Recovery()
+        val a = server("🇳🇱 A")
+        val b = server("🇩🇪 B")
+        assertTrue(climb(ladder, a, candidates = listOf(a to null, b to null), viaHealth = true)
+            is Recovery.Step.Switch)
+        // Дальше эпизод ведёт себя как при обрыве: «сразу на другой» было нужно
+        // ровно один раз, чтобы не зацикливаться на мёртвом выходе.
+        assertEquals(
+            Recovery.Step.Escalate(MaskingProfile.maximum, 2_000L),
+            climb(ladder, b, candidates = listOf(a to null, b to null)),
+        )
     }
 
     @Test fun `первая попытка повторяет тот же сервер`() {
@@ -98,6 +142,27 @@ class RecoveryTest {
             if (step is Recovery.Step.Switch) current = step.server
         }
         assertTrue(climb(ladder, current, candidates = candidates) is Recovery.Step.GiveUp)
+        // Текст причины печатается на экране как «соединение потеряно — <reason>»,
+        // и он не должен повторять начало этой фразы.
+        assertEquals(
+            Recovery.Step.GiveUp("ступеньки кончились"),
+            climb(ladder, current, candidates = candidates),
+        )
+    }
+
+    @Test fun `пауза без линка — тоже идущий эпизод`() {
+        val ladder = Recovery()
+        val a = server("🇳🇱 A")
+        val candidates = listOf(a to null, server("🇩🇪 B") to null)
+        ladder.begin(a.id)
+        ladder.step(a, MaskingProfile.balanced, candidates, online = false)
+        // attempts после паузы снова ноль, и если это не считать эпизодом, любое
+        // стороннее `failed` (ручное подключение офлайн приходит без dropped)
+        // сбросило бы лестницу — а после возвращения сети переподключаться было
+        // бы некому.
+        assertTrue("эпизод во время паузы обязан считаться идущим", ladder.inProgress)
+        ladder.reset()
+        assertTrue(!ladder.inProgress)
     }
 
     @Test fun `российский выход не становится кандидатом`() {

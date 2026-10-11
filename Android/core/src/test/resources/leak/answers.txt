@@ -1,0 +1,52 @@
+ipsb	{"ip":"203.0.113.9","country_code":"de","country":"Germany","city":"Berlin","isp":"Telekom","asn_organization":"Deutsche Telekom"}
+ipsb	{"ip":"203.0.113.9","asn_organization":"Hetzner"}
+ipsb	{"ip":"","country_code":"nl"}
+ipsb	это не json
+ipsb	{"ip":2030113009}
+ipsb	{"ip":"1.1.1.1","country_code":"RU","extra":{"a":1}}
+ipsb	{"ip":"1.1.1.1","city":"Ёкатеринбург","country_code":null}
+ipsb	{"ip":"1.1.1.1","country_code":"  "}
+trace	fl=7c6b\nip=203.0.113.9\ngateway=1.2.3.4\nloc=NL\ncolo=AMS\nhttp=HTTP/1.1\ntls=TLSv1.3\nwarp=off\n
+trace	fl=1\nip=1.1.1.1\nloc=us
+trace	fl=1\nip=\nloc=DE
+trace	fl=1\nloc=DE
+trace	fl=1\nip = 1.1.1.1\nloc=DE
+trace	fl=1\r\nip=9.9.9.9\r\nloc=JP
+trace	ip=1.1.1.1\nnote=a=b=c
+trace	ip=1.1.1.1\nbroken
+bashws	[{"ip":"94.140.15.15","country":"DE","country_name":"Germany","asn":"AS49505","org":"Selectel","type":"dns"},{"ip":"8.8.8.8","country":"US","country_name":"United States","asn":"AS15169","org":"Google","type":"webrtc"}]
+bashws	[{"ip":"1.1.1.1","type":"dns"}]
+bashws	[{"ip":"1.1.1.1","org":null,"asn":"AS13335","country":"US","country_name":"USA","type":"dns"}]
+bashws	[{"ip":"1.1.1.1","type":"dns"},{"ip":"1.1.1.1","country":"DE","type":"dns"}]
+bashws	[{"ip":"1.1.1.1","country":"DE","type":"dns"},{"ip":"2.2.2.2"}]
+bashws	{"ip":"1.1.1.1","type":"dns"}
+bashws	[]
+findings	1.1.1.1|NL|Netherlands|-|-	1.1.1.1|NL|-|-|-	NONE	-
+findings	2.2.2.2|DE|-|-|-	1.1.1.1|NL|-|-|-	NONE	-
+findings	NONE	1.1.1.1|NL|-|-|-	NONE	-
+findings	NONE	NONE	::1|NL|-|-|-	-
+findings	2.2.2.2|NL|-|-|-	1.1.1.1|NL|-|-|-	NONE	-
+findings	2.2.2.2|DE|-|-|-	1.1.1.1|NL|-|-|-	3.3.3.3|nl|-|-|-	8.8.8.8|US|-|-
+findings	2.2.2.2|DE|-|-|-	1.1.1.1|NL|-|-|-	NONE	94.140.15.15|NL|-|-;8.8.8.8|US|-|-
+findings	2.2.2.2|-|-|-|-	1.1.1.1|NL|-|-|-	3.3.3.3|NL|-|-|-	9.9.9.9|NL|-|-
+findings	1.1.1.1|NL|-|-|-	1.1.1.1|NL|-|-|-	3.3.3.3|NL|-|-|-	9.9.9.9|NL|-|-
+trace	ip=1.1.1.1\nloc=
+trace	ip=1.1.1.1
+ipsb	{"ip":"1.1.1.1","country_code":"","isp":""}
+bashws	[{"ip":"1.1.1.1","type":"dns","country":""}]
+trace	ip=8.8.8.8\nloc=
+trace	ip=8.8.8.8\nloc=\nfl=2
+ipsb	{"ip":"8.8.8.8","country_code":"","country":"","city":"","isp":""}
+ipsb	{"ip":"8.8.8.8","isp":null,"asn_organization":"AS Null"}
+ipsb	{"ip":"8.8.8.8","city":{"nested":1}}
+bashws	[{"ip":"1.1.1.1","type":"dns"},{"ip":"2.2.2.2","type":"dns","country":null}]
+bashws	[{"ip":"  ","type":"dns"}]
+bashws	null
+bashws	[1,2]
+findings	NONE	NONE	NONE	-
+findings	1.1.1.1|-|-|-|-	1.1.1.1|-|-|-|-	NONE	-
+trace	fl=1
+trace	fl=1\nip=198.51.100.7\vloc=PT
+trace	fl=1
+trace	fl=1\nf=2\nip=198.51.100.8\floc=IE
+bashws	[{"ip":"1.1.1.1","type":"dns"}]

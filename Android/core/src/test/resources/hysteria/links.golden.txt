@@ -1,0 +1,99 @@
+=== hy2://S3cr3t@nl.example.com:443
+yaml	c2VydmVyOiAibmwuZXhhbXBsZS5jb206NDQzIgphdXRoOiAiUzNjcjN0Igp0bHM6CnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6MjExODAiCg==
+=== hy2://S3cr3t@nl.example.com:443/?sni=hysteria2.github.io&insecure=1&alpn=h3,h2&fp=chrome
+yaml	c2VydmVyOiAibmwuZXhhbXBsZS5jb206NDQzIgphdXRoOiAiUzNjcjN0Igp0bHM6CiAgc25pOiAiaHlzdGVyaWEyLmdpdGh1Yi5pbyIKICBpbnNlY3VyZTogdHJ1ZQogIGFscG46ICJoMyxoMiIKc29ja3M1OgogIGxpc3RlbjogIjEyNy4wLjAuMToyMTE4MCIK
+=== hy2://p@h.example.com:443?obfs=salamander&obfs-password=abcd
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6Cm9iZnM6CiAgdHlwZTogInNhbGFtYW5kZXIiCiAgc2FsYW1hbmRlcjoKICAgIHBhc3N3b3JkOiAiYWJjZCIKc29ja3M1OgogIGxpc3RlbjogIjEyNy4wLjAuMToyMTE4MCIK
+=== hy2://p@h.example.com:443?obfs=salamander
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6MjExODAiCg==
+=== hy2://p@h.example.com:443?type=grpc&pinSHA256=aa.bb,cc-dd
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CiAgcGluU0hBMjU2OiAiYWEuYmIsY2MtZGQiCnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6MjExODAiCg==
+=== hy2://@h.example.com:443
+error	missingField("auth (userinfo password)")
+=== hy2://p@h.example.com:443,20000-50000
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMsMjAwMDAtNTAwMDAiCmF1dGg6ICJwIgp0bHM6CnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6MjExODAiCg==
+=== hy2://p@h.example.com:20000-50000
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbToyMDAwMC01MDAwMCIKYXV0aDogInAiCnRsczoKc29ja3M1OgogIGxpc3RlbjogIjEyNy4wLjAuMToyMTE4MCIK
+=== hy2://p@h.example.com:443?insecure=0&sni=
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6MjExODAiCg==
+=== hy2://p@[fd42::1]:443?sni=host
+yaml	c2VydmVyOiAiW2ZkNDI6OjFdOjQ0MyIKYXV0aDogInAiCnRsczoKICBzbmk6ICJob3N0Igpzb2NrczU6CiAgbGlzdGVuOiAiMTI3LjAuMC4xOjIxMTgwIgo=
+=== hy2://p@h.example.com:443?fp=firefox
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6MjExODAiCg==
+=== hy2://p@h.example.com:443#bad
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6MjExODAiCg==
+=== hy2://p@h.example.com:443?insecure=1&type=grpc
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CiAgaW5zZWN1cmU6IHRydWUKc29ja3M1OgogIGxpc3RlbjogIjEyNy4wLjAuMToyMTE4MCIK
+=== hy://p@h.example.com:443?insecure=1
+error	unsupportedScheme("hy")
+=== hy://p@h.example.com:443?insecure=1&type=udp&upmbps=10&downmbps=100&auth_str=x&obfs=quic&obfs-param=zz
+error	unsupportedScheme("hy")
+=== hy://p@h.example.com:443?insecure=1&upmbps=0
+error	unsupportedScheme("hy")
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?type=ws#A
+error	Hysteria protocol v1 is not supported by the bundled engine path — use a hysteria2 (hy2://) link. (vless)
+=== ss://YWVzLTI1Ni1nY206cHc@1.2.3.4:8388#s
+error	Hysteria protocol v1 is not supported by the bundled engine path — use a hysteria2 (hy2://) link. (ss)
+=== hy2://a"b:c#d\e
+error	missingField("auth (userinfo password)")
+=== f g😀@h.example.com:443?sni=x
+error	malformedURI("f g😀@h.example.com:443?sni=x")
+=== hy2://p@h.example.com:443?sni=пример.рф
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CiAgc25pOiAi0L/RgNC40LzQtdGALtGA0YQiCnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6MjExODAiCg==
+=== hy2://p@h.example.com:443	1080
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6MjExODAiCg==
+=== hy2://p@h.example.com:443	65535
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6MjExODAiCg==
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "fd42::1", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	21180
+yaml	c2VydmVyOiAiW2ZkNDI6OjFdOjQ0MyIKYXV0aDogInAiCnRsczoKc29ja3M1OgogIGxpc3RlbjogIjEyNy4wLjAuMToyMTE4MCIK
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "[fd42::1]", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	2160
+yaml	c2VydmVyOiAiW2ZkNDI6OjFdOjQ0MyIKYXV0aDogInAiCnRsczoKc29ja3M1OgogIGxpc3RlbjogIjEyNy4wLjAuMToyMTYwIgo=
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 8443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "userData": {"portHopping": "20000-50000"}}	3240
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo4NDQzLDIwMDAwLTUwMDAwIgphdXRoOiAicCIKdGxzOgpzb2NrczU6CiAgbGlzdGVuOiAiMTI3LjAuMC4xOjMyNDAiCg==
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 20000, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "userData": {"portHopping": "20000-50000"}}	21180
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbToyMDAwMC01MDAwMCIKYXV0aDogInAiCnRsczoKc29ja3M1OgogIGxpc3RlbjogIjEyNy4wLjAuMToyMTE4MCIK
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "userData": {"portHopping": "0-99999"}}	5400
+problem	port hopping spec '0-99999' is not a port list like 443,20000-50000
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6NTQwMCIK
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "userData": {"portHopping": ""}}	6480
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6NjQ4MCIK
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "userData": {"pinSHA256": "", "obfs": "salamander"}}	21180
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6MjExODAiCg==
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "sni": ""}	8640
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6ODY0MCIK
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": ["h3", "h2"], "allowInsecure": true, "sni": "a.example.com"}	9720
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CiAgc25pOiAiYS5leGFtcGxlLmNvbSIKICBpbnNlY3VyZTogdHJ1ZQogIGFscG46ICJoMyxoMiIKc29ja3M1OgogIGxpc3RlbjogIjEyNy4wLjAuMTo5NzIwIgo=
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 0, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	21180
+problem	port 0 is out of range
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTowIgphdXRoOiAicCIKdGxzOgpzb2NrczU6CiAgbGlzdGVuOiAiMTI3LjAuMC4xOjIxMTgwIgo=
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "v1 полный", "proto": "hysteria", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": true, "sni": "x.example.com", "userData": {"protocol": "udp", "upmbps": "10", "downmbps": "100", "obfs": "quic", "obfsPassword": "zz"}}	11880
+problem	hysteria protocol v1 requires the legacy hysteria v1 client binary
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCnByb3RvY29sOiAidWRwIgp1cDogIjEwIE1icHMiCmRvd246ICIxMDAgTWJwcyIKYXV0aF9zdHI6ICJwIgp0bHM6CiAgc25pOiAieC5leGFtcGxlLmNvbSIKICBpbnNlY3VyZTogdHJ1ZQpvYmZzOiAicXVpYyIKb2Jmc19wYXJhbTogInp6Igpzb2NrczU6CiAgbGlzdGVuOiAiMTI3LjAuMC4xOjExODgwIgo=
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "v1 obfs без пароля", "proto": "hysteria", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "userData": {"obfs": "quic"}}	12960
+problem	hysteria protocol v1 requires the legacy hysteria v1 client binary
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCnByb3RvY29sOiAidWRwIgphdXRoX3N0cjogInAiCnRsczoKb2JmczogInF1aWMiCnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6MTI5NjAiCg==
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "не hysteria", "proto": "vless", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	21180
+error	Hysteria protocol v1 is not supported by the bundled engine path — use a hysteria2 (hy2://) link. (vless)
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "без auth", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	15120
+problem	auth/password is empty
+error	Hysteria server carries no auth/password — re-import the link.
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "sni: null", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	16200
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6MTYyMDAiCg==
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "пустой адрес", "proto": "hysteria2", "address": "", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	21180
+problem	server address is empty
+yaml	c2VydmVyOiAiOjQ0MyIKYXV0aDogInAiCnRsczoKc29ja3M1OgogIGxpc3RlbjogIjEyNy4wLjAuMToyMTE4MCIK
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "порт отрицательный", "proto": "hysteria2", "address": "h.example.com", "port": -5, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	21180
+problem	port -5 is out of range
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTotNSIKYXV0aDogInAiCnRsczoKc29ja3M1OgogIGxpc3RlbjogIjEyNy4wLjAuMToyMTE4MCIK
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "порт огромный", "proto": "hysteria2", "address": "h.example.com", "port": 70000, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	21180
+problem	port 70000 is out of range
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo3MDAwMCIKYXV0aDogInAiCnRsczoKc29ja3M1OgogIGxpc3RlbjogIjEyNy4wLjAuMToyMTE4MCIK
+=== server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "hopping с пустым элементом", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "userData": {"portHopping": "443,"}}	21180
+problem	port hopping spec '443,' is not a port list like 443,20000-50000
+yaml	c2VydmVyOiAiaC5leGFtcGxlLmNvbTo0NDMiCmF1dGg6ICJwIgp0bHM6CnNvY2tzNToKICBsaXN0ZW46ICIxMjcuMC4wLjE6MjExODAiCg==
+=== hy2://token@de.example.com:443?insecure=1&pwd=x&mport=443,1٠-2000
+problem	port hopping spec '443,1٠-2000' is not a port list like 443,20000-50000
+yaml	c2VydmVyOiAiZGUuZXhhbXBsZS5jb206NDQzIgphdXRoOiAidG9rZW4iCnRsczoKICBpbnNlY3VyZTogdHJ1ZQpzb2NrczU6CiAgbGlzdGVuOiAiMTI3LjAuMC4xOjIxMTgwIgo=
+=== hy2://token@fr.example.com:443?insecure=1&pwd=x&mport=+443,8443
+problem	port hopping spec '+443,8443' is not a port list like 443,20000-50000
+yaml	c2VydmVyOiAiZnIuZXhhbXBsZS5jb206NDQzIgphdXRoOiAidG9rZW4iCnRsczoKICBpbnNlY3VyZTogdHJ1ZQpzb2NrczU6CiAgbGlzdGVuOiAiMTI3LjAuMC4xOjIxMTgwIgo=

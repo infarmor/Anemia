@@ -1,0 +1,9 @@
+anemia://sync/q1ZKrSjILypJTXEsUbJS
+ANEMIA://SYNC/q1ZKrSjILypJTXEsUbJS
+  anemia://sync/abc  
+{"device":"Mac","exportedAt":"2026-02-02T02:40:00Z","version":1}
+{"exportedAt":"2026-02-02T02:40:00Z"}
+{"device":"Mac"}
+vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443#A
+   
+{ "exportedAt" : "x", "device" : "m" }

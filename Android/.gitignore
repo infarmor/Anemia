@@ -1,0 +1,12 @@
+.gradle/
+build/
+local.properties
+# Движок собирается Scripts/build-engine.sh и весит десятки мегабайт.
+engine/build/
+app/src/main/jniLibs/**/*.so
+captures/
+*.keystore
+*.jks
+
+# подписанные APK из Scripts/build-apk.sh
+dist/

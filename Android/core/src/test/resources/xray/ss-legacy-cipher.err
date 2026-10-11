@@ -1,0 +1,1 @@
+error: Cipher 'aes-256-cfb' is not supported by the bundled Xray-core (the legacy stream ciphers were removed). Ask the provider for an AEAD cipher such as aes-256-gcm or chacha20-ietf-poly1305.

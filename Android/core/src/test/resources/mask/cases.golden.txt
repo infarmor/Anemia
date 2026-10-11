@@ -1,0 +1,29 @@
+key	vless|nl.example.com|443|uuid-1|||vless|nl.example.com|443|uuid-1||
+key	vless|nl.example.com|443|uuid-1|||vless|nl.example.com|443|uuid-1||#wifi
+key	vless|nl.example.com|443|uuid-1|||vless|nl.example.com|443|uuid-1||#cellular
+key	ss|nl.example.com|443|p#wifi|||ss|nl.example.com|443|p#wifi||#wifi
+key	vless|nl.example.com|443|uuid-1|||vless|nl.example.com|443|uuid-1||
+key	vless|nl.example.com|443|uuid-1|||vless|nl.example.com|443|uuid-1||
+serverkey	vless|nl.example.com|443|uuid-1||
+serverkey	vless|nl.example.com|443|uuid-1||
+serverkey	vless|nl.example.com|443|uuid-1||
+serverkey	ss|a.example.com|1|p#wifi
+serverkey	vless|a|443|uuid-1||#
+serverkey	
+lookup	maximum
+lookup	maximum
+lookup	off
+lookup	-
+lookup	balanced
+lookup	-
+lookup	-
+lookup	-
+learn	vless|nl.example.com|443|uuid-1||#wifi=maximum
+learn	vless|nl.example.com|443|uuid-1||=maximum
+learn	
+learn	
+learn	ss|nl.example.com|443|p#wifi||#cellular=ruVK
+serverkey	vless|a|443|cred#wifi|xt
+serverkey	ss|a|1|c#wifi#wifi
+serverkey	
+serverkey	x#cellular

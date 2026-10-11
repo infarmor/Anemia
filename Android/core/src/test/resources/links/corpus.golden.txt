@@ -1,0 +1,2967 @@
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&sni=cdn.example.com&fp=chrome&type=ws&path=%2Fvless&host=cdn.example.com#%D0%9D%D0%B8%D0%B4%D0%B5%D1%80%D0%BB%D0%B0%D0%BD%D0%B4%D1%8B
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	chrome
+flow	
+grpcMultiMode	
+headerType	
+host	cdn.example.com
+method	
+name	Нидерланды
+network	ws
+path	/vless
+port	443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	cdn.example.com
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@185.199.108.53:8443?security=reality&sni=www.microsoft.com&fp=firefox&pbk=SbVKOEMjK0sIlbwg4akyBg5mL5KZwwAr-edNzES9saU&sid=&spx=%2F&type=grpc&serviceName=grpc-service&mode=multi#Reality+gRPC
+address	185.199.108.53
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	firefox
+flow	
+grpcMultiMode	true
+headerType	
+host	
+method	
+name	Reality+gRPC
+network	grpc
+path	grpc-service
+port	8443
+proto	vless
+realityPublicKey	SbVKOEMjK0sIlbwg4akyBg5mL5KZwwAr-edNzES9saU
+realityShortId	
+realitySpiderX	/
+security	reality
+sni	www.microsoft.com
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@2001:db8:85a3::8a2e:370:7334:2053?type=tcp&security=none
+error	missingField("host/port")
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@[2001:db8::1]:8443?security=TLS&type=xhttp&mode=auto&extra=%7B%22xc%22%3A%22reload%22%7D#xhttp
+address	2001:db8::1
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	xhttp
+network	xhttp
+path	
+port	8443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	{"xc":"reload"}
+xhttpMode	auto
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?encryption=1b232a42dc540bc1&security=tls&headerType=none
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	none
+host	
+method	
+name	example.com
+network	tcp
+path	
+port	443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	
+vlessEncryption	1b232a42dc540bc1
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== trojan://deadbeef-1b56-4d2f-5117-4c8c@example.com:443?allowInsecure=1&peer=cdn.example.com&sni=cdn.example.com&type=tcp#Trojan
+address	example.com
+allowInsecure	true
+alpn	
+alterId	0
+awgVersion	
+credential	deadbeef-1b56-4d2f-5117-4c8c
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	Trojan
+network	tcp
+path	
+port	443
+proto	trojan
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	cdn.example.com
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== trojan://password123@example.com:80?security=none&type=ws&path=%2Ftrojan&host=cdn.example.com&headerType=none
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	password123
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	none
+host	cdn.example.com
+method	
+name	example.com
+network	ws
+path	/trojan
+port	80
+proto	trojan
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== hysteria2://super%2Dsecret@example.com:443?sni=cdn.example.com&obfs=salamander&obfs-password=pass&insecure=1&pinSHA256=abcd#Hy2
+address	example.com
+allowInsecure	true
+alpn	
+alterId	0
+awgVersion	
+credential	super-secret
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	Hy2
+network	tcp
+path	
+port	443
+proto	hysteria2
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	cdn.example.com
+userData	hysteriaVersion=2;obfs=salamander;obfsPassword=pass;pinSHA256=abcd
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== hysteria2://token@example.com:443,20000-50000?sni=cdn.example.com
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	token
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	example.com
+network	tcp
+path	
+port	443
+proto	hysteria2
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	cdn.example.com
+userData	hysteriaVersion=2;portHopping=443,20000-50000
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== hysteria://example.com:443?auth=token&peer=cdn.example.com&upmbps=100&downmbps=200&obfs=xplus&obfsParam=key&protocol=wechat-video&alpn=h3,mux&insecure=true
+address	example.com
+allowInsecure	true
+alpn	h3,mux
+alterId	0
+awgVersion	
+credential	token
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	example.com
+network	tcp
+path	
+port	443
+proto	hysteria
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	cdn.example.com
+userData	downmbps=200;hysteriaVersion=1;obfs=xplus;obfsPassword=key;protocol=wechat-video;upmbps=100
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=example.com:8388#SS-legacy
+error	malformedURI("ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=example.com:8388#SS-legacy")
+=== ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ=@example.com:8388/?plugin=obfs-local%3Bobfs%3Dhttp%3Bobfs-param%3Dtest#SIP002
+error	unsupportedTransport("plugin: obfs-local")
+=== ss://192.168.1.1:8388
+error	invalidBase64
+=== vmess://eyJhZGQiOiJleGFtcGxlLmNvbSIsImFpZCI6IjY0In0=
+error	missingField("add/port/id")
+=== amnezia://eyJ2IjoiMyIsImhvc3RuYW1lIjoiZXhhbXBsZS5jb20ifQ==
+error	malformedURI("amnezia://eyJ2IjoiMyIsImhvc3RuYW1lIjoiZXhhbXBsZS5jb20ifQ==")
+=== wireguard://yAnz5TF%2BfT28A5vH0vGcC8pVXqv5ZfV0%2B0P4Rn1v5HE%3D@203.0.113.9:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0%3D&address=10.7.0.2%2F32%2Cfd00%3A%3A2%2F128&jc=4&jmin=40&jmax=70&s1=116&s2=172&h1=5&h2=88&h3=1234&h4=99999#WG
+address	203.0.113.9
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	1.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	WG
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.7.0.2/32, fd00::2/128
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.7.0.2/32, fd00::2/128
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vless://not-a-uuid@example.com:443
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	not-a-uuid
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	example.com
+network	tcp
+path	
+port	443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:0?type=tcp
+error	missingField("host/port")
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?type=unknown-transport
+error	unsupportedTransport("unknown-transport")
+=== hysteria2://pw@example.com:443?insecure=true&mport=1000-2000
+address	example.com
+allowInsecure	true
+alpn	
+alterId	0
+awgVersion	
+credential	pw
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	example.com
+network	tcp
+path	
+port	443
+proto	hysteria2
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	hysteriaVersion=2;portHopping=1000-2000
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== ss://bm8tY29sb24taGVyZQ@example.com:8388
+error	malformedURI("ss://bm8tY29sb24taGVyZQ@example.com:8388")
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&pbk=SbVKOEMjK+wsIlbwg4akyBg5mL5KZwwA%3D%3D&type=ws&path=%2Fx#%F0%9F%87%AB%F0%9F%87%B7%20%2B%20percent
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	🇫🇷 + percent
+network	ws
+path	/x
+port	443
+proto	vless
+realityPublicKey	SbVKOEMjK+wsIlbwg4akyBg5mL5KZwwA==
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls#🇫🇷 XHTTP?serverDescription=SG9tZSBDRE4=
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	🇫🇷 XHTTP · Home CDN
+network	tcp
+path	
+port	443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls#🇫🇷 XHTTP?serverDescription=8J+Hq/Cfh7cg0LTQu9C40L3QvdC+0LUt0LjQvNGPLdGB0LXRgNCy0LXRgNCwLdC60L7RgtC+0YDQvtC1LdC90LUt0LLQu9C10LfQsNC10YIt0LIt0YHQvtGA0L7Qui3QstC+0YHQtdC80Yw=
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	🇫🇷 XHTTP · 🇫🇷 длинное-имя-сервера-которое-не-влезает-в-сорок
+network	tcp
+path	
+port	443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls#Happ?serverDescription=Q0ROByBkaXJlY3Q=
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	Happ · CDN direct
+network	tcp
+path	
+port	443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls#100%
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	example.com
+network	tcp
+path	
+port	443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== trojan://pa+ss%2Bmore@example.com:443?allowInsecure=1&&peer=cdn.example.com
+address	example.com
+allowInsecure	true
+alpn	
+alterId	0
+awgVersion	
+credential	pa+ss+more
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	example.com
+network	tcp
+path	
+port	443
+proto	trojan
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	cdn.example.com
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== ss://YWVzLTI1Ni1nY206cEBzczp3b3Jk@example.com:8388#plain-userinfo
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	p@ss:word
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	aes-256-gcm
+name	plain-userinfo
+network	tcp
+path	
+port	8388
+proto	ss
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ%3D%3D@example.com:8388/?remark=1#percent-b64
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	password
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	aes-256-gcm
+name	percent-b64
+network	tcp
+path	
+port	8388
+proto	ss
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpzZWNyZXQ=@203.0.113.9:8388/?plugin=%23SIP003-empty
+error	unsupportedTransport("plugin: #SIP003-empty")
+=== ss://YWVzLTEyOC1nY206a2V5@[2001:db8::1]:8388/#ipv6
+address	2001:db8::1
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	key
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	aes-128-gcm
+name	ipv6
+network	tcp
+path	
+port	8388
+proto	ss
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== ss://YWVzLTI1Ni1nY206cA==@example.com:8388/?plugin=shadow-tls%3Bpassword%3Dabc%3Bversion%3D3#shadow-tls
+error	unsupportedTransport("plugin: shadow-tls")
+=== ss://YWVzLTI1Ni1nY206cGFzc3dvcmRAWzo6MV06ODM4OA==#legacy-brackets
+address	::1
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	password
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	aes-256-gcm
+name	legacy-brackets
+network	tcp
+path	
+port	8388
+proto	ss
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== ss://YWVzLTI1Ni1nY206cA==@example.com:70000#bad-port
+error	malformedURI("ss://YWVzLTI1Ni1nY206cA==@example.com:70000#bad-port")
+=== ss://YWVzLTI1Ni1nY206cA==@example.com:22/noplugin#no-query
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	p
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	aes-256-gcm
+name	no-query
+network	tcp
+path	
+port	22
+proto	ss
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vmess://eyJwcyI6ICLwn4ep8J+HqiBCZXJsaW4iLCAiYWRkIjogImV4YW1wbGUuY29tIiwgInBvcnQiOiAiNDQzIiwgImlkIjogIjFiNTY0ZDJmLTUxMTciLCAiYWlkIjogIjY0IiwgInNjeSI6ICJhdXRvIiwgIm5ldCI6ICJ3cyIsICJ0eXBlIjogIm5vbmUiLCAiaG9zdCI6ICJjZG4uZXhhbXBsZS5jb20iLCAicGF0aCI6ICIvdm1lc3MiLCAidGxzIjogInRscyIsICJhbHBuIjogImgyLGh0dHAvMS4xIiwgImZwIjogImNocm9tZSJ9
+address	example.com
+allowInsecure	false
+alpn	h2,http/1.1
+alterId	64
+awgVersion	
+credential	1b564d2f-5117
+fingerprint	chrome
+flow	
+grpcMultiMode	
+headerType	none
+host	cdn.example.com
+method	
+name	🇩🇪 Berlin
+network	ws
+path	/vmess
+port	443
+proto	vmess
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	
+vlessEncryption	
+vmessCipher	auto
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vmess://eyJhZGQiOiAiMS4yLjMuNCIsICJwb3J0IjogODQ0MywgImlkIjogIngiLCAidGxzIjogdHJ1ZSwgIm5ldCI6ICJncnBjIiwgIm1vZGUiOiAibXVsdGkiLCAicHMiOiAiIn0=
+address	1.2.3.4
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	x
+fingerprint	
+flow	
+grpcMultiMode	true
+headerType	
+host	
+method	
+name	
+network	grpc
+path	
+port	8443
+proto	vmess
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vmess://eyJhZGQiOiAiMS4yLjMuNCIsICJwb3J0IjogNDQzLjcsICJpZCI6ICJ4IiwgInRscyI6IGZhbHNlLCAiYWlkIjogMH0=
+address	1.2.3.4
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	x
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	1.2.3.4
+network	tcp
+path	
+port	443
+proto	vmess
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vmess://eyJhZGQiOiAiMS4yLjMuNCIsICJwb3J0IjogIjQ0LjUiLCAiaWQiOiAieCJ9
+error	missingField("add/port/id")
+=== vmess://eyJwcyI6ICLDqfCfmIAiLCAiYWRkIjogImV4YW1wbGUuY29tIiwgInBvcnQiOiAyMDUzLCAiaWQiOiAieCIsICJuZXQiOiAiaDIifQ==
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	x
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	é😀
+network	http
+path	
+port	2053
+proto	vmess
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vmess://eyJhZGQiOiAiIiwgInBvcnQiOiA0NDMsICJpZCI6ICJ4In0=
+error	missingField("add/port/id")
+=== vmess://eyJpZCI6ICIiLCAiYWRkIjogImV4YW1wbGUuY29tIiwgInBvcnQiOiA0NDN9
+error	missingField("add/port/id")
+=== vmess://WzEsMiwzXQ==#array
+error	invalidBase64
+=== vmess://eyJhZGQiOiJleGFtcGxlLmNvbSIsInBvcnQiOjQ0MywiaWQiOiJ4In0gdHJhaWxpbmc=#trailing
+error	invalidBase64
+=== vmess://eyJhZGQiOiJleGFtcGxlLmNvbSIsInBvcnQiOjQ0MywiaWQiOiJ4IiwiYWRkIjoib3RoZXIuY29tIn0=#duplicate-keys
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	x
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	example.com
+network	tcp
+path	
+port	443
+proto	vmess
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vmess://eyJhZGQiOiJcdTAwZTlcdWQ4M2RcdWRlMDAuZXhhbXBsZS5jb20iLCJwb3J0IjoiNDQzIiwiaWQiOiJ4IiwibmV0IjoieGh0dHAiLCJtb2RlIjoicGFja2V0LXVwIn0=#unicode-escapes
+address	é😀.example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	x
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	é😀.example.com
+network	xhttp
+path	
+port	443
+proto	vmess
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	packet-up
+=== vmess://aGVsbG8gd29ybGQ=#not-json
+error	invalidBase64
+=== hysteria2://@example.com:443?insecure=1#empty-auth
+error	missingField("auth (userinfo password)")
+=== hysteria://example.com:443?auth=t&alpn=h3,,h2&insecure=yes#alpn-blanks
+address	example.com
+allowInsecure	true
+alpn	h3,,h2
+alterId	0
+awgVersion	
+credential	t
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	alpn-blanks
+network	tcp
+path	
+port	443
+proto	hysteria
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	hysteriaVersion=1
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== hysteria://[2001:db8::1]:443,20000-50000?auth=t#ipv6-hopping
+address	2001:db8::1
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	t
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	ipv6-hopping
+network	tcp
+path	
+port	443
+proto	hysteria
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	hysteriaVersion=1;portHopping=443,20000-50000
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== hysteria2://t@example.com:abc,20000?sni=x#bad-port-spec
+address	example.com:abc,20000
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	t
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	bad-port-spec
+network	tcp
+path	
+port	443
+proto	hysteria2
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	x
+userData	hysteriaVersion=2
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== hysteria2://t@example.com:20000-50000#range-only
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	t
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	range-only
+network	tcp
+path	
+port	20000
+proto	hysteria2
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	hysteriaVersion=2;portHopping=20000-50000
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== hysteria2://t@example.com:443,99999-1?ports=8000-9000#reversed-range
+address	example.com:443,99999-1
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	t
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	reversed-range
+network	tcp
+path	
+port	443
+proto	hysteria2
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	hysteriaVersion=2;portHopping=8000-9000
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?type=ws&alpn=h2,,h3#alpn-drop
+address	example.com
+allowInsecure	false
+alpn	h2,h3
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	alpn-drop
+network	ws
+path	
+port	443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?type=ws&alpn=%20#alpn-space
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	alpn-space
+network	ws
+path	
+port	443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?type=ws&alpn=a,%20b#alpn-trim
+address	example.com
+allowInsecure	false
+alpn	a,b
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	alpn-trim
+network	ws
+path	
+port	443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== amnezia://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IHlBbno1VEYrZlQyOEE1dkgwdkdjQzhwVlhxdjVaZlYwKzBQNFJuMXY1SEU9CkFkZHJlc3MgPSAxMC44LjEuMi8zMiwgZmQ0Mjo6Mi8xMjgKRE5TID0gMS4xLjEuMQpNVFUgPSAxMjgwCkpjID0gNQpKbWluID0gNDAKSm1heCA9IDcwClMxID0gODYKUzIgPSAxMDAKUzMgPSAzOQpTNCA9IDY4CkgxID0gMTIzNDU2Ny0xMjM0NTk5CkgyID0gNzY1NDMyMQpIMyA9IDExMjIzMzQ0NTUKSDQgPSA0NDQ0NDQ0CgpbUGVlcl0KUHVibGljS2V5ID0gT3g1dkRXZko5eWZrWGNVdUoyWGdLbFFTbUd2dm5CQjBxUjl2SzNGMnpWMD0KQWxsb3dlZElQcyA9IDAuMC4wLjAvMCwgOjovMApFbmRwb2ludCA9IDIwMy4wLjExMy43OjUxODIwClBlcnNpc3RlbnRLZWVwYWxpdmUgPSAyNQo=#AmneziaWG 2.0
+address	203.0.113.7
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	2.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	AmneziaWG 2.0
+network	tcp
+path	
+port	51820
+proto	awg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.8.1.2/32, fd42::2/128
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.8.1.2/32, fd42::2/128
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	1.1.1.1
+wgKeepAlive	25
+wgMTU	1280
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== awg://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IHlBbno1VEYrZlQyOEE1dkgwdkdjQzhwVlhxdjVaZlYwKzBQNFJuMXY1SEU9CkFkZHJlc3MgPSAxMC42LjAuMi8zMgoKW1BlZXJdClB1YmxpY0tleSA9IE94NXZEV2ZKOXlma1hjVXVKMlhnS2xRU21HdnZuQkIwcVI5dkszRjJ6VjA9CkVuZHBvaW50ID0gMTAuMC4wLjE6NTE4MjAKQWxsb3dlZElQcyA9Cg==
+address	10.0.0.1
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	1.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	10.0.0.1
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.6.0.2/32
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.6.0.2/32
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== amnezia://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IHlBbno1VEYrZlQyOEE1dkgwdkdjQzhwVlhxdjVaZlYwKzBQNFJuMXY1SEU9CkFkZHJlc3MgPSAxMC42LjAuMi8zMgoKW1BlZXJdClB1YmxpY0tleSA9IE94NXZEV2ZKOXlma1hjVXVKMlhnS2xRU21HdnZuQkIwcVI5dkszRjJ6VjA9CkVuZHBvaW50ID0gMTAuMC4wLjE6NTE4MjAKQWxsb3dlZElQcyA9Cg==#plain-as-amnezia
+address	10.0.0.1
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	1.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	plain-as-amnezia
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.6.0.2/32
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.6.0.2/32
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== wg://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IHlBbno1VEYrZlQyOEE1dkgwdkdjQzhwVlhxdjVaZlYwKzBQNFJuMXY1SEU9CkFkZHJlc3MgPSAxMC44LjEuMi8zMiwgZmQ0Mjo6Mi8xMjgKRE5TID0gMS4xLjEuMQpNVFUgPSAxMjgwCkpjID0gNQpKbWluID0gNDAKSm1heCA9IDcwClMxID0gODYKUzIgPSAxMDAKUzMgPSAzOQpTNCA9IDY4CkgxID0gMTIzNDU2Ny0xMjM0NTk5CkgyID0gNzY1NDMyMQpIMyA9IDExMjIzMzQ0NTUKSDQgPSA0NDQ0NDQ0CgpbUGVlcl0KUHVibGljS2V5ID0gT3g1dkRXZko5eWZrWGNVdUoyWGdLbFFTbUd2dm5CQjBxUjl2SzNGMnpWMD0KQWxsb3dlZElQcyA9IDAuMC4wLjAvMCwgOjovMApFbmRwb2ludCA9IDIwMy4wLjExMy43OjUxODIwClBlcnNpc3RlbnRLZWVwYWxpdmUgPSAyNQo=#conf-base64
+address	203.0.113.7
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	2.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	conf-base64
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.8.1.2/32, fd42::2/128
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.8.1.2/32, fd42::2/128
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	1.1.1.1
+wgKeepAlive	25
+wgMTU	1280
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== wireguard://yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@203.0.113.9:51820?publickey=T3g1dkRXZko5eWZrWGNVdUoyWGdLbFFTbUd2dm5CQjBxUjl2SzNGMnpWMD0=&allowedips=&dns=1.1.1.1&mtu=1280&persistentkeepaliveinterval=25&ip=10.7.0.2/32,fd00::2/128#doubly-encoded
+address	203.0.113.9
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	1.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	doubly-encoded
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.7.0.2/32, fd00::2/128
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.7.0.2/32, fd00::2/128
+wgAllowedIPs	
+wgDNS	1.1.1.1
+wgKeepAlive	25
+wgMTU	1280
+wgPeer	T3g1dkRXZko5eWZrWGNVdUoyWGdLbFFTbUd2dm5CQjBxUjl2SzNGMnpWMD0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== wireguard://yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@203.0.113.9:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=&allowedips=0.0.0.0/0&dns=1.1.1.1,&address=10.7.0.2%2F32%2Cfd00%3A%3A2%2F128&jc=5&jmin=40&jmax=70&s1=86&s2=100&s3=39&s4=68&h1=1234567-1234599&h2=7654321&h3=1122334455&h4=4444444&i1=%3Cb+01%3E&i2=%3Bcd+20%3E%26%23&disableCookies=false&randomTrailers=true#v2rayN-aliases
+address	203.0.113.9
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	3.1
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	v2rayN-aliases
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.7.0.2/32, fd00::2/128
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.7.0.2/32, fd00::2/128
+wgAllowedIPs	0.0.0.0/0
+wgDNS	1.1.1.1
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== amnezia://yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@example.com:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=&ContentPaddingAddition=10-40&RekeyAfterTime=60-120#amnezia-query-3x
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	3.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	amnezia-query-3x
+network	tcp
+path	
+port	51820
+proto	awg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== amnezia://key@1.2.3.4:51820
+address	1.2.3.4
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	1.0
+credential	key
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	1.2.3.4
+network	tcp
+path	
+port	51820
+proto	awg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== wg://yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@[2001:db8::1]:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=&localaddress=fd00::2/128#ipv6-authority
+address	2001:db8::1
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	1.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	ipv6-authority
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=fd00::2/128
+vlessEncryption	
+vmessCipher	
+wgAddresses	fd00::2/128
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== wireguard://yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@example.com:0?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=&privatekey=zzz#bad-port
+error	missingField("host/port")
+=== wireguard://?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=#no-authority
+error	missingField("private key")
+=== amnezia://bm8tYSBjb25m#not-a-conf
+error	malformedURI("amnezia://bm8tYSBjb25m#not-a-conf")
+=== wireguard://yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@example.com:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=&junkPacketCount=7&initPacketJunkSize=100&magicHeader1=5&headerProtectionKey=0000000000000000000000000000000000000000000000000000000000000000&maxHandshakeAttempts=3#camelfields
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	3.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	camelfields
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vpn://eyJob3N0TmFtZSI6ICJzcnYxIiwgImRlc2NyaXB0aW9uIjogIkFtbmV6aWEgQVdHIiwgImRlZmF1bHRDb250YWluZXIiOiAiYW1uZXppYS1hd2ciLCAiY29udGFpbmVycyI6IFt7ImNvbnRhaW5lciI6ICJhbW5lemlhLWF3ZyIsICJhd2ciOiB7Imxhc3RfY29uZmlnIjogIntcImNvbmZpZ1wiOiBcIltJbnRlcmZhY2VdXFxuUHJpdmF0ZUtleSA9IHlBbno1VEYrZlQyOEE1dkgwdkdjQzhwVlhxdjVaZlYwKzBQNFJuMXY1SEU9XFxuQWRkcmVzcyA9IDEwLjguMS4yLzMyLCBmZDQyOjoyLzEyOFxcbkpjID0gNVxcbkptaW4gPSA0MFxcbkptYXggPSA3MFxcblMxID0gODZcXG5TMiA9IDEwMFxcblMzID0gMzlcXG5TNCA9IDY4XFxuSDEgPSAxMjM0NTY3LTEyMzQ1OTlcXG5IMiA9IDc2NTQzMjFcXG5cXG5bUGVlcl1cXG5QdWJsaWNLZXkgPSBPeDV2RFdmSjl5ZmtYY1V1SjJYZ0tsUVNtR3Z2bkJCMHFSOXZLM0YyelYwPVxcbkVuZHBvaW50ID0gMjAzLjAuMTEzLjc6NTE4MjBcXG5cIn0ifX1dLCAiZG5zMSI6ICIxLjEuMS4xIiwgImRuczIiOiAiOC44LjguOCJ9#awg-envelope-plain
+address	203.0.113.7
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	2.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	Amnezia AWG
+network	tcp
+path	
+port	51820
+proto	awg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.8.1.2/32, fd42::2/128
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.8.1.2/32, fd42::2/128
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vpn://AAACHHicbZFdT8IwFIb_ytJbYLbdCmMJFwP5EBJFQCQyYurWYSMU2EblI_x3e7YYb0yb9HnPec9JT3tFn7ssf-RbgXwLZakmqGqhWGRRKve53CkIB1slLpJbwWu_zCb8uMk7O5VzqUQKFl5aavx7DZboN5eZ5PL6p__xwuFbV7ThWf5ujIkEja4hKkVoVIiWDyoXacIjsQpDNU6l5rkYibPVss6BurBZr5LMqBcwPcC6H3W8_Xxx0OwtmeMKHrsTRTQbdFumNojjVGSZKSTY9mxi0zuHVq0kdqnv0ztCPWMaRibPALZSGXRxwfxkuAE8JYa8OhAtWhVBx6DTBHIN1aHTAIyEOi6rN2rF2QTDAKoadeY6lBhp9nIsRFoMd_zYyKic7enE9P1rMmyek69F9HIc0sV6tHmebvtaq3YbHyZNPXJ69DLHMFtXxfudVLmppNixsU2IYzd8RjwK9wvRDd1uK_hDlRF4ZWIXC5UhCiHPLha6_QDG4KHz#awg-envelope-qcompress
+address	203.0.113.7
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	2.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	Amnezia AWG
+network	tcp
+path	
+port	51820
+proto	awg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.8.1.2/32, fd42::2/128
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.8.1.2/32, fd42::2/128
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vpn://AAABxHicTY9bb8IwDIX_StVXWEnSprSVeCiMy0DaGDCGRtGUtSmLBgHakHER_30OaNqe_PmcY8s-25-bUj2yNbcjyy4Lje2qZWe8TAuxVWIjjRyvJT8JZsWv3Zubs_1KtTZSMSF5YSLse2ms9FcrQZyf__p_GVMi62yvWKneIZAL09vzB6l4kbOULxI5LIRmig_40WpYx1ie6KRTySckiKnuId1NW8F2Ottp-pZPUQUNvZHEmvbajUTGWVbwsoQ5jJzAwQ6puaRq5ZlHoojUMAkS2U_BplDXQgJ5yCA7ANYBxxgg8AHIdYuRXCA3BPAAfFjRMyFMXI_69btrDcHumYm6Tz2X4EQmcj7kvDD_7D9WIr2983Sg-v4174fH_GuWvuz7ZLYcrJ7H667WstlEu1GoB26HnKYI3mnLbLsRUsEgQa6DHIxdpx5RHBC4y75cFpcf0vuITg#awg-ini-last-config-no-dns
+address	203.0.113.7
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	2.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	Amnezia AWG
+network	tcp
+path	
+port	51820
+proto	awg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.8.1.2/32, fd42::2/128
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.8.1.2/32, fd42::2/128
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vpn://AAAB_HicZZFtT8IwEMe_ytK34my7FcYSXkzkQUgUn5DIiKlbh41wYDeqQPjuXiHGF6Yv7nf3_9-l1-7J-6qsbuRSkdgjpbGM1DySqzIzel3pFbhysgS109JLnnsntZCbRdVeQSU1KOMsX9qo-Uaa3BmyX6VEabr_y_85_5LY25OFLKtXNBd67pzTa6iUKWSmZimMjLayUkO19VreNoGdeOyeFY88SoTtU9vL2tF6PPm04qUY0zM6Cu-BWdHvtFJI8tyossQ-Rv3IZz6_CHjNK_KQxzG_YDxKYZChLDAuNSCF1KH8RmwgPjCEqI7Aj1NcKUAKmgghQh1H9J2J8SAU9cb5MTZR7ruORl2EAWcppDAdKWXcPpu3hc5O69x-C3v1XAya2-Jjkj1tBnwyHy7uHpY9a-Hykn7eN-0w6PLdmOI6HcjXKw0VNnIa-NRnLPAbsWARx3uRw2Hm_ghK5t6Q-cdDTiXuSpF_POTwA9h7l_A#wireguard-container
+address	203.0.113.7
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	2.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	Amnezia AWG
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.8.1.2/32, fd42::2/128
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.8.1.2/32, fd42::2/128
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vpn://AAABf3icTZBdT8IwFIb_ytJbzGyLM4OEi4F8CIkCIhAZMXVrsXGcQVuqQPbfXVn8yHvRnue8503OOaP3XJsHtuWo6SGtLEFXHkq5TpTcGZmDw9EW-EkyL1r0q65gh8x0cjBMAlfOwj43rpX8MF3C1fmv_udxT9M7o4xp81oahKzq3y9a3YPhSrCEr2MYK2mZ4SN-9FreMYJTMOvVxIyGUWAH2PaTTribL_c2eBFzXMPjmykQGwy6rRiiNFVc63KOYP_Wxz69rtMYYliNOVcu-_CWyaSKfvwK7N1CDBtH8bFMng9DutyMssnTtm8ttNt4P23YUb1HT3NcRnch3eUSTJXtRJoBCSmOARVFsXZnAk3cNsS_CFWIOhT6F6HiG97Ydys#plain-conf-in-awg-container
+address	10.0.0.1
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	1.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	Amnezia AWG
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.6.0.2/32
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.6.0.2/32
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vpn://eyJob3N0TmFtZSI6ICJzcnYxIiwgImRlc2NyaXB0aW9uIjogIiIsICJkZWZhdWx0Q29udGFpbmVyIjogImFtbmV6aWEtYXdnIiwgImNvbnRhaW5lcnMiOiBbeyJjb250YWluZXIiOiAiYW1uZXppYS1hd2ciLCAiYXdnIjogeyJsYXN0X2NvbmZpZyI6ICJ7XCJjb25maWdcIjogXCJbSW50ZXJmYWNlXVxcblByaXZhdGVLZXkgPSB5QW56NVRGK2ZUMjhBNXZIMHZHY0M4cFZYcXY1WmZWMCswUDRSbjF2NUhFPVxcbkFkZHJlc3MgPSAxMC44LjEuMi8zMiwgZmQ0Mjo6Mi8xMjhcXG5KYyA9IDVcXG5KbWluID0gNDBcXG5KbWF4ID0gNzBcXG5TMSA9IDg2XFxuUzIgPSAxMDBcXG5TMyA9IDM5XFxuUzQgPSA2OFxcbkgxID0gMTIzNDU2Ny0xMjM0NTk5XFxuSDIgPSA3NjU0MzIxXFxuXFxuW1BlZXJdXFxuUHVibGljS2V5ID0gT3g1dkRXZko5eWZrWGNVdUoyWGdLbFFTbUd2dm5CQjBxUjl2SzNGMnpWMD1cXG5FbmRwb2ludCA9IDIwMy4wLjExMy43OjUxODIwXFxuXCJ9In19XSwgImRuczEiOiAiMS4xLjEuMSIsICJkbnMyIjogIjguOC44LjgifQ#no-description
+address	203.0.113.7
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	2.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	203.0.113.7
+network	tcp
+path	
+port	51820
+proto	awg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.8.1.2/32, fd42::2/128
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.8.1.2/32, fd42::2/128
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vpn://AAABBXicTY5Bi8IwEIX_Spnztm5iXWtBVDx48-pBZBnTiQbSVDJR1NL_blNZVt7hMd97DK-Fc8NhizVBmQD7m4CvBCpi5c0lmMZFvKodPQ0mq93mnWq82rBuXEDjyMfK3eMjZuoPck_37f_9WRq8TFqwyOG3r2hzivnNEnM5Gonj5CevpE4nQkzTXBUqnR2_q3RGUhc41kJJuaQ71hdLmWrqMs_HCyZ19SY85p7Q9g5dd4hjHYv4W2SD4I1kREU2CLoX5xRQkw#xray-link
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	example.com
+network	tcp
+path	
+port	443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	reality
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vpn://AAAA_nicTY4xD4IwEIX_CrlZwBZQYJI4uLk6GGNqabVJaQmtBCX8d2mJ0dxw9773cncjPLSxR9IwKAMwXY9gFUDNDO1Ea4VWDleNYm9Bgup0WFxOntLutbJEKNa5yNCRl_PoF5qZnsef_g_5XgYjSGLsdY5wcfd6Hv3BXjJjyjhGt2yT1piHGULbMKU5DYvbug4LhnlOEo4oxjs2kKaVLKK6KdM0gWmaLu5LZZDbhSJfsCDsUB75gukDarBM6Q#xray-dict
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	example.com
+network	tcp
+path	
+port	443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vpn://AAAAXnicq1ZKSU1LLM0pcc7PK0nMzEstUrJSUMovSM0rK8hT0lFQSoaJFwMloqsRfDR1MKaVAlANkDSsrY2tBQAbsB_-#openvpn
+error	unsupportedScheme("vpn link: no supported container (amnezia-awg / wireguard / xray)")
+=== vpn://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IHlBbno1VEYrZlQyOEE1dkgwdkdjQzhwVlhxdjVaZlYwKzBQNFJuMXY1SEU9CkFkZHJlc3MgPSAxMC44LjEuMi8zMiwgZmQ0Mjo6Mi8xMjgKSmMgPSA1CkptaW4gPSA0MApKbWF4ID0gNzAKUzEgPSA4NgpTMiA9IDEwMApTMyA9IDM5ClM0ID0gNjgKSDEgPSAxMjM0NTY3LTEyMzQ1OTkKSDIgPSA3NjU0MzIxCgpbUGVlcl0KUHVibGljS2V5ID0gT3g1dkRXZko5eWZrWGNVdUoyWGdLbFFTbUd2dm5CQjBxUjl2SzNGMnpWMD0KRW5kcG9pbnQgPSAyMDMuMC4xMTMuNzo1MTgyMAo#bare-ini
+address	203.0.113.7
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	2.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	203.0.113.7
+network	tcp
+path	
+port	51820
+proto	awg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.8.1.2/32, fd42::2/128
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.8.1.2/32, fd42::2/128
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vpn://AAABUHicJZDNbsJADIRfJcoVGna92fxJHEILpHBoCpSikh5osouigoEkrICq716HnvzJ47E8_rHzA-pya0eWvX7GRlV6k6vPDNOqNJtGTdXV6lvXGG9yMeroBQSxNAkz4_wxOC5XJyM_9JJ1WOrOkBuZDPsZxkVRqbomH2dO4HAHegK6li5ciCLocQgynOQkS6r7Eolc1uLmQugTzjlB4BHAfUvbEkQiJHAJPFqRtEMchCs9_-FeQ5KT1uF70hXAM8xwnSpVtXnOX7sy_4_zcpHm6V1Pwqv-XuVv5wmsttPd63w_NgYHA3aahWYqRnBbMoozxOJ4KLEhIzDhMIdz4fiR5AHQXXbXspND3bQPvNi_f3P7YXI#no-envelope
+address	203.0.113.7
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	2.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	203.0.113.7
+network	tcp
+path	
+port	51820
+proto	awg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.8.1.2/32, fd42::2/128
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.8.1.2/32, fd42::2/128
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vpn://AAAAtHicq1bKyC8u8UvMTVWyUlAqLiozVNJRUEpJLU4uyiwoyczPAwk75ualVmUmKjiGu0Nk0xJLc0qc8_NKEjPzUotAShIhSnQTy9NBSpJhcsVAyehqBB-LWhBlpVBdWxsLMjuv2BCkxlAPDJUgQkYgIQs9MFSqBQCqSjcr#empty-container
+error	malformedURI("vpn link: WireGuard container without a usable config")
+=== vpn://AAAAwHicTY3NCsIwEIRfZZmzFOJJevXuC4jIUlMN1ESyqz2EvLvdBn-Yw-58MzAFtyR64LtHT5D8ctgQLl6GHB4aUjTc0MjPSfcpKofos3GerxYNHyYLPJaf_-vY6algYtHzUhhD898XMSkxmUet9WSTUZwlrluFhraGdt0q1DcgHDpS#bad-inner-config
+error	malformedURI("vpn link: WireGuard container without a usable config")
+=== vpn://eyJob3N0TmFtZSI6ICJzcnYxIiwgImRlc2NyaXB0aW9uIjogIkFtbmV6aWEgQVdHIiwgImRlZmF1bHRDb250YWluZXIiOiAiYXdnIiwgImNvbnRhaW5lcnMiOiBbeyJjb250YWluZXIiOiAiYXdnIiwgImF3ZyI6IHsibGFzdF9jb25maWciOiB7IkgxIjogNSwgIkgyIjogWzEsIDJdLCAiSDMiOiAiQWhoSCJ9fX1dLCAiZG5zMSI6ICIxLjEuMS4xIiwgImRuczIiOiAiOC44LjguOCJ9#dict-last-config
+error	malformedURI("vpn link: WireGuard container without a usable config")
+=== vpn://bm8tYW56ZXppYQ#not-json
+error	malformedURI("vpn link: not an Amnezia config (undecodable JSON)")
+=== vpn://####
+error	invalidBase64
+=== hysteria2://t@example.com:443?Obfs=x&obfs=y#dup-lower-wins
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	t
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	dup-lower-wins
+network	tcp
+path	
+port	443
+proto	hysteria2
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	hysteriaVersion=2;obfs=y
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== hysteria2://t@example.com:443?obfs=y&Obfs=x#dup-reversed
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	t
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	dup-reversed
+network	tcp
+path	
+port	443
+proto	hysteria2
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	hysteriaVersion=2;obfs=y
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== hysteria2://t@example.com:443?obfsPassword=a&obfs-password=b#dup-obfs-password
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	t
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	dup-obfs-password
+network	tcp
+path	
+port	443
+proto	hysteria2
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	hysteriaVersion=2;obfsPassword=b
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== hysteria://example.com:443?Auth=a&auth=b&upMbps=1&upmbps=2#dup-auth-v1
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	b
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	dup-auth-v1
+network	tcp
+path	
+port	443
+proto	hysteria
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	hysteriaVersion=1;upmbps=2
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== wireguard://eUFuejVURitmVDI4QTV2SDB2R2NDOHBWWHF2NVpmVjArMFA0Um4xdjVIRT0=@203.0.113.9:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=#doubly-encoded-key
+address	203.0.113.9
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	1.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	doubly-encoded-key
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== wireguard://eUFuejVURitmVDI4QTV2SDB2R2NDOHBWWHF2NVpmVjArMFA0Um4xdjVIRT0%3D@203.0.113.9:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=#doubly-encoded-percent
+address	203.0.113.9
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	1.0
+credential	eUFuejVURitmVDI4QTV2SDB2R2NDOHBWWHF2NVpmVjArMFA0Um4xdjVIRT0=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	doubly-encoded-percent
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== wireguard://bm90LWEta2V5@203.0.113.9:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=#short-inner-payload
+address	203.0.113.9
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	1.0
+credential	bm90LWEta2V5
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	short-inner-payload
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=ws&path=/x#nbsp-padded
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	nbsp-padded
+network	ws
+path	/x
+port	443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== wireguard://yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@example.com:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=&address=10.7.0.2/#trailing-slash
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	1.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	trailing-slash
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.7.0.2/32
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.7.0.2/32
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== wireguard://yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@example.com:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=&address=10.7.0.2%20/%2032#spaced-prefix
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	1.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	spaced-prefix
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== wireguard://yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@@1.2.3.4:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=&address=10.7.0.2/32#double-at
+address	1.2.3.4
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	1.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	double-at
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	wgAddress=10.7.0.2/32
+vlessEncryption	
+vmessCipher	
+wgAddresses	10.7.0.2/32
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== amnezia://@@1.2.3.4:51820#bare-double-at
+address	1.2.3.4
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	1.0
+credential	@
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	bare-double-at
+network	tcp
+path	
+port	51820
+proto	awg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== wireguard://yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@example.com:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=&keepalive=abc&persistentkeepaliveinterval=25&allowedips=0.0.0.0/0,%E2%80%8B::/0&dns=1.1.1.1%0B,&mtu=1280&psk=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=#alias-and-junk
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	1.0
+credential	yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	alias-and-junk
+network	tcp
+path	
+port	51820
+proto	wg
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	0.0.0.0/0, ::/0
+wgDNS	1.1.1.1
+wgKeepAlive	25
+wgMTU	1280
+wgPeer	Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== trojan://ab%cd@example.com:443#bare-percent
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	ab%cd
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	bare-percent
+network	tcp
+path	
+port	443
+proto	trojan
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22%zz@example.com:443#bad-escape-userinfo
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22%zz
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	bad-escape-userinfo
+network	tcp
+path	
+port	443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== ss://OnB3QDEuMi4zLjQ6ODM4OA==/#empty-method
+address	1.2.3.4
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	pw
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	empty-method
+network	tcp
+path	
+port	8388
+proto	ss
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== ss://YWVzLTI1Ni1jZmI6cHdAZXhhbXBsZS5jb206ODM4OA==#legacy-cipher
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	pw
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	aes-256-cfb
+name	legacy-cipher
+network	tcp
+path	
+port	8388
+proto	ss
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?type=kcp&seed=zzz&security=tls#kcp-seed
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	kcp-seed
+network	mkcp
+path	
+port	443
+proto	vless
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	kcpSeed=zzz
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== trojan://pw@example.com:443?type=kcp&seed=%2F%3D
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	pw
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	example.com
+network	mkcp
+path	
+port	443
+proto	trojan
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	kcpSeed=/=
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== trojan://pw@example.com:443?type=kcp&seed=%2F%3D%2B&headerType=none#kcp-seed-percent
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	pw
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	none
+host	
+method	
+name	kcp-seed-percent
+network	mkcp
+path	
+port	443
+proto	trojan
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	kcpSeed=/=+
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vmess://eyJhZGQiOiJleGFtcGxlLmNvbSIsInBvcnQiOjQ0MywiaWQiOiJ4IiwibmV0Ijoia2NwIiwic2VlZCI6ImFkZHMifQ==#kcp-vmess-seed
+address	example.com
+allowInsecure	false
+alpn	
+alterId	0
+awgVersion	
+credential	x
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	example.com
+network	mkcp
+path	
+port	443
+proto	vmess
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	none
+sni	
+userData	kcpSeed=adds
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== hy2://p@h.example.com:443?insecure=1&pwd=x&pinSHA256=%C2%A0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa%C2%A0
+address	h.example.com
+allowInsecure	true
+alpn	
+alterId	0
+awgVersion	
+credential	p
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	h.example.com
+network	tcp
+path	
+port	443
+proto	hysteria2
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	hysteriaVersion=2;pinSHA256= aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== hy2://p@h.example.com:443?insecure=1&pwd=x&pinSHA256=aa%C2%A0bb
+address	h.example.com
+allowInsecure	true
+alpn	
+alterId	0
+awgVersion	
+credential	p
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	h.example.com
+network	tcp
+path	
+port	443
+proto	hysteria2
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	hysteriaVersion=2;pinSHA256=aa bb
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== hy2://p@h.example.com:443?insecure=1&pwd=x&pinSHA256=%0Baaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa%0B
+address	h.example.com
+allowInsecure	true
+alpn	
+alterId	0
+awgVersion	
+credential	p
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	h.example.com
+network	tcp
+path	
+port	443
+proto	hysteria2
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	hysteriaVersion=2;pinSHA256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== trojan://secretpw@example.com:1٠
+error	missingField("host/port")
+=== hy2://token@example.com:443?insecure=1&pwd=x&mport=443,1٠-2000
+address	example.com
+allowInsecure	true
+alpn	
+alterId	0
+awgVersion	
+credential	token
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	example.com
+network	tcp
+path	
+port	443
+proto	hysteria2
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	
+userData	hysteriaVersion=2;portHopping=443,1٠-2000
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	
+=== vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:1٠?security=none#port-mixed
+error	missingField("host/port")
+=== vmess://eyJ2IjogIjIiLCAicHMiOiAibWl4ZWQtcG9ydCIsICJhZGQiOiAiYS5leGFtcGxlLmNvbSIsICJwb3J0IjogIjHZoCIsICJpZCI6ICIxYjU2NGQyZi01MTE3LTRjOGMtOWIwZC05ZTJmOGEzZjFjMjIiLCAiYWlkIjogIjAiLCAic2N5IjogImF1dG8iLCAibmV0IjogIndzIiwgImhvc3QiOiAiaC5leGFtcGxlLmNvbSIsICJwYXRoIjogIi94IiwgInRscyI6ICIifQ==
+error	missingField("add/port/id")
+=== hy2://tok3n@example.com:443?sni=pin.example.com&insecure=1&alpn=h3,http%2F1.1#alpn-pinned
+address	example.com
+allowInsecure	true
+alpn	h3,http/1.1
+alterId	0
+awgVersion	
+credential	tok3n
+fingerprint	
+flow	
+grpcMultiMode	
+headerType	
+host	
+method	
+name	alpn-pinned
+network	tcp
+path	
+port	443
+proto	hysteria2
+realityPublicKey	
+realityShortId	
+realitySpiderX	
+security	tls
+sni	pin.example.com
+userData	hysteriaVersion=2
+vlessEncryption	
+vmessCipher	
+wgAddresses	
+wgAllowedIPs	
+wgDNS	
+wgKeepAlive	
+wgMTU	
+wgPeer	
+wgPreshared	
+xhttpExtra	
+xhttpMode	

@@ -1,0 +1,1 @@
+error: The link asks for VLESS Encryption 'mlkem768x25519plus.native.2rtt.4-nRE8HxLu0el682m3UHJZzRmU1XU8eycmd05mwh4Dw', which the bundled Xray-core cannot use: the value must be a mlkem768x25519plus group key in native/xorpub/random 1rtt/0rtt form. Ask the provider for a plain (encryption=none) link, or update the app's engine.

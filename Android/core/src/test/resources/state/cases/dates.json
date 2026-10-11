@@ -1,0 +1,32 @@
+{
+ "subscriptions": [
+  {
+   "id": "AB564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "целая",
+   "url": "https://a",
+   "lastUpdated": 791692800,
+   "servers": []
+  },
+  {
+   "id": "BB564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "null",
+   "url": "https://b",
+   "lastUpdated": null,
+   "servers": []
+  },
+  {
+   "id": "CB564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "строка",
+   "url": "https://c",
+   "lastUpdated": "791692800",
+   "servers": []
+  },
+  {
+   "id": "DB564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "отрицательная",
+   "url": "https://d",
+   "lastUpdated": -1.5,
+   "servers": []
+  }
+ ]
+}

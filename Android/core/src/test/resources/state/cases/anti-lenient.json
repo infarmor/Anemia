@@ -1,0 +1,21 @@
+{
+ "anti": {
+  "fragment": {
+   "packets": "tlshello"
+  },
+  "noises": [
+   {
+    "type": "rand",
+    "packet": "50-100",
+    "delay": "10-16"
+   },
+   {
+    "type": 5
+   }
+  ],
+  "muxConcurrency": "4",
+  "muxEnabled": true,
+  "fingerprint": 7,
+  "mimicry": "telegram"
+ }
+}

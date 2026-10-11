@@ -1,0 +1,17 @@
+userinfo	title=Привет, панель	up=1099511627776	down=6163511516	total=3221225472	used=1105675139292	remaining=0	unlimited=false	fraction=1.0000	expires=1770000000	interval=86400	support=https://panel.example.com	web=—	announce=—
+userinfo-spaces	title=—	up=1	down=2	total=100	used=3	remaining=97	unlimited=false	fraction=0.0300	expires=—	interval=—	support=—	web=—	announce=—
+userinfo-junk	title=—	up=—	down=—	total=10	used=—	remaining=10	unlimited=false	fraction=0.0000	expires=—	interval=—	support=—	web=—	announce=—
+userinfo-huge	title=—	up=—	down=-5	total=9223372036854775807	used=-5	remaining=9223372036854775807	unlimited=false	fraction=0.0000	expires=—	interval=—	support=—	web=—	announce=—
+title-percent	title=Зона	up=—	down=—	total=—	used=—	remaining=—	unlimited=true	fraction=—	expires=—	interval=—	support=—	web=—	announce=last %21 %
+title-broken-b64	title=base64:###	up=—	down=—	total=—	used=—	remaining=—	unlimited=true	fraction=—	expires=—	interval=—	support=—	web=—	announce=данные
+latin1	title=зона	up=—	down=—	total=—	used=—	remaining=—	unlimited=true	fraction=—	expires=—	interval=—	support=—	web=—	announce=—
+urls	title=ok	up=—	down=—	total=—	used=—	remaining=—	unlimited=true	fraction=—	expires=—	interval=—	support=—	web=—	announce=—
+tg-link	title=nil	up=—	down=—	total=—	used=—	remaining=—	unlimited=false	fraction=—	expires=—	interval=—	support=—	web=—	announce=—
+only-empty	title=nil	up=—	down=—	total=—	used=—	remaining=—	unlimited=false	fraction=—	expires=—	interval=—	support=—	web=—	announce=—
+interval-zero	title=x	up=—	down=—	total=—	used=—	remaining=—	unlimited=true	fraction=—	expires=—	interval=—	support=—	web=—	announce=—
+interval-fraction	title=—	up=—	down=—	total=—	used=—	remaining=—	unlimited=true	fraction=—	expires=—	interval=23400	support=—	web=—	announce=—
+expire-huge	title=—	up=1	down=—	total=—	used=1	remaining=—	unlimited=true	fraction=—	expires=overflow	interval=—	support=—	web=—	announce=—
+userinfo-nbsp	title=Мягкий заголовок	up=10	down=20	total=1000	used=30	remaining=970	unlimited=false	fraction=0.0300	expires=1770000000	interval=—	support=—	web=—	announce=—
+userinfo-vtab	title=—	up=—	down=—	total=—	used=—	remaining=—	unlimited=true	fraction=—	expires=—	interval=86400	support=—	web=—	announce=—
+expire-twice	title=—	up=1	down=—	total=—	used=1	remaining=—	unlimited=true	fraction=—	expires=—	interval=—	support=—	web=—	announce=—
+userinfo-overflow	title=overflow	up=9223372036854775807	down=1	total=—	used=9223372036854775807	remaining=—	unlimited=true	fraction=—	expires=—	interval=—	support=—	web=—	announce=—

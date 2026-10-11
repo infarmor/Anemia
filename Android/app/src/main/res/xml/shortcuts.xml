@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Долгое нажатие на значок: два экрана, которые не влезли в один список
+  серверов. Отбор не случайный — и то, и другое на iOS живёт в настройках, а
+  здесь настроек как отдельного экрана пока нет.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="map"
+        android:enabled="true"
+        android:icon="@drawable/ic_stat_anemia"
+        android:shortcutShortLabel="@string/shortcut_map_short"
+        android:shortcutLongLabel="@string/shortcut_map_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="app.anemia"
+            android:targetClass="app.anemia.ui.MapActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="transfer"
+        android:enabled="true"
+        android:icon="@drawable/ic_stat_anemia"
+        android:shortcutShortLabel="@string/shortcut_transfer_short"
+        android:shortcutLongLabel="@string/shortcut_transfer_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="app.anemia"
+            android:targetClass="app.anemia.ui.TransferActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="apps"
+        android:enabled="true"
+        android:icon="@drawable/ic_stat_anemia"
+        android:shortcutShortLabel="@string/shortcut_apps_short"
+        android:shortcutLongLabel="@string/shortcut_apps_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="app.anemia"
+            android:targetClass="app.anemia.ui.AppsActivity" />
+    </shortcut>
+</shortcuts>

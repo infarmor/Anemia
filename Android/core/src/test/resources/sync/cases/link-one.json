@@ -1,0 +1,26 @@
+{
+ "kind": "link",
+ "bundle": {
+  "version": 1,
+  "exportedAt": "2026-02-02T02:40:00Z",
+  "device": "iPhone Маши",
+  "servers": [
+   {
+    "id": "3B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+    "name": "Trojan",
+    "proto": "trojan",
+    "address": "cdn.example.com",
+    "port": 8443,
+    "credential": "p@ss",
+    "alterId": 0,
+    "network": "ws",
+    "security": "tls",
+    "alpn": [],
+    "allowInsecure": false,
+    "path": "/t"
+   }
+  ],
+  "subscriptions": [],
+  "settings": null
+ }
+}

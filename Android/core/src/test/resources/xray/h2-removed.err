@@ -1,0 +1,1 @@
+error: Transport 'http' is no longer supported by the bundled Xray-core (removed in 26.x). Ask the provider for a ws/grpc/tcp variant of this server.

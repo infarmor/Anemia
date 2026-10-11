@@ -1,0 +1,15 @@
+link00	amnezia://eyJ2IjoiMyIsImhvc3RuYW1lIjoiZXhhbXBsZS5jb20ifQ==
+link01	wireguard://yAnz5TF%2BfT28A5vH0vGcC8pVXqv5ZfV0%2B0P4Rn1v5HE%3D@203.0.113.9:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0%3D&address=10.7.0.2%2F32%2Cfd00%3A%3A2%2F128&jc=4&jmin=40&jmax=70&s1=116&s2=172&h1=5&h2=88&h3=1234&h4=99999#WG
+link02	amnezia://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IHlBbno1VEYrZlQyOEE1dkgwdkdjQzhwVlhxdjVaZlYwKzBQNFJuMXY1SEU9CkFkZHJlc3MgPSAxMC44LjEuMi8zMiwgZmQ0Mjo6Mi8xMjgKRE5TID0gMS4xLjEuMQpNVFUgPSAxMjgwCkpjID0gNQpKbWluID0gNDAKSm1heCA9IDcwClMxID0gODYKUzIgPSAxMDAKUzMgPSAzOQpTNCA9IDY4CkgxID0gMTIzNDU2Ny0xMjM0NTk5CkgyID0gNzY1NDMyMQpIMyA9IDExMjIzMzQ0NTUKSDQgPSA0NDQ0NDQ0CgpbUGVlcl0KUHVibGljS2V5ID0gT3g1dkRXZko5eWZrWGNVdUoyWGdLbFFTbUd2dm5CQjBxUjl2SzNGMnpWMD0KQWxsb3dlZElQcyA9IDAuMC4wLjAvMCwgOjovMApFbmRwb2ludCA9IDIwMy4wLjExMy43OjUxODIwClBlcnNpc3RlbnRLZWVwYWxpdmUgPSAyNQo=#AmneziaWG 2.0
+link03	wg://W0ludGVyZmFjZV0KUHJpdmF0ZUtleSA9IHlBbno1VEYrZlQyOEE1dkgwdkdjQzhwVlhxdjVaZlYwKzBQNFJuMXY1SEU9CkFkZHJlc3MgPSAxMC44LjEuMi8zMiwgZmQ0Mjo6Mi8xMjgKRE5TID0gMS4xLjEuMQpNVFUgPSAxMjgwCkpjID0gNQpKbWluID0gNDAKSm1heCA9IDcwClMxID0gODYKUzIgPSAxMDAKUzMgPSAzOQpTNCA9IDY4CkgxID0gMTIzNDU2Ny0xMjM0NTk5CkgyID0gNzY1NDMyMQpIMyA9IDExMjIzMzQ0NTUKSDQgPSA0NDQ0NDQ0CgpbUGVlcl0KUHVibGljS2V5ID0gT3g1dkRXZko5eWZrWGNVdUoyWGdLbFFTbUd2dm5CQjBxUjl2SzNGMnpWMD0KQWxsb3dlZElQcyA9IDAuMC4wLjAvMCwgOjovMApFbmRwb2ludCA9IDIwMy4wLjExMy43OjUxODIwClBlcnNpc3RlbnRLZWVwYWxpdmUgPSAyNQo=#conf-base64
+link04	wireguard://yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@203.0.113.9:51820?publickey=T3g1dkRXZko5eWZrWGNVdUoyWGdLbFFTbUd2dm5CQjBxUjl2SzNGMnpWMD0=&allowedips=&dns=1.1.1.1&mtu=1280&persistentkeepaliveinterval=25&ip=10.7.0.2/32,fd00::2/128#doubly-encoded
+link05	amnezia://yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@example.com:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=&ContentPaddingAddition=10-40&RekeyAfterTime=60-120#amnezia-query-3x
+link06	amnezia://key@1.2.3.4:51820
+link07	wg://yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@[2001:db8::1]:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=&localaddress=fd00::2/128#ipv6-authority
+link08	wireguard://yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@example.com:0?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=&privatekey=zzz#bad-port
+link09	wireguard://?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=#no-authority
+link10	amnezia://bm8tYSBjb25m#not-a-conf
+link11	wireguard://eUFuejVURitmVDI4QTV2SDB2R2NDOHBWWHF2NVpmVjArMFA0Um4xdjVIRT0=@203.0.113.9:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=#doubly-encoded-key
+link12	wireguard://bm90LWEta2V5@203.0.113.9:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=#short-inner-payload
+link13	wireguard://yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=@@1.2.3.4:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=&address=10.7.0.2/32#double-at
+link14	amnezia://@@1.2.3.4:51820#bare-double-at

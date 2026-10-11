@@ -1,0 +1,134 @@
+{
+ "servers": [
+  {
+   "id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "A",
+   "proto": "vless",
+   "address": "example.com",
+   "port": 443,
+   "credential": "1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22",
+   "alterId": 0,
+   "network": "ws",
+   "security": "reality",
+   "alpn": [
+    "h3",
+    "h2"
+   ],
+   "allowInsecure": false,
+   "sni": "www.microsoft.com",
+   "fingerprint": "chrome",
+   "realityPublicKey": "SbVKOEMjK0sIlbwg4akyBg5mL5KZwwAr-edNzES9saU",
+   "flow": "xtls-rprx-vision",
+   "path": "/ws",
+   "host": "cdn.example.com",
+   "grpcMultiMode": null,
+   "vmessCipher": null,
+   "method": null,
+   "xhttpMode": "auto",
+   "xhttpExtra": "{\"maxConcurrency\":8}",
+   "vlessEncryption": null,
+   "headerType": "srtp",
+   "nextTime": 1
+  },
+  {
+   "id": "2B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "B",
+   "proto": "trojan",
+   "address": "cdn.example.com",
+   "port": 8443,
+   "credential": "p@ss",
+   "alterId": 0,
+   "network": "ws",
+   "security": "tls",
+   "alpn": [],
+   "allowInsecure": false,
+   "path": "/t",
+   "host": "cdn.example.com"
+  }
+ ],
+ "subscriptions": [
+  {
+   "id": "3B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "Панель",
+   "url": "https://panel.example.com/sub?key=abc",
+   "lastUpdated": 791692800.25,
+   "servers": [
+    {
+     "id": "2C564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+     "name": "Из панели",
+     "proto": "trojan",
+     "address": "cdn.example.com",
+     "port": 8443,
+     "credential": "p@ss",
+     "alterId": 0,
+     "network": "ws",
+     "security": "tls",
+     "alpn": [],
+     "allowInsecure": false,
+     "path": "/t",
+     "host": "cdn.example.com"
+    }
+   ]
+  },
+  {
+   "id": "4B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "Без дат",
+   "url": "https://two.example.com/x",
+   "servers": []
+  }
+ ],
+ "selectedServerID": "2B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+ "anti": {
+  "fragment": {
+   "packets": "tlshello",
+   "length": "100-200",
+   "interval": "10-20"
+  },
+  "noises": [
+   {
+    "type": "rand",
+    "packet": "50-100",
+    "delay": "10-16"
+   },
+   {
+    "type": "str",
+    "packet": "14",
+    "delay": "10-16"
+   }
+  ],
+  "muxEnabled": true,
+  "muxConcurrency": 8,
+  "tcpFastOpen": false,
+  "fingerprint": "chrome",
+  "mimicry": [
+   "telegram",
+   "bittorrent"
+  ]
+ },
+ "killSwitchEnabled": true,
+ "maskingProfile": "maximum",
+ "autoConnectOnLaunch": true,
+ "mlRankingEnabled": false,
+ "systemProxyEnabled": true,
+ "subscriptionAutoRefresh": false,
+ "learnedMasking": {
+  "wg|1.2.3.4:51820|x||": "maximum",
+  "vless|example.com:443|": "balanced"
+ },
+ "splitTunnel": {
+  "enabled": true,
+  "entries": [
+   "8.8.8.8/32",
+   "example.com",
+   "# комментарий",
+   "не valid !!"
+  ]
+ },
+ "futureField": {
+  "a": [
+   1,
+   2,
+   3
+  ]
+ }
+}

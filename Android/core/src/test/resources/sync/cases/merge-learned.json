@@ -1,0 +1,33 @@
+{
+ "kind": "merge",
+ "bundle": {
+  "version": 1,
+  "exportedAt": "2026-02-02T02:40:00Z",
+  "device": "m",
+  "servers": [],
+  "subscriptions": [],
+  "settings": {
+   "learnedMasking": {
+    "a": "maximum",
+    "b": "off"
+   },
+   "maskingProfile": "ruYandex"
+  }
+ },
+ "state": {
+  "servers": [],
+  "subscriptions": [],
+  "selectedServerID": null,
+  "maskingProfile": "balanced",
+  "killSwitchEnabled": false,
+  "subscriptionAutoRefresh": true,
+  "learnedMasking": {
+   "a": "balanced",
+   "c": "maximum"
+  },
+  "splitTunnel": {
+   "enabled": true,
+   "entries": []
+  }
+ }
+}

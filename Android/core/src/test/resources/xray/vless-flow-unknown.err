@@ -1,0 +1,1 @@
+error: Flow 'tlstcp' is not supported by the bundled Xray-core (only xtls-rprx-vision and xtls-rprx-vision-udp443) — re-import the link or ask for a ws/tcp variant.

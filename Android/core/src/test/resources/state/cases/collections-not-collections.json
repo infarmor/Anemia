@@ -1,0 +1,22 @@
+{
+ "servers": {
+  "only": {
+   "one": "entry"
+  }
+ },
+ "learnedMasking": "нет",
+ "subscriptions": [
+  1,
+  2,
+  3
+ ],
+ "splitTunnel": {
+  "enabled": "true",
+  "entries": "a.com"
+ },
+ "anti": [
+  {
+   "muxEnabled": true
+  }
+ ]
+}

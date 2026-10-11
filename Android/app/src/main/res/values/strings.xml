@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Ярлыки долгого нажатия на значок. AAPT принимает в
+         `shortcutShortLabel`/`shortcutLongLabel` только ссылку на ресурс, а не
+         литерал — отсюда этот файл, хотя весь остальной текст живёт в Compose. -->
+    <string name="shortcut_transfer_short">Перенос</string>
+    <string name="shortcut_transfer_long">Перенос на другое устройство</string>
+    <string name="shortcut_map_short">Карта</string>
+    <string name="shortcut_map_long">Карта серверов</string>
+    <string name="shortcut_apps_short">Мимо VPN</string>
+    <string name="shortcut_apps_long">Приложения вне туннеля</string>
+</resources>

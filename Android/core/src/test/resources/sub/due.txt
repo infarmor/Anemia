@@ -1,0 +1,40 @@
+http-never-fetched	http://panel.test/sub		1800000000			
+http-old	http://panel.test/sub	1799892000	1800000000			
+http-old-user-press	http://panel.test/sub	1799892000	1800000000			1
+http-upper-scheme	HTTP://panel.test/sub	1799892000	1800000000			
+http-host-uppercase	http://PANEL.test/sub	1799892000	1800000000			
+ftp-scheme	ftp://panel.test/sub	1799892000	1800000000			
+https-slash-missing	https:/panel.test/sub	1799892000	1800000000			
+https-upper	HTTPS://panel.test/sub	1799892000	1800000000			
+https-never-fetched	https://panel.test/sub		1800000000			
+https-fresh	https://panel.test/sub	1799999940	1800000000			
+https-just-under	https://panel.test/sub	1799978401	1800000000			
+https-boundary	https://panel.test/sub	1799978400	1800000000			
+https-stale	https://panel.test/sub	1799974800	1800000000			
+https-future	https://panel.test/sub	1800003600	1800000000			
+panel-half-hour	https://panel.test/sub	1799998000	1800000000	1800		
+panel-hour	https://panel.test/sub	1799996401	1800000000	3600		
+panel-day	https://panel.test/sub	1799913601	1800000000	86400		
+panel-hundred-hours	https://panel.test/sub	1799600000	1800000000	360000		
+panel-negative	https://panel.test/sub	1799998000	1800000000	-5		
+default-two-hours	https://panel.test/sub	1799992801	1800000000		7200	
+default-tiny	https://panel.test/sub	1799999980	1800000000		10	
+default-huge	https://panel.test/sub	1799900000	1800000000		1000000	
+user-press-fresh	https://panel.test/sub	1799999940	1800000000			1
+epoch-year-9999	https://panel.test/sub	253402300800	253402300800			
+panel-fractional-hours	https://panel.test/sub	1799994600	1800000000	1.5		
+bad-now	https://panel.test/sub		abc			
+empty-now	https://panel.test/sub	1799978400				
+no-url			1800000000			
+interval-nan	https://p/sub	1799892000	1800000000	nan		
+interval-inf	https://p/sub	1799892000	1800000000	1e400		
+interval-minus-inf	https://p/sub	1799992800	1800000000	-inf		
+default-nan	https://p/sub	1799892000	1800000000		nan	
+interval-fraction	https://p/sub	1799992799	1800000000	7200.75		
+now-nan	https://p/sub	1799892000	nan			
+lu-inf-now-inf	https://p/sub	inf	inf			
+short-line	https://p/sub	1799978400	1800000000
+long-line	https://p/sub	1799892000	1800000000			1	junk
+bad-allow-insecure	https://p/sub	1799892000	1800000000			2
+	https://p/sub	1799892000	1800000000			
+two-bad	https://p/sub	1799892000	1800000000	zzz	yyy	

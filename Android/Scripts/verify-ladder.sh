@@ -26,6 +26,7 @@ set -uo pipefail
 SDK="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
 ADB="$SDK/platform-tools/adb"
 MODE="${1:-drop}"
+PYTHON="${PYTHON:-python3}"
 # Обрыв замечается за два пропуска тика (2 × 3 с), плюс backoff первой
 # ступеньки; запас — на медленный эмулятор.
 DEADLINE="${DEADLINE:-40}"
@@ -61,10 +62,17 @@ if [[ "$("$ADB" shell id -u 2>/dev/null | tr -d '\r')" != "0" ]]; then
     exit 1
 fi
 
-LOG=/tmp/ladder-$MODE.log
+SNAP=/tmp/ladder-$MODE.log
+# Снимок лога по требованию: фоном `adb logcat` держать нельзя — он переживает
+# не каждый чужой `adb kill-server`, а пустой файл скрипт прочёл бы как
+# «лестница молчала».
+logsnap() { "$ADB" logcat -d -v time -s Anemia 2>/dev/null | tr -d '\r' >"$SNAP"; }
+# Сколько не-VPN сетей ещё зарегистрировано — то же, что видит экран.
+count_agents() { "$ADB" shell "dumpsys connectivity 2>/dev/null | grep -cE 'ni\\{(WIFI|MOBILE|ETHERNET) CONNECTED'" 2>/dev/null | tr -d '\r' | tail -1; }
+# Файл прошлого прогона на том же пути: без обнуления его строки сойдут за
+# доказательства этого (и «лестница держится», и «лестница молчит» — что угодно).
+: >"$SNAP"
 "$ADB" logcat -c
-"$ADB" logcat -v time -s Anemia >"$LOG" 2>&1 &
-LOGGER=$!
 
 before=$("$ADB" shell ip -o link show tun0 2>/dev/null | tr -d '\r' | awk -F: '{print $1}' | tr -d ' ')
 # Пид интерфейса. Лестница живёт в UI-процессе (широковещание отказа принимает
@@ -73,14 +81,60 @@ before=$("$ADB" shell ip -o link show tun0 2>/dev/null | tr -d '\r' | awk -F: '{
 ui_before=$("$ADB" shell pidof app.anemia 2>/dev/null | tr -d '\r' | tr -d ' ')
 echo "→ рву tun0 (был индексом $before), режим $MODE"
 
+# Линк гасится в `hold` и в `stop`; включать обратно надо в обоих, иначе
+# прогон оставляет устройство без сети, а следующий режим честно доложит о
+# паузах «нет линка» вместо результата.
+LINK_OFF=0
 restore() {
-    [[ "$MODE" == "hold" ]] || return 0
+    (( LINK_OFF )) || return 0
+    LINK_OFF=0
     "$ADB" shell svc wifi enable >/dev/null 2>&1
     "$ADB" shell svc data enable >/dev/null 2>&1
     echo "↩ линк включён обратно"
 }
-trap 'restore; kill $LOGGER 2>/dev/null' EXIT
-"$ADB" shell ip link del tun0 >/dev/null 2>&1 || { echo "✗ не удалось снять интерфейс" >&2; exit 1; }
+trap 'restore' EXIT
+if [[ "$MODE" == "hold" || "$MODE" == "stop" ]]; then
+    # «Нет линка» надо дождаться, а не предположить: `svc wifi disable` возвращает
+    # управление сразу, и лестница успевает увидеть ещё живую сеть и честно
+    # потратить ступеньку. Тогда `during=1` — не баг, а артефакт замера.
+    "$ADB" shell svc data disable >/dev/null 2>&1
+    "$ADB" shell svc wifi disable >/dev/null 2>&1
+    LINK_OFF=1
+    # Дефолтная сеть снимается раньше, чем система убирает регистрацию: `allNetworks`
+    # ещё несколько секунд отдаёт живые capabilities, и лестница за это время
+    # успевает потратить ступеньку по совершенно уважительной причине. Ждём снятия
+    # регистрации и даём ей устояться.
+    #
+    # Оговорка, которую скрипт обязан делать вслух: `count_agents` считает
+    # состояние транпорта по строкам `ni{(WIFI|MOBILE|ETHERNET) CONNECTED`, а
+    # экран решает по `allNetworks` + возможности INTERNET и НЕ-VPN. Это разные
+    # вопросы, и совпадают они только на этом эмуляторе: здесь у сети либо есть транспорт, либо нет. Поэтому настоящее доказательство паузы — строчка
+    # `hold:` в логе приложения (её печатает сам `hasPhysicalLink`), и ниже
+    # красным считается именно её отсутствие, а не число агентов.
+    for _ in $(seq 1 30); do
+        [[ "$(count_agents)" == "0" ]] && break
+        sleep 1
+    done
+    sleep 2
+    agents=$(count_agents)
+    if [[ "${agents:-1}" != "0" ]]; then
+        echo "✗ non-VPN сеть всё ещё зарегистрирована (агентов: $agents) — проверять паузу бессмысленно"
+        restore
+        exit 1
+    fi
+fi
+"$ADB" shell ip link del tun0 >/dev/null 2>&1
+if [[ $? -ne 0 ]]; then
+    # На части прошивок снятие подложки само роняет интерфейс VPN, и `ip link del`
+    # отвечает «не существует» — это не поломка замера, а тот самый случай,
+    # который лестница и должна увидеть. Красным становится только случай, когда
+    # интерфейс жив и приложения до него не коснулось.
+    if [[ -n "$("$ADB" shell ip -o link show tun0 2>/dev/null | tr -d '\r')" ]]; then
+        echo "✗ не удалось снять интерфейс, и он всё ещё поднят — проверять нечего" >&2
+        exit 1
+    fi
+    echo "→ интерфейса уже нет (система сняла его вместе с подложкой)"
+fi
 
 # Режим `stop`: посреди эпизода нажимается плитка QS (та же ветка, что и
 # `SessionStarter.stop()`), и после этого туннель обязан НЕ вернуться. Это
@@ -88,47 +142,83 @@ trap 'restore; kill $LOGGER 2>/dev/null' EXIT
 # не имело признака, отложенная ступенька оставалась вооружённой и поднимала
 # соединение через секунду после «Отключить».
 if [[ "$MODE" == "stop" ]]; then
+    # Окно должно быть широким: иначе проверка превращается в гонку с logcat,
+    # который через adb ещё и с задержкой пишет. Поэтому линк уже погашен выше, лестница
+    # встаёт в паузу (5 с между шагами), и именно в паузе нажимается
+    # «Отключить» на экране — канонический путь «пользователь остановил».
     armed=0
-    for _ in $(seq 1 24); do
+    for _ in $(seq 1 40); do
         sleep 0.5
-        if grep -qE 'Anemia +\([ 0-9]+\): fail:' "$LOG"; then armed=1; break; fi
+        logsnap
+        grep -qE 'Anemia +\([ 0-9]+\): hold: ' "$SNAP" && { armed=1; break; }
     done
     if (( armed == 0 )); then
-        echo "✗ обрыва в логе не дождались — останавливать было нечего"
-        kill $LOGGER 2>/dev/null
-        exit 1
+        echo "✗ паузы «нет линка» не дождались — ловить нечего"
+        restore;         exit 1
     fi
-    echo "→ эпизод идёт, тапаю плитку (SessionActivity)"
-    "$ADB" shell am start -n app.anemia/.ui.SessionActivity >/dev/null 2>&1
+    tap=$("$PYTHON" - "$ADB" <<'TAPI'
+import re, subprocess, sys
+adb = sys.argv[1]
+subprocess.run([adb, "shell", "uiautomator", "dump", "/sdcard/stop.xml"], capture_output=True)
+xml = subprocess.run([adb, "shell", "cat", "/sdcard/stop.xml"], capture_output=True, text=True).stdout
+for m in re.finditer(r'text="([^"]*)"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml):
+    if m.group(1) == "Отключить":
+        l, t, r, b = (int(m.group(i)) for i in range(2, 6))
+        print(f"{(l + r) // 2} {(t + b) // 2}")
+        break
+TAPI
+)
+    if [[ -z "$tap" ]]; then
+        echo "✗ кнопки «Отключить» на экране не нашлось — прогон нечестный"
+        restore;         exit 1
+    fi
+    echo "→ в паузе нажимаю «Отключить» (${tap})"
+    "$ADB" shell input tap ${tap} >/dev/null 2>&1
     sleep 2
-    stopped=$(grep -cE 'Anemia +\([ 0-9]+\): connect ' "$LOG" || true)
     notes=$("$ADB" shell dumpsys notification --noredact 2>/dev/null | tr -d '\r' | grep -c 'NotificationRecord.*app.anemia' || true)
-    echo "  остановка принята (уведомлений: ${notes:-?}), попыток на этот миг: $stopped"
+    # Снимок ОБЯЗАН быть свежим в обеих точках. `logsnap` пишет буфер logcat в
+    # один и тот же файл, и без нового снимка `later` буквально равен `stopped`:
+    # сравнение `later > stopped` не краснело бы никогда, а «туннель воскрес»
+    # нельзя было бы увидеть даже если он правда поднялся.
+    logsnap
+    stopped=$(grep -cE 'Anemia +\([ 0-9]+\): connect ' "$SNAP" || true)
+    echo "  уведомлений после остановки: ${notes:-?}, попыток на этот миг: $stopped"
+    if [[ "${notes:-1}" != "0" ]]; then
+        echo "✗ уведомление сервиса осталось — остановка не дошла, и молчание ниже объясняется этим, а не лестницей"
+        fail=1
+    fi
+    restore
     sleep 25
-    later=$(grep -cE 'Anemia +\([ 0-9]+\): connect ' "$LOG" || true)
+    later=$(logsnap; grep -cE 'Anemia +\([ 0-9]+\): connect ' "$SNAP" || true)
     back=$("$ADB" shell ip -o link show tun0 2>/dev/null | tr -d '\r' | head -1)
     if [[ -n "$back" ]] || (( later > stopped )); then
         echo "✗ туннель воскрес после остановки: попыток было $stopped, стало $later"
         fail=1
     else
-        echo "✓ остановка плиткой погасила эпизод: $(plural "$later" попытка попытки попыток) за весь прогон, tun0 не поднят"
+        echo "✓ остановка в паузе погасила эпизод: $(plural "$later" попытка попытки попыток) за весь прогон, tun0 не поднят"
     fi
-    kill $LOGGER 2>/dev/null
-    echo "лог: $LOG"
+        echo "лог: $SNAP"
     exit $fail
 fi
 
 start=$SECONDS
 during=0
+holds=0
 if [[ "$MODE" == "hold" ]]; then
-    "$ADB" shell svc data disable >/dev/null 2>&1
-    "$ADB" shell svc wifi disable >/dev/null 2>&1
+    # Ждём именно паузу, а не просто секунды: без неё проверка «ручное
+    # подключение не убивает эпизод» превращается в проверку ничего.
+    for _ in $(seq 1 30); do
+        sleep 0.5
+        logsnap
+        grep -qE 'Anemia +\([ 0-9]+\): hold: ' "$SNAP" && break
+    done
+    holds=$(grep -cE 'Anemia +\([ 0-9]+\): hold: ' "$SNAP" || true)
     sleep "$HOLD_OFF_SECONDS"
     # Сколько ступенек израсходовалось, пока линка не было. Движок-то поднимает
     # туннель и без подложки (`establish()` проходит), так что «попыток не было»
     # — единственный честный признак того, что лестница встала в паузу, а не
     # пережигает попытки в пустую.
-    during=$(grep -cE 'Anemia +\([ 0-9]+\): connect ' "$LOG" || true)
+    during=$(logsnap; grep -cE 'Anemia +\([ 0-9]+\): connect ' "$SNAP" || true)
 
     restore
     start=$SECONDS
@@ -146,15 +236,33 @@ done
 # Что при этом сказал сервис. Отметка «fail:» — единственный наблюдаемый момент
 # широковещания об обрыве: экран обновляется в тот же миг, но снаружи это не
 # увидеть.
-fails=$(grep -cE 'Anemia +\([ 0-9]+\): fail:' "$LOG" || true)
+logsnap
+fails=$(grep -cE 'Anemia +\([ 0-9]+\): fail:' "$SNAP" || true)
 # Паузы «нет линка» считаем всегда: в режиме drop они тоже могут быть (например,
 # когда линк мигает), и без них время возврата выглядит необъяснимым.
-holds=$(grep -cE 'Anemia +\([ 0-9]+\): hold: ' "$LOG" || true)
-tries=$(grep -cE 'Anemia +\([ 0-9]+\): connect ' "$LOG" || true)
-masking=$(grep -oE 'connect .* with masking [a-zA-Z]+' "$LOG" | tail -1 || true)
+holds=$(grep -cE 'Anemia +\([ 0-9]+\): hold: ' "$SNAP" || true)
+tries=$(grep -cE 'Anemia +\([ 0-9]+\): connect ' "$SNAP" || true)
+# «Где-то в логе был connect» ничего не доказывает: туннель мог поднять чужой
+# тап (или вторая сессия, которая в это же время гоняет свой сценарий). Нужен
+# порядок: попытка обязана идти после обрыва.
+after_fail=$(awk '/Anemia .*\): fail:/ {seen=1; next} seen && /Anemia .*\): connect / {n++} END {print n+0}' "$SNAP")
+masking=$(grep -oE 'connect .* with masking [a-zA-Z]+' "$SNAP" | tail -1 || true)
 
+if [[ ! -s "$SNAP" ]]; then
+    # Пустой лог — не «лестница молчала»: так выглядит устройство, которое
+    # переподключили посреди замера. Вердикт по пустому файлу был бы ложью.
+    echo "✗ logcat не отдал ни одной строки — прогон недействителен"
+    exit 1
+fi
 echo "  отказов: $fails, пауз «нет линка»: ${holds:-0}, $(plural "$tries" попытка попытки попыток) (из них без линка: $during)"
 echo "  ${masking:-маскирование не наблюдаемо}"
+
+if [[ "$MODE" == "drop" ]]; then
+    if [[ $after_fail -eq 0 ]]; then
+        echo "✗ после обрыва не было ни одной попытки от лестницы — туннель вернулся не благодаря ей"
+        fail=1
+    fi
+fi
 
 if [[ "$MODE" == "hold" ]]; then
     if [[ $during -gt 0 ]]; then
@@ -187,7 +295,7 @@ if [[ -n "${tun_back:-}" ]] && (( tun_back > 0 )); then
     # Обрыв обязан быть заявлен как обрыв: dropped=false означало бы, что
     # сервис посчитал это отказом ещё не поднявшегося подключения, и экран
     # не начал бы лестницу вовсе.
-    if grep -qE 'fail: .*dropped=true' "$LOG"; then
+    if grep -qE 'fail: .*dropped=true' "$SNAP"; then
         echo "✓ отказ заявлен как обрыв живой сессии (dropped=true)"
     else
         echo "✗ в logcat нет отметки fail: с dropped=true — экран не завёл бы лестницу"
@@ -206,5 +314,5 @@ else
     echo "  интерфейс жил весь прогон (pid $ui_after)"
 fi
 
-echo "лог: $LOG"
+echo "лог: $SNAP"
 exit $fail

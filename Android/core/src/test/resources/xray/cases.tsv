@@ -1,0 +1,61 @@
+# id	ссылка	аргументы emit-tun
+reality-vision	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=reality&sni=www.microsoft.com&fp=chrome&pbk=SbVKOEMjK0sIlbwg4akyBg5mL5KZwwAr-edNzES9saU&sid=abcd&spx=%2F&type=tcp&flow=xtls-rprx-vision	
+reality-vision-off	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=reality&sni=www.microsoft.com&pbk=SbVKOEMjK0sIlbwg4akyBg5mL5KZwwAr-edNzES9saU&type=tcp&flow=xtls-rprx-vision	--no-anti
+reality-mimicry	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=reality&pbk=SbVKOEMjK0sIlbwg4akyBg5mL5KZwwAr-edNzES9saU&type=tcp	--profile ruYandex
+reality-mimicry-vk	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=reality&pbk=SbVKOEMjK0sIlbwg4akyBg5mL5KZwwAr-edNzES9saU&type=tcp	--profile ruVK
+reality-no-pbk	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=reality&type=tcp	
+tls-ws	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=ws&path=%2Fvless&host=cdn.example.com&fp=firefox	
+tls-front-no-sni	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@185.199.108.53:443?security=tls&type=ws&host=cdn.example.com	
+tls-alpn-maximum	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&alpn=h3%2Ch2&type=tcp	--profile maximum
+xhttp-extra	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=xhttp&mode=auto&extra=%7B%22xc%22%3A%22reload%22%7D	
+xhttp-bad-mode	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=xhttp&mode=zzz	
+xhttp-bad-extra	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=xhttp&extra=not-json	
+grpc-multi	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=grpc&serviceName=GunSvc&host=authority.example.com&mode=multi	
+grpc-empty-service	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=grpc&path=%2Ffallback	
+h2-removed	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=http	
+tcp-http-header	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=none&type=tcp&headerType=http&path=%2Floose&host=front.example.com	
+vless-encryption	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?encryption=mlkem768x25519plus.native.1rtt.4-nRE8HxLu0el682m3UHJZzRmU1XU8eycmd05mwh4Dw&security=tls&type=tcp	
+trojan-tls	trojan://deadbeef-1b56-4d2f@example.com:443?security=tls&type=tcp&sni=cdn.example.com	
+trojan-none	trojan://password123@example.com:80?security=none&type=ws&path=%2Ftrojan	
+ss-aead	ss://YWVzLTI1Ni1nY206cHdAZXhhbXBsZS5jb206ODM4OA==	
+ss-uppercase	ss://QUVTMDU2LkdDTTpwMUBleGFtcGxlLmNvbTo4Mzg4	
+ss-legacy-cipher	ss://YWVzLTI1Ni1jZmI6cHdAZXhhbXBsZS5jb206ODM4OA==	
+ss-no-method	ss://OnB3QDEuMi4zLjQ6ODM4OA==/	
+vmess-ws	vmess://eyJ2IjoiMiIsInBzIjoiQyIsImFkZCI6ImV4YW1wbGUuY29tIiwicG9ydCI6NDQzLCJpZCI6InV1aWQiLCJhaWQiOiI2NCIsInNjeSI6ImF1dG8iLCJuZXQiOiJ3cyIsInR5cGUiOiJub25lIiwiaG9zdCI6ImNkbi5leGFtcGxlLmNvbSIsInBhdGgiOiIvdm1lc3MiLCJ0bHMiOiJ0bHMifQ==	
+hy2-full	hysteria2://sup3r%2Dsecret@example.com:443?sni=cdn.example.com&obfs=salamander&obfs-password=p%40ss&pinSHA256=aa3faf1e0d2b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5&insecure=1	
+hy2-hopping	hysteria2://token@example.com:443,20000-50000?sni=cdn.example.com	
+hy2-insecure-nopin	hysteria2://token@example.com:443?insecure=1	
+hy1	hysteria://example.com:443?auth=token&peer=cdn.example.com	
+kcp-plain	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?type=kcp&security=tls	
+kcp-header	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?type=kcp&security=tls&headerType=srtp	
+kcp-seed	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?type=kcp&security=tls&seed=zzz	
+awg-refused	wireguard://yAnz5TF%2BfT28A5vH0vGcC8pVXqv5ZfV0%2B0P4Rn1v5HE%3D@203.0.113.9:51820?publickey=Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0%3D	
+mtu-and-log	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=tcp	--mtu 1400 --log /tmp/anemia-golden.log
+adblock-dns	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=tcp	--adblock
+bypass-mixed	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=tcp	--bypass gosuslugi.ru,192.168.0.0/16,203.0.113.7,2001:db8::1/64
+bypass-dupes	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=tcp	--bypass ru,ru,*.example.com,.edge.test
+bypass-idn	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=tcp	--bypass сбербанк.рф,ми.ру
+bypass-forms	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=tcp	--bypass https://User@Host.Example.COM:8443/path,10.7.0.0/24,[2001:db8::1]:51820
+bypass-canonical	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=tcp	--bypass 1.2.3.4,010.0.0.0/8,172.28.0.0/24,127.0.0.1,2001:0db8:0000::/48,fe80::1/128
+bypass-broad-v4	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=tcp	--bypass 0.0.0.0/0
+bypass-broad-v6	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=tcp	--bypass ::/0
+bypass-reserved	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=tcp	--bypass 172.29.0.0/24
+bypass-junk	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=tcp	--bypass 999.1.1.1/32,example..com,-lead.com,1.2.3.4/33,2001:db8::/129
+bypass-comment	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=tcp	--bypass bank.ru#-not-a-rule
+hy2-bad-pin	hysteria2://token@example.com:443?sni=cdn.example.com&pinSHA256=zz3f	
+hy2-pins-colon	hysteria2://token@example.com:443?sni=cdn.example.com&pinSHA256=aa:3f:aa:3f:aa:3f:aa:3f:aa:3f:aa:3f:aa:3f:aa:3f:aa:3f:aa:3f:aa:3f:aa:3f:aa:3f:aa:3f:aa:3f:aa:3f	
+vless-encryption-two-keys	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?encryption=mlkem768x25519plus.native.1rtt.4-nRE8HxLu0el682m3UHJZzRmU1XU8eycmd05mwh4Dw.4-nRE8HxLu0el682m3UHJZzRmU1XU8eycmd05mwh4Dw&security=tls&type=tcp	
+vless-encryption-xorpub	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?encryption=mlkem768x25519plus.xorpub.0rtt.OLTmUuRNp_I3DZ4mDicTZVCko6bQf1wMMy-LEiQIP9I.bqaHdm6s-5zwXpFf_OtiRKpRdyMHMqcvVf_W3V6DOK0&security=tls&type=tcp	
+vless-encryption-junk	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?encryption=1b232a42dc540bc1&security=tls&type=tcp	
+vless-encryption-bad-mode	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?encryption=mlkem768x25519plus.native.2rtt.4-nRE8HxLu0el682m3UHJZzRmU1XU8eycmd05mwh4Dw&security=tls&type=tcp	
+vless-encryption-short-key	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?encryption=mlkem768x25519plus.native.1rtt.w6okA79GNnjlK8YcDv2Tw0r9kGSnFg8ksboRr6ATCw&security=tls&type=tcp	
+vless-flow-unknown	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=tls&type=tcp&flow=tlstcp	
+hy2-pin-vtab	hysteria2://token@example.com:443?sni=cdn.example.com&pinSHA256=%0Baa3faf1e0d2b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5%0B	
+hy2-pin-nbsp	hysteria2://token@example.com:443?sni=cdn.example.com&pinSHA256=%C2%A0aa3faf1e0d2b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5%C2%A0	
+# Маскирование, которое панель могла прислать бракованным: эмиссия обязана
+# отбросить то, что движок не загрузил бы, и не уронить конфиг (фильтр —
+# MaskingEmission.swift / MaskingEmission.kt. JSON без пробелов: колонка
+# аргументов режется по пробелам.
+# по пробелам).
+anti-junk-filtered	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=reality&pbk=SbVKOEMjK0sIlbwg4akyBg5mL5KZwwAr-edNzES9saU&sfp=chrome&sni=www.microsoft.com&fp=chrome	--anti {"fragment":{"packets":"tlshello","length":"100-200","interval":"10-20"},"noises":[{"type":"rand","packet":"50-100","delay":"10-16"},{"type":"hex","packet":"zz","delay":"abc"}]}
+anti-fragment-rejected	vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?security=reality&pbk=SbVKOEMjK0sIlbwg4akyBg5mL5KZwwAr-edNzES9saU&sfp=chrome&sni=www.microsoft.com&fp=chrome	--anti {"fragment":{"packets":"abc","length":"0-200","interval":"10"},"noises":[]}

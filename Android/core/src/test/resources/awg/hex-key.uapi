@@ -1,0 +1,8 @@
+set=1
+private_key=c809f3e5317e7d3dbc039bc7d2f19c0bca555eabf965f574fb43f8467d6fe471
+replace_peers=true
+public_key=a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90
+endpoint=203.0.113.7:51820
+replace_allowed_ips=true
+allowed_ip=0.0.0.0/0
+protocol_version=1

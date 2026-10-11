@@ -1,0 +1,49 @@
+{
+ "kind": "merge",
+ "bundle": {
+  "version": 1,
+  "exportedAt": "2026-02-02T02:40:00Z",
+  "device": "m",
+  "servers": [],
+  "subscriptions": [
+   {
+    "name": "A",
+    "url": "HTTPS://Panel.Example.COM/sub/"
+   },
+   {
+    "name": "B",
+    "url": " https://x.example "
+   },
+   {
+    "name": "C",
+    "url": "https://y.example"
+   }
+  ]
+ },
+ "state": {
+  "servers": [],
+  "subscriptions": [
+   {
+    "id": "9B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+    "name": "а",
+    "url": "https://panel.example.com/sub",
+    "servers": []
+   },
+   {
+    "id": "AB564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+    "name": "б",
+    "url": "https://x.example/",
+    "servers": []
+   }
+  ],
+  "selectedServerID": null,
+  "maskingProfile": "balanced",
+  "killSwitchEnabled": false,
+  "subscriptionAutoRefresh": true,
+  "learnedMasking": {},
+  "splitTunnel": {
+   "enabled": true,
+   "entries": []
+  }
+ }
+}

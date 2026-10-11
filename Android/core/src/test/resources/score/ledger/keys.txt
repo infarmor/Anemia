@@ -1,0 +1,11 @@
+key	Europe/Berlin	1739000000
+key	Europe/Berlin	1740000000
+key	UTC	1739000000
+key	Asia/Tashkent	1739000000
+dayof	Europe/Berlin	2026-02-08
+dayof	UTC	2026-02-08
+dayof	Europe/Berlin	2025-10-26
+dayof	Europe/Berlin	не дата
+dayof	Europe/Berlin	2026-13-45
+json
+

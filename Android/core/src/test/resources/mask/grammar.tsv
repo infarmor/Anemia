@@ -1,0 +1,111 @@
+# Grammar the masking filter implements: one row per shape the pinned
+# engine was shown, and the last column is the verdict `xray run -test`
+# returned on 2026-09-27 (Xray 26.3.27, Resources/xray). Fields are
+# tab-separated; %20 stands for a literal space, because a TSV reader
+# that trims would eat the whitespace rows this table exists to prove.
+#
+#   noise <TAB> type <TAB> packet <TAB> delay   <TAB> accept|reject
+#   frag    <TAB> packets <TAB> length <TAB> interval <TAB> accept|reject
+#
+# Consumers: Tests/LoaderCoreTests/MaskingEmissionTests.swift,
+# Android/core (Kotlin parity check) and Scripts/verify-noise-grammar.sh,
+# which re-measures every row against the binary.
+noise	rand	50-100	10-16	accept
+noise	rand	50-100	10	accept
+noise	rand	50-100	0	accept
+noise	rand	50-100		accept
+noise	rand	50-100	abc	reject
+noise	rand	50-100	10-abc	reject
+noise	rand	50-100	20-10	accept
+noise	rand	50-100	10-20-30	reject
+noise	rand	50-100	-5	accept
+noise	rand	50-100	+10	accept
+noise	rand	50-100	-10	accept
+noise	rand	50-100	-1--1	accept
+noise	rand	50-100	-114-514	accept
+noise	rand	50-100	--1	reject
+noise	rand	50-100	10-	reject
+noise	rand	50-100	0-0	accept
+noise	rand	50-100	5-5	accept
+noise	rand	50-100	2147483648	accept
+noise	rand	50-100	99999999999999999999	reject
+noise	rand	50-100	1e3	reject
+noise	rand	50-100	0x10	reject
+noise	rand	50-100	%2010	reject
+noise	rand	50-100	10%20	reject
+noise	rand	50-100	%2010-16%20	reject
+noise	rand	50	10	accept
+noise	rand	1	10	accept
+noise	rand	65536	10	accept
+noise	rand	4294967296	10	accept
+noise	rand	-5	10	accept
+noise	rand	+10	10	accept
+noise	rand	-114-514	10	accept
+noise	rand	0-100	10	reject
+noise	rand	0	10	reject
+noise	rand	0-0	10	reject
+noise	rand		10	reject
+noise	rand	100-50	10	accept
+noise	rand	100-0	10	accept
+noise	rand	50-100-150	10	reject
+noise	rand	1-2-3	10	reject
+noise	rand	abc	10	reject
+noise	rand	50-	10	reject
+noise	rand	%2050%20	10	accept
+noise	str	hello	10-16	accept
+noise	str		10-16	accept
+noise	str	%20%20	10	accept
+noise	str	日本語	10	accept
+noise	hex	0a1b2c	10-16	accept
+noise	hex	0A	10	accept
+noise	hex		10	accept
+noise	hex	%200a	10	accept
+noise	hex	a0b	10	reject
+noise	hex	zz	10	reject
+noise	hex	ab%20cd	10	reject
+noise	hex	0x0a	10	reject
+noise	hex	50-100	10	reject
+noise	base64	aGVsbG8=	10	accept
+noise	base64	aGVsbG8	10	accept
+noise	base64	aGVsbG8h	10	accept
+noise	base64	aGk=	10	accept
+noise	base64	aG	10	accept
+noise	base64	QQ==	10	accept
+noise	base64	QQ	10	accept
+noise	base64	ab-=	10	accept
+noise	base64	ab_d	10	accept
+noise	base64	====	10	accept
+noise	base64		10	accept
+noise	base64	%20QQ==%20	10	accept
+noise	base64	ab+/	10	accept
+noise	base64	ab/_	10	accept
+noise	base64	50-100	10	accept
+noise	base64	A	10	reject
+noise	base64	@@@	10	reject
+noise	base64	a?b	10	reject
+noise	Rand	50-100	10	reject
+noise	STR	hello	10	reject
+noise	HEX	0a	10	reject
+noise	BASE64	QQ	10	reject
+noise	utf8	50-100	10	reject
+noise	text	50-100	10	reject
+noise		50-100	10	reject
+frag	tlshello	100-200	10-20	accept
+frag		100-200	10-20	accept
+frag	TLSHELLO	100-200	10-20	accept
+frag	1-3	100-200	10-20	accept
+frag	-1	100-200	10-20	accept
+frag	2-1	100-200	10-20	accept
+frag	0-3	100-200	10-20	reject
+frag	0	100-200	10-20	reject
+frag	abc	100-200	10-20	reject
+frag	%2010	100-200	10-20	reject
+frag	10-	100-200	10-20	reject
+frag	tlshello		10	reject
+frag	tlshello	0-200	10	reject
+frag	tlshello	200-0	10	reject
+frag	tlshello	abc	10	reject
+frag	tlshello	100-200		accept
+frag	tlshello	100-200	0-0	accept
+frag	tlshello	100-200	abc	reject
+frag	tlshello	100-200	%2010	reject

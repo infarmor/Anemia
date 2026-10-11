@@ -1,0 +1,24 @@
+note-prunes-old	note	1000	900	10,999
+note-keeps-boundary	note	1000	900	100
+note-from-empty	note	1000	900	
+note-keeps-future	note	1000	900	1500
+refund-one-of-two	refund	500	900	500,500
+refund-last-of-three	refund	500	900	500,500,500
+refund-absent	refund	1000	900	400,700
+refund-only-match	refund	700	900	400,700
+refund-does-not-prune	refund	1000	900	5,1000
+prune-drops-old	prune	1000	900	99,100,999
+prune-keeps-boundary	prune	1000	900	100
+prune-all	prune	1000	900	1,2
+ages-mixed	ages	1000	900	50,900,999
+ages-negative-kept	ages	1000	900	2000
+ages-empty	ages	1000	900	
+ages-unsorted	ages	1000	900	999,500,100
+custom-window-tight	note	1000	10	995
+custom-window-wide	note	1000	100000	10
+bad-op	drop	1000	900	
+bad-now	note	nan	900	
+bad-mark	note	1000	900	900,abc
+bad-window	note	1000	inf	
+few-columns	note	1000	900
+	note	1000	900	500

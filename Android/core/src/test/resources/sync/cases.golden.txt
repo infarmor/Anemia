@@ -1,0 +1,85 @@
+=== file-full
+file	{"device":"iPhone Маши","exportedAt":"2026-02-02T02:40:00Z","servers":[{"address":"example.com","allowInsecure":false,"alpn":[],"alterId":0,"credential":"1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22","flow":"xtls-rprx-vision","host":"cdn.example.com","id":"1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22","name":"🇺🇸 Reality","network":"ws","path":"\/ws","port":443,"proto":"vless","realityPublicKey":"SbVKOEMjK0sIlbwg4akyBg5mL5KZwwAr-edNzES9saU","security":"reality","sni":"www.microsoft.com"},{"address":"203.0.113.7","allowInsecure":false,"alpn":[],"alterId":0,"awg":{"contentPaddingAddition":"10-40","junkMax":70,"junkMin":40,"junkPackets":5,"randomTrailers":true,"specialHandshakes":["01","02"]},"credential":"yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=","id":"2B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22","name":"AWG","network":"tcp","port":51820,"proto":"awg","security":"none","userData":{"wgAddress":"10.8.1.2\/24"},"wgProfile":{"allowedIPs":["0.0.0.0\/0","::\/0"],"dns":["1.1.1.1"],"keepAlive":25,"mtu":1280,"peerPublicKey":"Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0="}}],"settings":{"adaptiveMasking":true,"adBlock":true,"autoReconnect":true,"autoSwitch":false,"killSwitchEnabled":true,"learnedMasking":{"vless|example.com:443|":"balanced"},"maskingProfile":"maximum","splitTunnel":{"enabled":true,"entries":["8.8.8.8\/32","example.com"]},"subscriptionAutoRefresh":false},"subscriptions":[{"name":"Панель","url":"https:\/\/panel.example.com\/sub?key=x"}],"version":1}
+file-bytes	ewogICJkZXZpY2UiIDogImlQaG9uZSDQnNCw0YjQuCIsCiAgImV4cG9ydGVkQXQiIDogIjIwMjYtMDItMDJUMDI6NDA6MDBaIiwKICAic2VydmVycyIgOiBbCiAgICB7CiAgICAgICJhZGRyZXNzIiA6ICJleGFtcGxlLmNvbSIsCiAgICAgICJhbGxvd0luc2VjdXJlIiA6IGZhbHNlLAogICAgICAiYWxwbiIgOiBbCgogICAgICBdLAogICAgICAiYWx0ZXJJZCIgOiAwLAogICAgICAiY3JlZGVudGlhbCIgOiAiMWI1NjRkMmYtNTExNy00YzhjLTliMGQtOWUyZjhhM2YxYzIyIiwKICAgICAgImZsb3ciIDogInh0bHMtcnByeC12aXNpb24iLAogICAgICAiaG9zdCIgOiAiY2RuLmV4YW1wbGUuY29tIiwKICAgICAgImlkIiA6ICIxQjU2NEQyRi01MTE3LTRDOEMtOUIwRC05RTJGOEEzRjFDMjIiLAogICAgICAibmFtZSIgOiAi8J+HuvCfh7ggUmVhbGl0eSIsCiAgICAgICJuZXR3b3JrIiA6ICJ3cyIsCiAgICAgICJwYXRoIiA6ICJcL3dzIiwKICAgICAgInBvcnQiIDogNDQzLAogICAgICAicHJvdG8iIDogInZsZXNzIiwKICAgICAgInJlYWxpdHlQdWJsaWNLZXkiIDogIlNiVktPRU1qSzBzSWxid2c0YWt5Qmc1bUw1S1p3d0FyLWVkTnpFUzlzYVUiLAogICAgICAic2VjdXJpdHkiIDogInJlYWxpdHkiLAogICAgICAic25pIiA6ICJ3d3cubWljcm9zb2Z0LmNvbSIKICAgIH0sCiAgICB7CiAgICAgICJhZGRyZXNzIiA6ICIyMDMuMC4xMTMuNyIsCiAgICAgICJhbGxvd0luc2VjdXJlIiA6IGZhbHNlLAogICAgICAiYWxwbiIgOiBbCgogICAgICBdLAogICAgICAiYWx0ZXJJZCIgOiAwLAogICAgICAiYXdnIiA6IHsKICAgICAgICAiY29udGVudFBhZGRpbmdBZGRpdGlvbiIgOiAiMTAtNDAiLAogICAgICAgICJqdW5rTWF4IiA6IDcwLAogICAgICAgICJqdW5rTWluIiA6IDQwLAogICAgICAgICJqdW5rUGFja2V0cyIgOiA1LAogICAgICAgICJyYW5kb21UcmFpbGVycyIgOiB0cnVlLAogICAgICAgICJzcGVjaWFsSGFuZHNoYWtlcyIgOiBbCiAgICAgICAgICAiMDEiLAogICAgICAgICAgIjAyIgogICAgICAgIF0KICAgICAgfSwKICAgICAgImNyZWRlbnRpYWwiIDogInlBbno1VEYrZlQyOEE1dkgwdkdjQzhwVlhxdjVaZlYwKzBQNFJuMXY1SEU9IiwKICAgICAgImlkIiA6ICIyQjU2NEQyRi01MTE3LTRDOEMtOUIwRC05RTJGOEEzRjFDMjIiLAogICAgICAibmFtZSIgOiAiQVdHIiwKICAgICAgIm5ldHdvcmsiIDogInRjcCIsCiAgICAgICJwb3J0IiA6IDUxODIwLAogICAgICAicHJvdG8iIDogImF3ZyIsCiAgICAgICJzZWN1cml0eSIgOiAibm9uZSIsCiAgICAgICJ1c2VyRGF0YSIgOiB7CiAgICAgICAgIndnQWRkcmVzcyIgOiAiMTAuOC4xLjJcLzI0IgogICAgICB9LAogICAgICAid2dQcm9maWxlIiA6IHsKICAgICAgICAiYWxsb3dlZElQcyIgOiBbCiAgICAgICAgICAiMC4wLjAuMFwvMCIsCiAgICAgICAgICAiOjpcLzAiCiAgICAgICAgXSwKICAgICAgICAiZG5zIiA6IFsKICAgICAgICAgICIxLjEuMS4xIgogICAgICAgIF0sCiAgICAgICAgImtlZXBBbGl2ZSIgOiAyNSwKICAgICAgICAibXR1IiA6IDEyODAsCiAgICAgICAgInBlZXJQdWJsaWNLZXkiIDogIk94NXZEV2ZKOXlma1hjVXVKMlhnS2xRU21HdnZuQkIwcVI5dkszRjJ6VjA9IgogICAgICB9CiAgICB9CiAgXSwKICAic2V0dGluZ3MiIDogewogICAgImFkQmxvY2siIDogdHJ1ZSwKICAgICJhZGFwdGl2ZU1hc2tpbmciIDogdHJ1ZSwKICAgICJhdXRvUmVjb25uZWN0IiA6IHRydWUsCiAgICAiYXV0b1N3aXRjaCIgOiBmYWxzZSwKICAgICJraWxsU3dpdGNoRW5hYmxlZCIgOiB0cnVlLAogICAgImxlYXJuZWRNYXNraW5nIiA6IHsKICAgICAgInZsZXNzfGV4YW1wbGUuY29tOjQ0M3wiIDogImJhbGFuY2VkIgogICAgfSwKICAgICJtYXNraW5nUHJvZmlsZSIgOiAibWF4aW11bSIsCiAgICAic3BsaXRUdW5uZWwiIDogewogICAgICAiZW5hYmxlZCIgOiB0cnVlLAogICAgICAiZW50cmllcyIgOiBbCiAgICAgICAgIjguOC44LjhcLzMyIiwKICAgICAgICAiZXhhbXBsZS5jb20iCiAgICAgIF0KICAgIH0sCiAgICAic3Vic2NyaXB0aW9uQXV0b1JlZnJlc2giIDogZmFsc2UKICB9LAogICJzdWJzY3JpcHRpb25zIiA6IFsKICAgIHsKICAgICAgIm5hbWUiIDogItCf0LDQvdC10LvRjCIsCiAgICAgICJ1cmwiIDogImh0dHBzOlwvXC9wYW5lbC5leGFtcGxlLmNvbVwvc3ViP2tleT14IgogICAgfQogIF0sCiAgInZlcnNpb24iIDogMQp9
+file-read	version=1 device=iPhone Маши at=1770000000 servers=vless|example.com|443|1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22||xtls-rprx-vision;awg|203.0.113.7|51820|yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=|| subs=Панель@https://panel.example.com/sub?key=x settings=masking=maximum kill=1 split=on:8.8.8.8/32,example.com learned=vless|example.com:443|=balanced subref=0 adblock=1 reconnect=1 autoswitch=0 adaptive=1
+=== file-minimal
+file	{"device":"Mac","exportedAt":"2026-02-02T02:40:00Z","servers":[],"subscriptions":[],"version":1}
+file-bytes	ewogICJkZXZpY2UiIDogIk1hYyIsCiAgImV4cG9ydGVkQXQiIDogIjIwMjYtMDItMDJUMDI6NDA6MDBaIiwKICAic2VydmVycyIgOiBbCgogIF0sCiAgInN1YnNjcmlwdGlvbnMiIDogWwoKICBdLAogICJ2ZXJzaW9uIiA6IDEKfQ==
+file-read	version=1 device=Mac at=1770000000 servers= subs= settings=nil
+=== link-empty
+link	anemia://sync/q1ZKSS3LTE5VslI6t-VRZ4eSjlJqRUF-UUlqimMJUNDQ0tJS19BI19gwxMjYytQSiKKAaopTi8pSi4qVrKJjgZzSpOLkosyCksz8PKgQSBLIU7IyrAUA
+link-read	version=1 device=δ≈ at=946684799 servers= subs= settings=nil
+=== link-full
+link	anemia://sync/lVTNbts4EH6VQtdGMkVLjSwgWNiJnaRutt7ETYOsc6ApylZFUSpJSXZSn9vDPsICfYVeFih2se_gvsk-wg7l2HV6K-gfcmb4cfh9M3ywIlYllFmhlYzmuWDP1n-uv3z7tP5qHVhsUeRSs6irwY0RfmEjDJ8xwqGHQoRuIUYxWTGprPD3B4tEkWQK5rCTZAVnDs0ziCGc5_W5UIyWEk6KCVfMWAsB2-7MTDN5HlkhOrCoZBETOiEcYNyp_8KLcGz7rntoezSgdmeKIrvDcByQduxSjAE_BniIXmiubFnIhV0lKskFeOa5MrnTSDhPU0oiA98D-BM8eIQ_Do7tTg-d2J0-HgTd9sA9buAFyQw__33--Dd8vz67ZIQnemk8TNe5TMFZK1gWRM9hPmltVsCdFXpeG6Yy1zl4Km7oObDkBmFUTnlCh2wJrqvp9fB1_-LdEKlzPq1nHkmXvZmfvfKHt3XdlTaLfr3vX3UUedOwDlSaHMItljGKxGRS106WUJmrPNbNbVcH-9Jg1HaQ47pt5_AnpSH1zAofLJoLDQqNADIRsy78akM20IlsDwHmu1KkF2RhhYfocZGA23tcjAhNmYZMfOCBiCjPxpIkvKkhLUs4XRWMgv5n4FRzkjJTXBZyARlh6271Q40su-LeHw-ex2McdP3qDFWn9Dgorm_eV_5tfI2eo5F3KdzKP-sfbYXHPyV89-3pE601LXby-m6A0XeBDUVP1BHQUmApoU1OiCaGv9pw9iiGi5zAcR08aWEPdALfSOYxsGECG21YdD7aEOA0Y9IyFIeh-Qd9ItE4XacZxpIyVnR5UgEEBoozXVqhiwOTJGNyv-ReL_zq5G38srOM0xv6pnyJb2ZD_ttVdlpVotdD7y871bA9wPfX6Mhare7MxbQGzVWTXdTjOU23opGIFBpOvSAqhZCdudT5JYOSEYzqfeNVnWg631VcmnC-MfUFmXIWbWM5I1KwaAf7sGmiD3vtbHrsA9xnSjgRFLYCkdkmfscmGBZJVprWVwX0y7iEjLiBY0_Pg7qSyabkAqcZk1YbN4_h9_fDFKEqp4rKpDDF321uGYOo2xv9ELB5Hx_raf15_WX97_qv9T_f_jC1IU0Zz7UuFKg6aRUEMtt_riYtgPolZcujhWVUMO9t03Hu6n8
+link-read	version=1 device=iPhone Маши at=1770000000 servers=vless|example.com|443|1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22||xtls-rprx-vision;awg|203.0.113.7|51820|yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=|| subs=Панель@https://panel.example.com/sub?key=x settings=masking=maximum kill=1 split=on:8.8.8.8/32,example.com learned=vless|example.com:443|=balanced subref=0 adblock=1 reconnect=1 autoswitch=0 adaptive=1
+=== link-one
+link	anemia://sync/NU_LTsMwEPwVtOemOE5aUp9oUyL1xqEnHgdjL6ohsSPbbYqq3vkIPoIjnxH-iDUIyYfZmdnxzgk0HoxCEGBud87ixfgxfn6_j18wATz2zkfUy0gyZ3yeMU5vy7gomWDsjjwB_QF9AHF_Aqm1x0AYlLZTPMqub3GqXEc-2bZu2NiAau_pt2fZBkxsb2n1MaGIfqNBsAkojxptNLKlqP6aEidgSIJiNZuXa95kszy_ysq6qrPFiq2zxQ1vqmXR5DXn5LWyS4W23r1Im2aMg_OvRA0pqpdxR_jhMqaBGoKoyrIg7F10pMT_xd9rTXxLXBvgTHeG_VNQ3vTROBv-Tk_9aQKRn38A
+link-read	version=1 device=iPhone Маши at=1770000000 servers=trojan|cdn.example.com|8443|p@ss|| subs= settings=nil
+=== merge-colliding-ids
+summary	added=2 known=0 new=1 knownSubs=0 settings=1 nothing=0
+after	count=3 unique=1 names=Trojan;🇺🇸 Reality;AWG selected=first subs=Панель@https://panel.example.com/sub?key=x masking=maximum kill=1 subref=0 learned=vless|example.com:443|=balanced split=on:8.8.8.8/32,example.com
+=== merge-into-empty
+summary	added=2 known=0 new=1 knownSubs=0 settings=1 nothing=0
+after	count=2 unique=1 names=🇺🇸 Reality;AWG selected=first subs=Панель@https://panel.example.com/sub?key=x masking=maximum kill=1 subref=0 learned=vless|example.com:443|=balanced split=on:8.8.8.8/32,example.com
+=== merge-known
+summary	added=0 known=2 new=1 knownSubs=0 settings=1 nothing=0
+after	count=2 unique=1 names=🇺🇸 Reality;та же, но с другим именем selected=first subs=Панель@https://panel.example.com/sub?key=x masking=maximum kill=1 subref=0 learned=vless|example.com:443|=balanced split=on:8.8.8.8/32,example.com
+=== merge-learned
+summary	added=0 known=0 new=0 knownSubs=0 settings=1 nothing=0
+after	count=0 unique=1 names= selected=- subs= masking=ruYandex kill=0 subref=1 learned=a=maximum;b=off;c=maximum split=on:
+=== merge-no-settings
+summary	added=1 known=1 new=1 knownSubs=0 settings=0 nothing=0
+after	count=2 unique=1 names=🇺🇸 Reality;AWG selected=first subs=Панель@https://panel.example.com/sub?key=x masking=off kill=1 subref=1 learned=a=off split=off:old
+=== merge-poisoned-server
+summary	added=2 known=0 new=1 knownSubs=0 settings=1 nothing=0
+after	count=2 unique=1 names=🇺🇸 Reality;AWG selected=first subs=Панель@https://panel.example.com/sub?key=x masking=maximum kill=1 subref=0 learned=vless|example.com:443|=balanced split=on:8.8.8.8/32,example.com
+=== merge-selects-first
+summary	added=1 known=0 new=0 knownSubs=0 settings=0 nothing=0
+after	count=2 unique=1 names=🇺🇸 Reality;Trojan selected=first subs= masking=balanced kill=0 subref=1 learned= split=on:
+=== merge-subscription-urls
+summary	added=0 known=0 new=1 knownSubs=2 settings=0 nothing=0
+after	count=0 unique=1 names= selected=- subs=а@https://panel.example.com/sub;б@https://x.example/;C@https://y.example masking=balanced kill=0 subref=1 learned= split=on:
+=== read-array
+error	notABundle
+=== read-date-bad
+error	notABundle
+=== read-date-feb29
+bundle	version=1 device=iPhone Маши at=1772332800 servers=vless|example.com|443|1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22||xtls-rprx-vision;awg|203.0.113.7|51820|yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=|| subs=Панель@https://panel.example.com/sub?key=x settings=masking=maximum kill=1 split=on:8.8.8.8/32,example.com learned=vless|example.com:443|=balanced subref=0 adblock=1 reconnect=1 autoswitch=0 adaptive=1
+=== read-date-fraction
+bundle	version=1 device=iPhone Маши at=1770000000 servers=vless|example.com|443|1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22||xtls-rprx-vision;awg|203.0.113.7|51820|yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=|| subs=Панель@https://panel.example.com/sub?key=x settings=masking=maximum kill=1 split=on:8.8.8.8/32,example.com learned=vless|example.com:443|=balanced subref=0 adblock=1 reconnect=1 autoswitch=0 adaptive=1
+=== read-date-fraction2
+bundle	version=1 device=iPhone Маши at=1770000000 servers=vless|example.com|443|1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22||xtls-rprx-vision;awg|203.0.113.7|51820|yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=|| subs=Панель@https://panel.example.com/sub?key=x settings=masking=maximum kill=1 split=on:8.8.8.8/32,example.com learned=vless|example.com:443|=balanced subref=0 adblock=1 reconnect=1 autoswitch=0 adaptive=1
+=== read-date-fraction6
+bundle	version=1 device=iPhone Маши at=1770000000 servers=vless|example.com|443|1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22||xtls-rprx-vision;awg|203.0.113.7|51820|yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=|| subs=Панель@https://panel.example.com/sub?key=x settings=masking=maximum kill=1 split=on:8.8.8.8/32,example.com learned=vless|example.com:443|=balanced subref=0 adblock=1 reconnect=1 autoswitch=0 adaptive=1
+=== read-date-month13
+error	notABundle
+=== read-date-nozone
+error	notABundle
+=== read-date-number
+error	notABundle
+=== read-date-offset
+bundle	version=1 device=iPhone Маши at=1770000000 servers=vless|example.com|443|1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22||xtls-rprx-vision;awg|203.0.113.7|51820|yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=|| subs=Панель@https://panel.example.com/sub?key=x settings=masking=maximum kill=1 split=on:8.8.8.8/32,example.com learned=vless|example.com:443|=balanced subref=0 adblock=1 reconnect=1 autoswitch=0 adaptive=1
+=== read-date-space
+error	notABundle
+=== read-empty
+error	notABundle
+=== read-file
+bundle	version=1 device=iPhone Маши at=1770000000 servers=vless|example.com|443|1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22||xtls-rprx-vision;awg|203.0.113.7|51820|yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=|| subs=Панель@https://panel.example.com/sub?key=x settings=masking=maximum kill=1 split=on:8.8.8.8/32,example.com learned=vless|example.com:443|=balanced subref=0 adblock=1 reconnect=1 autoswitch=0 adaptive=1
+=== read-garbage
+error	notABundle
+=== read-link-junk
+error	notABundle
+=== read-link-mixedcase
+error	notABundle
+=== read-link-not-deflate
+error	notABundle
+=== read-link-uppercase-real
+error	notABundle
+=== read-link-uppercase
+error	notABundle
+=== read-newer
+error	newerVersion(2)
+=== read-no-device
+error	notABundle
+=== read-version-string
+error	notABundle

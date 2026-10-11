@@ -1,0 +1,5 @@
+rec	86000	10	1	11111111-1111-1111-1111-111111111111	ночь	86300	Europe/Berlin
+rec	86000	20	2	11111111-1111-1111-1111-111111111111	ночь	86500	Europe/Berlin
+days	3	86500	Europe/Berlin
+month	86500	Europe/Berlin
+json

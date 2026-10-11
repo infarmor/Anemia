@@ -1,0 +1,34 @@
+bind-privileged	reason=listen tcp 127.0.0.1:1: bind: permission denied	cause=listen tcp 127.0.0.1:1: bind: permission denied
+unknown-protocol	reason=unknown config id: nope	cause=unknown config id: nope
+removed-feature	reason=The feature "allowInsecure" has been removed and migrated to "pinnedPeerCertSha256". Please update your config(s) according to release note and documentation.	cause=The feature "allowInsecure" has been removed and migrated to "pinnedPeerCertSha256". Please update your config(s) according to release note and documentation.
+log-tail-with-banner	reason=listen tcp 127.0.0.1:1: bind: permission denied	cause=listen tcp 127.0.0.1:1: bind: permission denied
+failed-not-wrapper	reason=app/proxyman: Failed to build > c/d: root cause	cause=root cause
+prefix-with-space	reason=a/b: outer > d/e f: inner cause	cause=d/e f: inner cause
+invalid-not-last	reason=handshake> invalid certificate	cause=starting
+android-returned-error	reason=xray config: infra/conf: failed to build outbound config with tag proxy > infra/conf: unknown config id: nope	cause=unknown config id: nope
+bind-chain-no-wrapper	reason=app/proxyman/inbound: failed to listen TCP on 1 > transport/internet: failed to listen on address: 127.0.0.1:1 > transport/internet/tcp: failed to listen TCP on 127.0.0.1:1 > listen tcp 127.0.0.1:1: bind: permission denied	cause=listen tcp 127.0.0.1:1: bind: permission denied
+no-chain-prefixed	reason=infra/conf: unknown config id: nope	cause=infra/conf: unknown config id: nope
+chain-two-links	reason=a/b: outer wrapper > c/d: inner cause	cause=inner cause
+chain-tail-without-prefix	reason=a/b: outer > listen tcp 127.0.0.1:443: bind: address already in use	cause=listen tcp 127.0.0.1:443: bind: address already in use
+chain-empty-links	reason=a/b: one >  > c/d: two	cause=two
+chain-padded-links	reason=  a/b: one   >    c/d: two   	cause=two
+colon-at-the-end	reason=a/b: 	cause=a/b:
+wrapper-only	reason=Failed to start: boom	cause=Failed to start: boom
+wrapper-single-link	reason=Failed to start: infra/conf: bad	cause=Failed to start: infra/conf: bad
+empty-after-trim	reason=   	cause=
+fallback-failed-line	reason=proxy/vless: failed to dial 1.2.3.4:443	cause=noise
+fallback-uppercase	reason=FAILED: app/proxyman: something	cause=FAILED: app/proxyman: something
+fallback-invalid	reason=handshake> invalid certificate	cause=handshake> invalid certificate
+fallback-last-resort	reason=bye	cause=bye
+failure-with-cyrillic	reason=ОШИБКА: proxy/vless: failed to dial	cause=ОШИБКА: proxy/vless: failed to dial
+dotted-i-not-failed	reason=FAİLED: İ not I	cause=FAİLED: İ not I
+error	no label		Failed to start: boom
+uppercase-not-last	reason=FAILED: app/proxyman: something	cause=noise
+upper-mixed-not-last	reason=Starting XRAY: INVALID config	cause=noise
+no-lines	reason=engine exited during startup	cause=
+fullwidth-not-ascii	reason=starting	cause=starting
+fullwidth-invalid	reason=starting	cause=starting
+empty-body	error	empty
+columns-1	error	columns 1
+columns-3	error	columns 3
+dotted-capital-I	reason=engine ready	cause=engine ready

@@ -39,16 +39,55 @@ fi
 echo "→ до простоя: ${before:-часов не видно} с, tun0 поднят"
 
 # Убираем и экран, и «пользователь активен»: без этого doze не наступит.
+#
+# Состояние белого списка ловится до и возвращается после: скрипт меняет
+# системную политику, и оставить её изменённой — значит следующим прогонам
+# (и любому, кто возьмёт прибор после) подсунуть чужие условия.
+was_whitelisted=$(
+    "$ADB" shell dumpsys deviceidle 2>/dev/null | tr -d '\r' |
+    sed -n '/Whitelisted app IDs/,/^$/p' | grep -c 'app.anemia' || true
+)
+# Приложение, наоборот, ИЗ белого списка ВЫНОСИТСЯ. Без этого замера нет:
+# exempt-процесс doze не трогает, и «часы шли» было бы тривиально истинно —
+# ровно та декоративная проверка, из-за которой скрипт и стоит править. With
+# С `-app.anemia` процесс обязан пережить idle сам, и только тогда сравнение
+# часов до и после что-то доказывает.
+#
+# Что при этом остаётся недоказуемым отсюда: OEM-убийцы (Miui, Samsung) процесс
+# не замораживают, а снимают целиком — против них у нас START_REDELIVER_INTENT
+# и foreground-сервис типа `vpn`, и проверяется это на другой прошивке.
+"$ADB" shell dumpsys deviceidle whitelist -app.anemia >/dev/null 2>&1
 "$ADB" shell dumpsys deviceidle force-idle >/dev/null 2>&1
 "$ADB" shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
-state=$("$ADB" shell dumpsys deviceidle 2>/dev/null | tr -d '\r' | grep -oE 'mState=[A-Z]+' | head -1)
+# `force-idle` DeviceIdleService применяет в своём обработчике, и с одного
+# чтения буфера можно увидеть ещё не наступивший режим. Без опроса скрипт
+# краснел на прогоне, который ровно то и измерил, что умеет: на медленном
+# эмуляторе mState догонял за две-три секунды.
+state=""
+for _ in $(seq 1 10); do
+    sleep 1
+    state=$("$ADB" shell dumpsys deviceidle 2>/dev/null | tr -d '\r' | grep -oE '(^|[^A-Za-z])mState=[A-Z]+' | head -1 | grep -oE 'mState=[A-Z]+')
+    [[ "$state" == "mState=IDLE" ]] && break
+done
 echo "→ режим ${state:-mState=неизвестен}, ждём ${IDLE_SECONDS} с"
+if [[ "$state" != "mState=IDLE" ]]; then
+    # Без наступившего doze проверка превращается в «поспали сколько-то секунд»:
+    # часы бы и так шли, и успех ничего не значил бы.
+    echo "✗ doze не наступил (${state:-mState не читается}) — проверять заморозку не в чем"
+    "$ADB" shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
+    "$ADB" shell dumpsys deviceidle unforce >/dev/null 2>&1
+    "$ADB" shell dumpsys deviceidle whitelist -app.anemia >/dev/null 2>&1
+    exit 1
+fi
 sleep "$IDLE_SECONDS"
 
 during_ifaces=$("$ADB" shell ip -o link show tun0 2>/dev/null | tr -d '\r' | head -1)
 after=$(uptime_of)
 "$ADB" shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
 "$ADB" shell dumpsys deviceidle unforce >/dev/null 2>&1
+if [[ "${was_whitelisted:-0}" != "0" ]]; then
+    "$ADB" shell dumpsys deviceidle whitelist +app.anemia >/dev/null 2>&1
+fi
 
 if [[ -z "$during_ifaces" ]]; then
     echo "✗ во время простоя tun0 исчез — система сняла туннель"

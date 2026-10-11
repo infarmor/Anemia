@@ -1,0 +1,38 @@
+xray-no-answer	xray									0	
+xray-fast	xray	42								0	
+xray-slow	xray	3001								0	
+xray-limit-exact	xray	3000								0	
+xray-zero	xray	0								0	
+xray-custom-limit-over	xray	800						500		0	
+xray-custom-limit-exact	xray	500						500		0	
+xray-resets-streak	xray	42								3	
+xray-grows-streak	xray									2	
+xray-ignores-counters	xray	42	9	9	9	9	77			0	
+awg-first-reading	awg				100	50				0	
+awg-received-latency-nil	awg		100	100	100	150				0	
+awg-received-with-latency	awg		100	100	100	150	88			0	
+awg-engine-silent	awg		100	100			88			3	
+awg-sent-over-floor	awg		100	100	2101	100				0	
+awg-sent-floor-exact	awg		100	100	2100	100				1	
+awg-idle	awg		100	100	100	100				4	
+awg-counters-reset	awg		100	100	50	10				1	
+awg-received-wins	awg		100	100	6000	101				2	
+awg-custom-floor-over	awg		100	100	111	100			10	0	
+awg-custom-floor-exact	awg		100	100	110	100			10	0	
+awg-resets-streak	awg		100	100	100	101	5			5	
+awg-grows-streak	awg		100	100	5000	100				1	
+awg-silence-keeps-streak	awg		100	100	1000	100				0	
+awg-silence-keeps-report	awg		100	100	100	100				4	77
+awg-first-reading-with-report	awg				100	100				0	12
+xray-overwrites-report	xray	42								0	999
+xray-no-answer-over-report	xray									2	999
+bad-starthealth	xray	42								0	abc
+bad-mode	wg									0	
+bad-ms	xray	abc								0	
+half-previous	awg		5		100	100				0	
+half-counters	awg		5	5	100					0	
+no-start	xray	42									
+counters-over-int32	awg		0	0	2147483648	0				0	
+nan-limit	xray	42						nan		0	
+few-columns	xray	42									
+	xray	42								0	

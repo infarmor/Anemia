@@ -1,0 +1,44 @@
+hy2://S3cr3t@nl.example.com:443
+hy2://S3cr3t@nl.example.com:443/?sni=hysteria2.github.io&insecure=1&alpn=h3,h2&fp=chrome
+hy2://p@h.example.com:443?obfs=salamander&obfs-password=abcd
+hy2://p@h.example.com:443?obfs=salamander
+hy2://p@h.example.com:443?type=grpc&pinSHA256=aa.bb,cc-dd
+hy2://@h.example.com:443
+hy2://p@h.example.com:443,20000-50000
+hy2://p@h.example.com:20000-50000
+hy2://p@h.example.com:443?insecure=0&sni=
+hy2://p@[fd42::1]:443?sni=host
+hy2://p@h.example.com:443?fp=firefox
+hy2://p@h.example.com:443#bad
+hy2://p@h.example.com:443?insecure=1&type=grpc
+hy://p@h.example.com:443?insecure=1
+hy://p@h.example.com:443?insecure=1&type=udp&upmbps=10&downmbps=100&auth_str=x&obfs=quic&obfs-param=zz
+hy://p@h.example.com:443?insecure=1&upmbps=0
+vless://1b564d2f-5117-4c8c-9b0d-9e2f8a3f1c22@example.com:443?type=ws#A
+ss://YWVzLTI1Ni1nY206cHc@1.2.3.4:8388#s
+hy2://a"b:c#d\e
+f g😀@h.example.com:443?sni=x
+hy2://p@h.example.com:443?sni=пример.рф
+hy2://p@h.example.com:443	1080
+hy2://p@h.example.com:443	65535
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "fd42::1", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	21180
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "[fd42::1]", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	2160
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 8443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "userData": {"portHopping": "20000-50000"}}	3240
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 20000, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "userData": {"portHopping": "20000-50000"}}	21180
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "userData": {"portHopping": "0-99999"}}	5400
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "userData": {"portHopping": ""}}	6480
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "userData": {"pinSHA256": "", "obfs": "salamander"}}	21180
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "sni": ""}	8640
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": ["h3", "h2"], "allowInsecure": true, "sni": "a.example.com"}	9720
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "h", "proto": "hysteria2", "address": "h.example.com", "port": 0, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	21180
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "v1 полный", "proto": "hysteria", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": true, "sni": "x.example.com", "userData": {"protocol": "udp", "upmbps": "10", "downmbps": "100", "obfs": "quic", "obfsPassword": "zz"}}	11880
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "v1 obfs без пароля", "proto": "hysteria", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "userData": {"obfs": "quic"}}	12960
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "не hysteria", "proto": "vless", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	21180
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "без auth", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	15120
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "sni: null", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	16200
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "пустой адрес", "proto": "hysteria2", "address": "", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	21180
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "порт отрицательный", "proto": "hysteria2", "address": "h.example.com", "port": -5, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	21180
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "порт огромный", "proto": "hysteria2", "address": "h.example.com", "port": 70000, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false}	21180
+server	{"id": "1B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22", "name": "hopping с пустым элементом", "proto": "hysteria2", "address": "h.example.com", "port": 443, "credential": "p", "alterId": 0, "network": "tcp", "security": "none", "alpn": [], "allowInsecure": false, "userData": {"portHopping": "443,"}}	21180
+hy2://token@de.example.com:443?insecure=1&pwd=x&mport=443,1٠-2000
+hy2://token@fr.example.com:443?insecure=1&pwd=x&mport=+443,8443

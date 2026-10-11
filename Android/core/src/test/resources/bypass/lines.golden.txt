@@ -1,0 +1,60 @@
+gosuslugi.ru	gosuslugi.ru [domain("gosuslugi.ru")] 
+192.168.0.0/16	192.168.0.0/16 [ipv4("192.168.0.0/16")] 
+203.0.113.7	203.0.113.7/32 [ipv4("203.0.113.7/32")] 
+2001:db8::1/64	2001:db8::/64 [ipv6("2001:db8::/64")] 
+ru	ru [domain("ru")] 
+*.example.com	example.com [domain("example.com")] 
+.edge.test	edge.test [domain("edge.test")] 
+сбербанк.рф	xn--80abap1arsf.xn--p1ai [domain("xn--80abap1arsf.xn--p1ai")] 
+ми.ру	xn--h1ah.xn--p1ag [domain("xn--h1ah.xn--p1ag")] 
+https://User@Host.Example.COM:8443/path	host.example.com [domain("host.example.com")] 
+10.7.0.0/24	10.7.0.0/24 [ipv4("10.7.0.0/24")] 
+[2001:db8::1]:51820	2001:db8::1/128 [ipv6("2001:db8::1/128")] 
+1.2.3.4	1.2.3.4/32 [ipv4("1.2.3.4/32")] 
+010.0.0.0/8	нет: not a valid IPv4 address
+172.28.0.0/24	нет: that range is the VPN tunnel itself
+127.0.0.1	нет: loopback never goes through the VPN
+2001:0db8:0000::/48	2001:db8::/48 [ipv6("2001:db8::/48")] 
+fe80::1/128	fe80::1/128 [ipv6("fe80::1/128")] 
+0.0.0.0/0	нет: too broad — /0 would send most traffic around the VPN (use /8 or narrower)
+::/0	нет: too broad — /0 would send most IPv6 traffic around the VPN (use /16 or narrower)
+999.1.1.1/32	нет: not a valid IPv4 address
+example..com	нет: not a valid domain
+-lead.com	нет: not a valid domain
+1.2.3.4/33	нет: prefix length must be 0–32
+2001:db8::/129	нет: prefix length must be 0–128
+bank.ru#not-a-rule	bank.ru [domain("bank.ru")] 
+bank.ru ; nas.local	bank.ru [domain("bank.ru")] nas.local [domain("nas.local")] 
+  1.1.1.1/32  	1.1.1.1/32 [ipv4("1.1.1.1/32")] 
+::1/128	нет: loopback never goes through the VPN
+2001:db8:0:0:1:0:0:1	2001:db8::1:0:0:1/128 [ipv6("2001:db8::1:0:0:1/128")] 
+::ffff:1.2.3.4	::ffff:1.2.3.4/128 [ipv6("::ffff:1.2.3.4/128")] 
+1::2::3	нет: not a valid IPv6 address
+xn--80ak6aa92e.com	xn--80ak6aa92e.com [domain("xn--80ak6aa92e.com")] 
+пример.рф	xn--e1afmkfd.xn--p1ai [domain("xn--e1afmkfd.xn--p1ai")] 
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com	aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com [domain("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com")] 
+1.2.3.4/8/16	нет: prefix length must be 0–32
+user@10.0.0.1	10.0.0.1/32 [ipv4("10.0.0.1/32")] 
+10.0.0.1:8080	10.0.0.1/32 [ipv4("10.0.0.1/32")] 
+2001:db8::/16	2001::/16 [ipv6("2001::/16")] 
+fd00::/8	нет: too broad — /8 would send most IPv6 traffic around the VPN (use /16 or narrower)
+0:0:0:0:0:0:0:1	нет: loopback never goes through the VPN
+2001:db8::1/64/1	нет: prefix length must be 0–128
+test.рф.	test.xn--p1ai [domain("test.xn--p1ai")] 
+[::]:443	::/128 [ipv6("::/128")] 
+%20bank.ru	нет: not a valid domain
+1.2.3.4/	нет: prefix length must be 0–32
+/8	нет: empty domain
+1.	нет: not a valid IP address or domain
+..com	нет: not a valid domain
+xn--	нет: not a valid domain
+---.com	нет: not a valid domain
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com	нет: not a valid domain
+1.2.3.4::	нет: not a valid IPv6 address
+::1.2.3.4	::1.2.3.4/128 [ipv6("::1.2.3.4/128")] 
+1.2.3.4::/64	нет: not a valid IPv6 address
+2001:db8::1.2.3.4/128	2001:db8::102:304/128 [ipv6("2001:db8::102:304/128")] 
+1٠.2.3.4/24	xn--1-8pc.2.3.4 [domain("xn--1-8pc.2.3.4")] 
+10.2.3.4/1٠	нет: prefix length must be 0–32
+example.com evil.com	example.com [domain("example.com")] evil.com [domain("evil.com")] 
+10.0.0.0/811.0.0.0/8	10.0.0.0/8 [ipv4("10.0.0.0/8")] 11.0.0.0/8 [ipv4("11.0.0.0/8")] 

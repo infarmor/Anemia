@@ -1,0 +1,20 @@
+{
+ "servers": [
+  {
+   "id": "5B564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "old",
+   "proto": "ss",
+   "address": "1.2.3.4",
+   "port": 8388,
+   "credential": "pw",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false,
+   "method": "aes-256-gcm"
+  }
+ ],
+ "subscriptions": [],
+ "selectedServerID": null
+}

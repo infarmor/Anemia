@@ -1,0 +1,1 @@
+error: This Hysteria server uses an untrusted certificate (insecure=1) without pinSHA256 — the bundled Xray-core can't skip certificate checks. Ask the provider for a link with pinSHA256.

@@ -1,0 +1,77 @@
+{
+ "servers": [
+  {
+   "id": "2D564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "AWG",
+   "proto": "awg",
+   "address": "203.0.113.7",
+   "port": 51820,
+   "credential": "yAnz5TF+fT28A5vH0vGcC8pVXqv5ZfV0+0P4Rn1v5HE=",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false,
+   "awg": {
+    "junkPackets": 5,
+    "junkMin": 40,
+    "junkMax": 70,
+    "initPadding": 86,
+    "responsePadding": 100,
+    "cookiePadding": 39,
+    "transportPadding": 68,
+    "header1": "1234567-1234599",
+    "header2": "7654321",
+    "header3": null,
+    "header4": null,
+    "specialHandshakes": [
+     "0102",
+     "03"
+    ],
+    "headerProtectionKey": null,
+    "contentPaddingAddition": "10-40",
+    "rekeyAfterTime": null,
+    "rekeyTimeout": null,
+    "rejectAfterTime": null,
+    "keepaliveTimeout": null,
+    "maxHandshakeAttempts": null,
+    "randomTrailers": true,
+    "disableCookies": false
+   },
+   "wgProfile": {
+    "peerPublicKey": "Ox5vDWfJ9yfkXcUuJ2XgKlQSmGvvnBB0qR9vK3F2zV0=",
+    "allowedIPs": [
+     "0.0.0.0/0",
+     "::/0"
+    ],
+    "dns": [
+     "1.1.1.1"
+    ],
+    "mtu": 1280,
+    "keepAlive": 25
+   },
+   "userData": {
+    "wgAddress": "10.8.1.2/24",
+    "": "пустой ключ"
+   }
+  },
+  {
+   "id": "3C564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "wg",
+   "proto": "wg",
+   "address": "h",
+   "port": 51820,
+   "credential": "c",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false,
+   "wgProfile": {
+    "peerPublicKey": "k",
+    "allowedIPs": [],
+    "dns": []
+   }
+  }
+ ]
+}

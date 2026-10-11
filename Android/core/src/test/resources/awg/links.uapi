@@ -1,0 +1,113 @@
+=== link00
+error: malformedURI("amnezia://eyJ2IjoiMyIsImhvc3RuYW1lIjoiZXhhbXBsZS5jb20ifQ==")
+=== link01
+set=1
+private_key=c809f3e5317e7d3dbc039bc7d2f19c0bca555eabf965f574fb43f8467d6fe471
+jc=4
+jmin=40
+jmax=70
+s1=116
+s2=172
+h1=5
+h2=88
+h3=1234
+h4=99999
+replace_peers=true
+public_key=3b1e6f0d67c9f727e45dc52e2765e02a5412986bef9c1074a91f6f2b7176cd5d
+endpoint=203.0.113.9:51820
+replace_allowed_ips=true
+allowed_ip=0.0.0.0/0
+allowed_ip=::/0
+protocol_version=1
+=== link02
+set=1
+private_key=c809f3e5317e7d3dbc039bc7d2f19c0bca555eabf965f574fb43f8467d6fe471
+jc=5
+jmin=40
+jmax=70
+s1=86
+s2=100
+s3=39
+s4=68
+h1=1234567-1234599
+h2=7654321
+h3=1122334455
+h4=4444444
+replace_peers=true
+public_key=3b1e6f0d67c9f727e45dc52e2765e02a5412986bef9c1074a91f6f2b7176cd5d
+endpoint=203.0.113.7:51820
+persistent_keepalive_interval=25
+replace_allowed_ips=true
+allowed_ip=0.0.0.0/0
+allowed_ip=::/0
+protocol_version=1
+=== link03
+set=1
+private_key=c809f3e5317e7d3dbc039bc7d2f19c0bca555eabf965f574fb43f8467d6fe471
+jc=5
+jmin=40
+jmax=70
+s1=86
+s2=100
+s3=39
+s4=68
+h1=1234567-1234599
+h2=7654321
+h3=1122334455
+h4=4444444
+replace_peers=true
+public_key=3b1e6f0d67c9f727e45dc52e2765e02a5412986bef9c1074a91f6f2b7176cd5d
+endpoint=203.0.113.7:51820
+persistent_keepalive_interval=25
+replace_allowed_ips=true
+allowed_ip=0.0.0.0/0
+allowed_ip=::/0
+protocol_version=1
+=== link04
+error: malformedURI("AmneziaWG config: peer public key is not a 32-byte base64 key")
+=== link05
+set=1
+private_key=c809f3e5317e7d3dbc039bc7d2f19c0bca555eabf965f574fb43f8467d6fe471
+content_padding_addition=10-40
+rekey_after_time=60-120
+replace_peers=true
+public_key=3b1e6f0d67c9f727e45dc52e2765e02a5412986bef9c1074a91f6f2b7176cd5d
+endpoint=example.com:51820
+replace_allowed_ips=true
+allowed_ip=0.0.0.0/0
+allowed_ip=::/0
+protocol_version=1
+=== link06
+error: malformedURI("AmneziaWG config: private key is not a 32-byte base64 key")
+=== link07
+set=1
+private_key=c809f3e5317e7d3dbc039bc7d2f19c0bca555eabf965f574fb43f8467d6fe471
+replace_peers=true
+public_key=3b1e6f0d67c9f727e45dc52e2765e02a5412986bef9c1074a91f6f2b7176cd5d
+endpoint=[2001:db8::1]:51820
+replace_allowed_ips=true
+allowed_ip=0.0.0.0/0
+allowed_ip=::/0
+protocol_version=1
+=== link08
+error: missingField("host/port")
+=== link09
+error: missingField("private key")
+=== link10
+error: malformedURI("amnezia://bm8tYSBjb25m#not-a-conf")
+=== link11
+set=1
+private_key=c809f3e5317e7d3dbc039bc7d2f19c0bca555eabf965f574fb43f8467d6fe471
+replace_peers=true
+public_key=3b1e6f0d67c9f727e45dc52e2765e02a5412986bef9c1074a91f6f2b7176cd5d
+endpoint=203.0.113.9:51820
+replace_allowed_ips=true
+allowed_ip=0.0.0.0/0
+allowed_ip=::/0
+protocol_version=1
+=== link12
+error: malformedURI("AmneziaWG config: private key is not a 32-byte base64 key")
+=== link13
+error: malformedURI("AmneziaWG config: private key is not a 32-byte base64 key")
+=== link14
+error: malformedURI("AmneziaWG config: private key is not a 32-byte base64 key")

@@ -1,0 +1,60 @@
+{
+ "servers": [
+  {
+   "id": "4C564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "пустой awg",
+   "proto": "awg",
+   "address": "h",
+   "port": 1,
+   "credential": "c",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false,
+   "awg": {}
+  },
+  {
+   "id": "5C564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "профиль без маршрутов",
+   "proto": "wg",
+   "address": "h",
+   "port": 1,
+   "credential": "c",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false,
+   "wgProfile": {
+    "peerPublicKey": "k"
+   }
+  },
+  {
+   "id": "6C564D2F-5117-4C8C-9B0D-9E2F8A3F1C22",
+   "name": "целый",
+   "proto": "wg",
+   "address": "h",
+   "port": 1,
+   "credential": "c",
+   "alterId": 0,
+   "network": "tcp",
+   "security": "none",
+   "alpn": [],
+   "allowInsecure": false,
+   "awg": {
+    "specialHandshakes": []
+   },
+   "wgProfile": {
+    "peerPublicKey": "k",
+    "allowedIPs": [
+     "0.0.0.0/0"
+    ],
+    "dns": [],
+    "mtu": null,
+    "keepAlive": null,
+    "presharedKey": null
+   }
+  }
+ ]
+}
