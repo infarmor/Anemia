@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    AnemiaApp — the Windows port of the macOS LoaderApp menu-bar client.
+    WPF window + tray icon; WPF cross-builds from a non-Windows host via
+    EnableWindowsTargeting, but only RUNS on Windows.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>AnemiaApp</RootNamespace>
+    <AssemblyName>Anemia</AssemblyName>
+    <ApplicationIcon Condition="Exists('Assets\anemia.ico')">Assets\anemia.ico</ApplicationIcon>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>
+    <SourceControlManagerQueryBuildingProjects>false</SourceControlManagerQueryBuildingProjects>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AnemiaCore\AnemiaCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Assets\anemia.ico" Condition="Exists('Assets\anemia.ico')" />
+  </ItemGroup>
+
+</Project>

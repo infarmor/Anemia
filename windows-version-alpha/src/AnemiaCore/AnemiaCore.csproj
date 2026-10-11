@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    AnemiaCore — the port of the macOS LoaderCore: pure parsing/config logic.
+    Platform-neutral on purpose: it builds and unit-tests on any OS, so the
+    whole share-link parser + Xray config builder is verified on the build
+    machine before the Windows shell ever runs it.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12</LangVersion>
+    <EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries><SourceControlManagerQueryBuildingProjects>false</SourceControlManagerQueryBuildingProjects><RootNamespace>AnemiaCore</RootNamespace>
+  </PropertyGroup>
+
+</Project>

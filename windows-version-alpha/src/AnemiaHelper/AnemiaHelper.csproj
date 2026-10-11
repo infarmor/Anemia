@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    AnemiaHelper — the privileged half of the Windows port (the analogue of
+    the macOS LoaderHelper + LoaderTool pair, collapsed into one process).
+    It owns everything the unprivileged app must not touch: the wintun
+    adapter (created by tun2socks), the route table, and the fail-closed
+    firewall kill switch. Talks JSON-lines over the \\.\pipe\anemia-helper
+    named pipe; runs elevated (requireAdministrator manifest), launched on
+    demand by the app with Verb="runas".
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>AnemiaHelper</RootNamespace>
+    <AssemblyName>AnemiaHelper</AssemblyName>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>
+    <SourceControlManagerQueryBuildingProjects>false</SourceControlManagerQueryBuildingProjects>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <ApplicationManifest>helper.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The split-tunnel decisions are AnemiaCore's: which destinations get a
+         route, in what order, and what must never be routed. The helper only
+         reads the system and executes what the planner returned. -->
+    <ProjectReference Include="../AnemiaCore/AnemiaCore.csproj" />
+  </ItemGroup>
+
+</Project>

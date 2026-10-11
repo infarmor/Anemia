@@ -1,0 +1,62 @@
+<Window x:Class="AnemiaApp.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Settings" Width="420" Height="Auto" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="{DynamicResource BgGradient}">
+    <ScrollViewer Padding="18,14">
+        <StackPanel>
+            <Border Style="{DynamicResource CardTile}" Padding="6">
+                <StackPanel>
+                    <Grid Margin="10,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="System proxy" FontSize="13" FontWeight="Medium"
+                                       Foreground="{DynamicResource Text}" />
+                            <TextBlock Text="Point Windows at the local SOCKS inbound" FontSize="11"
+                                       Margin="0,2,0,0" Foreground="{DynamicResource TextDim}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" x:Name="SystemProxyBox" Click="OnSystemProxyToggle"
+                                  VerticalAlignment="Center" />
+                    </Grid>
+                    <Rectangle Style="{DynamicResource Hairline}" />
+                    <Grid Margin="10,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Connect at launch" FontSize="13" FontWeight="Medium"
+                                       Foreground="{DynamicResource Text}" />
+                            <TextBlock Text="Dial the selected (or fastest) server on startup" FontSize="11"
+                                       Margin="0,2,0,0" Foreground="{DynamicResource TextDim}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" x:Name="AutoConnectBox" Click="OnAutoConnectToggle"
+                                  VerticalAlignment="Center" />
+                    </Grid>
+                    <Rectangle Style="{DynamicResource Hairline}" />
+                    <Grid Margin="10,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Subscription auto-refresh" FontSize="13" FontWeight="Medium"
+                                       Foreground="{DynamicResource Text}" />
+                            <TextBlock Text="Re-fetch subscriptions every 6 hours" FontSize="11"
+                                       Margin="0,2,0,0" Foreground="{DynamicResource TextDim}" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" x:Name="SubRefreshBox" Click="OnSubRefreshToggle"
+                                  VerticalAlignment="Center" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+            <TextBlock FontSize="11" Margin="4,10,4,0" Foreground="{DynamicResource TextDim}"
+                       TextWrapping="Wrap"
+                       Text="Anemia · Xray engine · Reality/XTLS-Vision, ClientHello fragmentation, junk noise and stealth-SNI mimicry against DPI. The kill switch is fail-closed: traffic is blocked, never leaked, until you reconnect." />
+        </StackPanel>
+    </ScrollViewer>
+</Window>
