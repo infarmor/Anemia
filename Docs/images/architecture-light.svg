@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 470" width="1040" height="470" role="img" aria-label="How an Anemia connection works">
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#141413" fill-opacity="0.55"/></marker></defs>
+<rect width="1040" height="470" rx="18" fill="#FAF9F5"/>
+<text x="36" y="46" fill="#6B6A64" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" font-weight="600" text-anchor="start" letter-spacing="2.2">HOW A CONNECTION WORKS</text>
+<text x="36" y="76" fill="#141413" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="21" font-weight="500" text-anchor="start" letter-spacing="0">One engine, one policy, four clients</text>
+<rect x="36" y="108" width="196" height="96" rx="14" fill="#F0EEE6" stroke="#141413" stroke-opacity="0.14" stroke-width="1"/>
+<text x="56" y="141" fill="#141413" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" text-anchor="start" letter-spacing="0">Your apps</text>
+<text x="56" y="164" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="start" letter-spacing="0">browser, messengers,</text>
+<text x="56" y="181" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="start" letter-spacing="0">everything else</text>
+<line x1="240" y1="156" x2="288" y2="156" stroke="#141413" stroke-opacity="0.55" stroke-width="1.6" marker-end="url(#head)"/>
+<rect x="296" y="96" width="420" height="300" rx="16" fill="#F0EEE6" stroke="#141413" stroke-opacity="0.14" stroke-width="1"/>
+<text x="316" y="126" fill="#6B6A64" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" font-weight="600" text-anchor="start" letter-spacing="1.8">ANEMIA CLIENT</text>
+<text x="316" y="150" fill="#141413" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="600" text-anchor="start" letter-spacing="0">macOS · iPhone · Android · Windows</text>
+<rect x="316" y="166" width="380" height="56" rx="11" fill="#FAF9F5" stroke="#141413" stroke-opacity="0.14" stroke-width="1"/>
+<text x="334" y="190" fill="#141413" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" text-anchor="start" letter-spacing="0">App</text>
+<text x="334" y="209" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">servers, subscriptions, checks, policy</text>
+<rect x="316" y="232" width="380" height="64" rx="11" fill="#FAF9F5" stroke="#C6613F" stroke-opacity="0.55" stroke-width="1.6"/>
+<text x="334" y="256" fill="#C6613F" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" text-anchor="start" letter-spacing="0">Engine</text>
+<text x="334" y="275" fill="#141413" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">Xray-core · AmneziaWG · Hysteria 2</text>
+<text x="334" y="290" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="400" text-anchor="start" letter-spacing="0">masking: fragmented hello, junk packets, Reality</text>
+<rect x="316" y="306" width="380" height="56" rx="11" fill="#FAF9F5" stroke="#141413" stroke-opacity="0.14" stroke-width="1"/>
+<text x="334" y="330" fill="#141413" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="600" text-anchor="start" letter-spacing="0">Tunnel</text>
+<text x="334" y="349" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">utun / VpnService + kill switch + split tunnel</text>
+<line x1="724" y1="156" x2="788" y2="156" stroke="#141413" stroke-opacity="0.55" stroke-width="1.6" marker-end="url(#head)"/>
+<rect x="796" y="108" width="208" height="96" rx="14" fill="#F0EEE6" stroke="#141413" stroke-opacity="0.14" stroke-width="1"/>
+<text x="818" y="141" fill="#141413" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" text-anchor="start" letter-spacing="0">Your server</text>
+<text x="818" y="164" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="start" letter-spacing="0">VLESS · Reality · :443</text>
+<text x="818" y="181" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="start" letter-spacing="0">looks like ordinary HTTPS</text>
+<line x1="900" y1="212" x2="900" y2="262" stroke="#141413" stroke-opacity="0.55" stroke-width="1.6" marker-end="url(#head)"/>
+<rect x="796" y="266" width="208" height="70" rx="14" fill="#F0EEE6" stroke="#141413" stroke-opacity="0.14" stroke-width="1"/>
+<text x="818" y="298" fill="#141413" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" text-anchor="start" letter-spacing="0">The internet</text>
+<text x="818" y="318" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" text-anchor="start" letter-spacing="0">your exit country</text>
+<text x="36" y="416" fill="#C6613F" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="600" text-anchor="start" letter-spacing="0">DNS</text>
+<text x="36" y="434" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">answered inside the engine over DoH,</text>
+<text x="36" y="450" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">so a poisoned reply never arrives</text>
+<text x="372" y="416" fill="#C6613F" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="600" text-anchor="start" letter-spacing="0">Split tunnel</text>
+<text x="372" y="434" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">listed sites go around the VPN,</text>
+<text x="372" y="450" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">at full local speed</text>
+<text x="708" y="416" fill="#C6613F" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="600" text-anchor="start" letter-spacing="0">Kill switch</text>
+<text x="708" y="434" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">no tunnel, no traffic — nothing</text>
+<text x="708" y="450" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">leaks while it reconnects</text>
+</svg>

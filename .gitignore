@@ -28,3 +28,7 @@ windows-version-alpha.zip
 
 # A stray screen recording nothing in the app references.
 Sources/LoaderApp/Resources/video.mp4
+
+# The server side (3x-ui install, anemia-user, deploy) is not given away with
+# the clients — it stays with the original Anemia.
+Server/

@@ -1,15 +1,172 @@
-# Anemia (macOS)
+<h1 align="center">Anemia</h1>
 
-VPN client for macOS that bypasses network blocking by wrapping the
-**Xray-core** engine (plus AmneziaWG and Hysteria 2 engines). Traffic is made
-unreadable and hard to fingerprint using Xray's native anti-DPI features —
-Reality/XTLS-Vision, TLS ClientHello fragmentation, and junk-noise packets —
-while staying fast on Apple Silicon.
+<p align="center">
+  A VPN client that keeps working where VPNs are blocked —<br>
+  the same engine and the same rules on <b>macOS</b>, <b>iPhone</b>, <b>Android</b> and <b>Windows</b>.
+</p>
+
+<p align="center">
+  <img alt="macOS" src="https://img.shields.io/badge/macOS-14%2B-1f1f1e?style=flat-square">
+  <img alt="iOS" src="https://img.shields.io/badge/iOS-18%2B-1f1f1e?style=flat-square">
+  <img alt="Android" src="https://img.shields.io/badge/Android-10%2B-1f1f1e?style=flat-square">
+  <img alt="Windows" src="https://img.shields.io/badge/Windows-alpha-9a9a96?style=flat-square">
+  <img alt="Engines" src="https://img.shields.io/badge/Xray--core%20%C2%B7%20AmneziaWG%20%C2%B7%20Hysteria%202-C6613F?style=flat-square">
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="Docs/images/mac-main-dark.png">
+    <img src="Docs/images/mac-main-light.png" width="880" alt="The Anemia window on macOS: the world map with the live session, the server bar, traffic, and the protection rows.">
+  </picture>
+</p>
+
+Traffic is made unreadable and hard to fingerprint with Xray's own anti-DPI
+work — Reality / XTLS-Vision, a shredded TLS ClientHello, junk packets — while
+staying fast on Apple Silicon. When a server stops carrying traffic the client
+notices by itself, tries stronger masking, and moves on to the next server.
 
 > Legitimate censorship-circumvention / privacy tool. You are responsible for
 > complying with the laws that apply to you.
+>
+> **This repository holds the clients only.** The server side — the panel, the
+> install and the user tooling — is not published here.
 
-## Architecture
+## How it works
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Docs/images/architecture-dark.svg">
+  <img src="Docs/images/architecture-light.svg" width="1040" alt="Your apps send traffic into the Anemia client; the app configures the engine, the engine masks the connection to your server, the tunnel carries everything and the kill switch closes it when the tunnel drops.">
+</picture>
+
+1. **Everything on the device** goes into the tunnel: a utun on macOS, a packet
+   tunnel on iPhone, `VpnService` on Android, a service on Windows.
+2. **The engine dials your server** with the masking profile the server needs —
+   and nothing else: no extra hop, no third-party relay.
+3. **DNS is answered inside the engine** over DoH through the proxy, so a
+   poisoned reply from the local resolver never arrives.
+4. **Listed sites skip the VPN** (split tunneling) at full local speed, and the
+   **kill switch** closes the door the moment the tunnel is gone.
+
+## One core, four clients
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Docs/images/core-dark.svg">
+  <img src="Docs/images/core-light.svg" width="1040" alt="LoaderCore holds share links, subscriptions, config builders, scoring, health, masking and the transfer bundle; macOS, iPhone, Android and Windows each add their own tunnel and interface.">
+</picture>
+
+| Platform | What runs the tunnel | State |
+|---|---|---|
+| **macOS** 14+ | `LoaderApp` + a privileged helper (utun, routes, pf kill switch) | in daily use |
+| **iPhone** iOS 18+ | the app + a `NEPacketTunnelProvider` with the Go engine inside it | in daily use, signed on the device |
+| **Android** 10+ | the app + `VpnService`, the same Go engine | working, verified against the Swift original |
+| **Windows** | a WPF app + a privileged service | alpha, sources only |
+
+## The Mac
+
+<table>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="Docs/images/mac-servers-dark.png">
+        <img src="Docs/images/mac-servers-light.png" alt="The server list with a real check through each server.">
+      </picture>
+      <sub><b>Check Servers.</b> A throwaway engine makes one real request through
+      every server, so the ones that answer pings but carry nothing are named and
+      skipped. A blocked server is retried with stronger masking, and what gets it
+      through is remembered.</sub>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="Docs/images/mac-leaks-dark.png">
+        <img src="Docs/images/mac-leaks-light.png" alt="The leak test: the address sites see, the IPv6 check, the DNS resolvers.">
+      </picture>
+      <sub><b>Leak test.</b> What sites see, compared with the address your provider
+      gave you (asked over the physical interface, around the tunnel), plus IPv6 and
+      the resolvers that answer this Mac's lookups.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="Docs/images/mac-stats-dark.png">
+        <img src="Docs/images/mac-stats-light.png" alt="Statistics: today, this month, two weeks, top servers.">
+      </picture>
+      <sub><b>Statistics.</b> What actually went through the VPN — today, this month,
+      the last two weeks, and which servers carried it.</sub>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="Docs/images/mac-speed-dark.png">
+        <img src="Docs/images/mac-speed-light.png" alt="The speed test: a dial with download, upload and latency.">
+      </picture>
+      <sub><b>Speed test.</b> Through the current connection, against Cloudflare —
+      three streams, bounded to 10 seconds and 225 MB.</sub>
+    </td>
+  </tr>
+</table>
+
+## The iPhone
+
+<table>
+  <tr>
+    <td width="33%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="Docs/images/ios-main-dark.png">
+        <img src="Docs/images/ios-main-light.png" alt="The main screen on iPhone: the map, the server, the protection rows.">
+      </picture>
+      <sub>The macOS window, translated to a phone: the map, the server bar, and
+      protection as rows you can reach with a thumb.</sub>
+    </td>
+    <td width="33%">
+      <img src="Docs/images/ios-servers.png" alt="The server list on iPhone with favourites and per-server verdicts.">
+      <sub>Favourites, search, subscriptions, and the verdict of the last real
+      check next to every server.</sub>
+    </td>
+    <td width="33%">
+      <img src="Docs/images/ios-activity.png" alt="The Live Activity in the Dynamic Island: country, speed, graph and buttons.">
+      <sub>The Live Activity keeps the country, the live speed, the graph and two
+      buttons on the Lock Screen and in the Dynamic Island.</sub>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="Docs/images/ios-watch.png" width="430" alt="Apple Watch Smart Stack cards for every state of the session.">
+  <br><sub>The same session on an Apple Watch, in the Smart Stack.</sub>
+</p>
+
+The phone also carries the widgets, the Control Center switch, Siri phrases and
+the icon's menu, checks servers and tests for leaks on its own, learns the
+masking each server needs per Wi-Fi and per mobile network, and reminds you
+before a subscription runs out. See [iOS/README.md](iOS/README.md) (in Russian).
+
+## Android and Windows
+
+* **Android** — [Android/README.md](Android/README.md): the Kotlin port of the
+  core with golden tests against the Swift original, the same Go engine, a
+  Quick Settings tile, and scripts that break a live session on purpose
+  (deleting the interface, forcing Doze) to watch the recovery ladder work.
+* **Windows** — [windows-version-alpha/README.md](windows-version-alpha/README.md):
+  an alpha in .NET. `AnemiaCore` is the parsing and config layer, `AnemiaApp` the
+  WPF window, `AnemiaHelper` the privileged service. Sources only; the build
+  output is not kept in the repository.
+
+## What it does
+
+| | |
+|---|---|
+| **Protocols** | VLESS (Reality, XTLS-Vision, XHTTP, encryption), VMess, Trojan, Shadowsocks, Hysteria 2, AmneziaWG and plain WireGuard |
+| **Masking** | profiles from off to “looks like Yandex”: ClientHello fragmentation, junk packets, uTLS fingerprints — learned per server and per kind of network |
+| **Kill switch** | pf anchor on macOS, `includeAllNetworks` on iPhone: no tunnel, no traffic |
+| **Split tunneling** | listed networks, addresses and domains go around the VPN, at both the OS and the engine level |
+| **Block ads** | AdGuard DNS over DoH through the proxy |
+| **Server choice** | latency history → the kxc Core ML forecast, plus a real request through each server |
+| **Recovery** | health checks, a recovery ladder (same server → stronger masking → next server), network-change revalidation, a hold while there is no link |
+| **Subscriptions** | traffic, expiry and the panel's notices; refreshes honour `profile-update-interval` and only over https |
+| **Checks** | leak test (exit address, IPv6, DNS), statistics, speed test |
+| **Transfer** | servers and settings move between devices as a file, a QR code or an `anemia://sync/…` link |
+
+## Inside the macOS client
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -184,6 +341,10 @@ holds server keys — don't publish it.
 ```bash
 bash Scripts/test.sh        # every suite (swift-testing), Xcode or Command Line Tools
 bash Scripts/build-app.sh   # release, arm64 → /tmp/Anemia.app
+
+bash iOS/Scripts/build-ipa.sh            # iOS/build/Anemia.ipa (sign it on the device)
+bash Android/Scripts/build-apk.sh        # Android APK
+bash windows-version-alpha/Scripts/test.sh   # the .NET suites
 ```
 
 The scripts adapt to the standalone Command Line Tools: they pin a pre-27 SDK
@@ -236,5 +397,8 @@ sudo bash Scripts/uninstall-helper-dev.sh    # restores the network, removes the
       thinned to arm64; packet path (tun2socks / amneziawg-go) at user-interactive QoS
 - [x] Check Servers (real requests via throwaway engines), leak test, statistics, speed test, block ads, subscription info and reminders, learned masking per network
 - [x] swift-testing suites (276 tests) runnable without Xcode
+- [x] iPhone client: packet tunnel with the Go engine, Live Activity, widgets, Control Center, Siri, Apple Watch — signed on the device
+- [x] Android client: `VpnService` with the same engine, the core ported to Kotlin with golden tests, recovery verified by breaking a live session
+- [ ] Windows client: alpha (sources build and run; not yet proven over a long session)
 - [ ] Developer ID code signing + helper install via SMAppService
 - [ ] Verify the full system tunnel end-to-end as root against a live server

@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 420" width="1040" height="420" role="img" aria-label="One shared core, four clients">
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#141413" fill-opacity="0.45"/></marker></defs>
+<rect width="1040" height="420" rx="18" fill="#FAF9F5"/>
+<text x="36" y="46" fill="#6B6A64" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" font-weight="600" text-anchor="start" letter-spacing="2.2">WHAT THE CLIENTS SHARE</text>
+<text x="36" y="76" fill="#141413" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="21" font-weight="500" text-anchor="start" letter-spacing="0">The rules live in one place and are ported, not re-invented</text>
+<rect x="36" y="104" width="968" height="96" rx="16" fill="#F0EEE6" stroke="#C6613F" stroke-opacity="0.5" stroke-width="1.6"/>
+<text x="60" y="136" fill="#C6613F" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="600" text-anchor="start" letter-spacing="0">LoaderCore</text>
+<text x="60" y="160" fill="#141413" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="start" letter-spacing="0">share links · subscriptions · Xray/AmneziaWG/Hysteria configs · masking profiles · server scoring (kxc)</text>
+<text x="60" y="180" fill="#141413" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" text-anchor="start" letter-spacing="0">tunnel health · auto-switch budget · leak check · traffic ledger · speed test · transfer bundle</text>
+<line x1="145" y1="206" x2="145" y2="236" stroke="#141413" stroke-opacity="0.35" stroke-width="1.6" marker-end="url(#head)"/>
+<rect x="36" y="240" width="218" height="150" rx="14" fill="#F0EEE6" stroke="#141413" stroke-opacity="0.14" stroke-width="1"/>
+<text x="56" y="270" fill="#141413" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14.5" font-weight="600" text-anchor="start" letter-spacing="0">macOS</text>
+<text x="56" y="290" fill="#C6613F" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="500" text-anchor="start" letter-spacing="0">LoaderApp + root helper</text>
+<circle cx="60" cy="314" r="2" fill="#6B6A64"/>
+<text x="70" y="318" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">utun, routes, pf anchor</text>
+<circle cx="60" cy="334" r="2" fill="#6B6A64"/>
+<text x="70" y="338" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">menu bar, window, Settings</text>
+<circle cx="60" cy="354" r="2" fill="#6B6A64"/>
+<text x="70" y="358" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">Check Servers, leak test</text>
+<line x1="395" y1="206" x2="395" y2="236" stroke="#141413" stroke-opacity="0.35" stroke-width="1.6" marker-end="url(#head)"/>
+<rect x="286" y="240" width="218" height="150" rx="14" fill="#F0EEE6" stroke="#141413" stroke-opacity="0.14" stroke-width="1"/>
+<text x="306" y="270" fill="#141413" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14.5" font-weight="600" text-anchor="start" letter-spacing="0">iPhone</text>
+<text x="306" y="290" fill="#C6613F" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="500" text-anchor="start" letter-spacing="0">app + packet tunnel</text>
+<circle cx="310" cy="314" r="2" fill="#6B6A64"/>
+<text x="320" y="318" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">engine in the extension</text>
+<circle cx="310" cy="334" r="2" fill="#6B6A64"/>
+<text x="320" y="338" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">Live Activity, widgets</text>
+<circle cx="310" cy="354" r="2" fill="#6B6A64"/>
+<text x="320" y="358" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">Apple Watch, icon menu</text>
+<line x1="645" y1="206" x2="645" y2="236" stroke="#141413" stroke-opacity="0.35" stroke-width="1.6" marker-end="url(#head)"/>
+<rect x="536" y="240" width="218" height="150" rx="14" fill="#F0EEE6" stroke="#141413" stroke-opacity="0.14" stroke-width="1"/>
+<text x="556" y="270" fill="#141413" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14.5" font-weight="600" text-anchor="start" letter-spacing="0">Android</text>
+<text x="556" y="290" fill="#C6613F" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="500" text-anchor="start" letter-spacing="0">app + VpnService</text>
+<circle cx="560" cy="314" r="2" fill="#6B6A64"/>
+<text x="570" y="318" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">same Go engine</text>
+<circle cx="560" cy="334" r="2" fill="#6B6A64"/>
+<text x="570" y="338" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">Quick Settings tile</text>
+<circle cx="560" cy="354" r="2" fill="#6B6A64"/>
+<text x="570" y="358" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">golden tests for the port</text>
+<line x1="895" y1="206" x2="895" y2="236" stroke="#141413" stroke-opacity="0.35" stroke-width="1.6" marker-end="url(#head)"/>
+<rect x="786" y="240" width="218" height="150" rx="14" fill="#F0EEE6" stroke="#141413" stroke-opacity="0.14" stroke-width="1"/>
+<text x="806" y="270" fill="#141413" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14.5" font-weight="600" text-anchor="start" letter-spacing="0">Windows</text>
+<text x="806" y="290" fill="#C6613F" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="500" text-anchor="start" letter-spacing="0">WPF app + service</text>
+<circle cx="810" cy="314" r="2" fill="#6B6A64"/>
+<text x="820" y="318" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">AnemiaCore in C#</text>
+<circle cx="810" cy="334" r="2" fill="#6B6A64"/>
+<text x="820" y="338" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">alpha, sources only</text>
+<circle cx="810" cy="354" r="2" fill="#6B6A64"/>
+<text x="820" y="358" fill="#6B6A64" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="400" text-anchor="start" letter-spacing="0">same links and configs</text>
+</svg>

@@ -64,12 +64,14 @@ struct UISnapshotTests {
         state.usage.showPreview(Self.sampleLedger(server: state.allServers.first))
         state.leakTest.showPreview(LeakTestModel.Report(
             serverID: state.sessionServerID,
-            exit: LeakCheck.IPInfo(ip: "166.88.228.200", countryCode: "NL", country: "Netherlands",
+            // Documentation addresses only (RFC 5737): a render of this ends
+            // up in the README.
+            exit: LeakCheck.IPInfo(ip: "203.0.113.42", countryCode: "NL", country: "Netherlands",
                                    city: "Amsterdam", isp: "Example Hosting"),
-            direct: LeakCheck.IPInfo(ip: "95.24.10.7", countryCode: "RU", country: "Russia",
+            direct: LeakCheck.IPInfo(ip: "198.51.100.17", countryCode: "RU", country: "Russia",
                                      city: "Moscow", isp: "Example ISP"),
-            dns: [LeakCheck.DNSServer(ip: "172.68.192.4", countryCode: "NL", country: "Netherlands", org: "Cloudflare"),
-                  LeakCheck.DNSServer(ip: "172.68.192.9", countryCode: "NL", country: "Netherlands", org: "Cloudflare")]))
+            dns: [LeakCheck.DNSServer(ip: "203.0.113.53", countryCode: "NL", country: "Netherlands", org: "Cloudflare"),
+                  LeakCheck.DNSServer(ip: "203.0.113.54", countryCode: "NL", country: "Netherlands", org: "Cloudflare")]))
         #endif
         for dark in [false, true] {
             let suffix = dark ? "dark" : "light"
