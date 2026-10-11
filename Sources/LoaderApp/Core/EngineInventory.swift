@@ -40,9 +40,16 @@ struct EngineInventory: Sendable, Equatable {
             inventory.awg = .bundled
         }
         if let hysteria = HysteriaController.resolveBinary() {
-            inventory.hysteria = hysteria.path.hasPrefix("/opt/homebrew") ? "Homebrew" : "Bundled"
+            inventory.hysteria = engineLabel(hysteria.path)
         }
         return inventory
+    }
+
+    /// Where an engine came from. Both Homebrew prefixes count: naming only
+    /// the Apple Silicon one "Homebrew" told an Intel user that the engine
+    /// `brew install` had placed in /usr/local/bin was the app's own bundle.
+    static func engineLabel(_ path: String) -> String {
+        path.hasPrefix("/opt/homebrew") || path.hasPrefix("/usr/local") ? "Homebrew" : "Bundled"
     }
 
     /// Same search order as XrayController.resolveBinary.

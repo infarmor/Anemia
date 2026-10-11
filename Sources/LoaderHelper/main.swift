@@ -1,5 +1,6 @@
 import Foundation
 import LoaderShared
+import os
 
 /// Entry point for the privileged helper daemon. Advertises the XPC mach
 /// service and serves a single shared ``HelperService`` to connecting clients.
@@ -99,16 +100,32 @@ if arguments.contains("--restore-network") {
 // flushed, bridge stopped, routes removed. Installed before the service is
 // created, so a stop request during launch recovery is not lost.
 signal(SIGTERM, SIG_IGN)
+// Recovery runs *inside* `HelperService.init` (journal replay: networksetup,
+// route, pfctl), and the service only reaches the registry after that returns.
+// A `bootout` landing in that window took the `?.` path below — no service,
+// nothing torn down, `exit(0)` — leaving the machine half-restored by the very
+// replay it interrupted, and telling launchd the exit was clean. So an
+// early request is remembered and honoured once there is something to tear
+// down.
+let earlyTermination = OSAllocatedUnfairLock(initialState: false)
 let terminationSource = DispatchSource.makeSignalSource(
     signal: SIGTERM, queue: DispatchQueue(label: "com.loader.vpn.helper.sigterm"))
 terminationSource.setEventHandler {
-    ServiceRegistry.shared.service?.shutdownForTermination()
+    guard let service = ServiceRegistry.shared.service else {
+        earlyTermination.withLock { $0 = true }
+        return
+    }
+    service.shutdownForTermination()
     exit(0)
 }
 terminationSource.resume()
 
 let service = HelperService()   // replays the journal before serving anything
 ServiceRegistry.shared.service = service
+if earlyTermination.withLock({ $0 }) {
+    service.shutdownForTermination()
+    exit(0)
+}
 let delegate = ListenerDelegate(service: service)
 let listener = NSXPCListener(machServiceName: LoaderIdentifiers.helperMachService)
 listener.delegate = delegate

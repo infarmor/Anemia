@@ -29,6 +29,13 @@ final class SubscriptionAlerts: ObservableObject {
     /// when they fire: one already due goes out once, not with every refresh.
     private var handed: [String: Date]
     private var pending: Task<Void, Never>?
+    /// Counts planning runs. `reschedule()` awaits across the notification
+    /// center calls, so two of them can be inside it at once — and both read
+    /// `warned` before either writes it, which puts the *immediate*
+    /// low-traffic reminder (no trigger, so `add` delivers rather than
+    /// schedules) into the center twice: two banners, not one pending request
+    /// replaced. A run that is no longer the newest stops before it writes.
+    private var runID = 0
     private static let prefix = "anemia.sub."
     /// The notification center exists for an app bundle only: a test
     /// process asking for it crashes.
@@ -59,19 +66,22 @@ final class SubscriptionAlerts: ObservableObject {
     }
 
     func reschedule() async {
+        runID += 1
+        let run = runID
         guard Self.available else { return }
         let center = UNUserNotificationCenter.current()
         let ours = await center.pendingNotificationRequests().map(\.identifier).filter { $0.hasPrefix(Self.prefix) }
+        guard isCurrent(run) else { return }
         center.removePendingNotificationRequests(withIdentifiers: ours)
         await refreshPermission()
-        guard isEnabled else { return }
+        guard isCurrent(run), isEnabled else { return }
 
         let subscriptions = source()
         // A renewed allowance may be warned about again.
         let fractions = Dictionary(subscriptions.map { ($0.id, $0.info.usedFraction ?? 0) }) { first, _ in first }
         warned = warned.filter { (fractions[$0] ?? 0) >= 0.9 }
         let plan = SubscriptionReminders.plan(subscriptions, alreadyWarned: warned)
-        guard !plan.isEmpty, await authorize() else { return }
+        guard !plan.isEmpty, await authorize(), isCurrent(run) else { return }
         let now = Date()
         for reminder in plan {
             var trigger: UNNotificationTrigger?
@@ -108,6 +118,11 @@ final class SubscriptionAlerts: ObservableObject {
     }
 
     // MARK: - Private
+
+    /// Still the newest planning run — `reschedule()` is awaited from the
+    /// debounced task, from `askForBanners` and from `AppState` at launch, and
+    /// those can overlap.
+    private func isCurrent(_ run: Int) -> Bool { runID == run }
 
     private func authorize() async -> Bool {
         switch permission {

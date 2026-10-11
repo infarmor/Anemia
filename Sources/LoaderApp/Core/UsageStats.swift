@@ -7,7 +7,11 @@ import LoaderCore
 final class UsageStats: ObservableObject {
     @Published private(set) var ledger: TrafficLedger
 
-    private var lastSave = Date.distantPast
+    /// Monotonic, and started at zero so the first sample always saves: the
+    /// throttle is a duration, and on wall-clock seconds a step backwards
+    /// stopped persisting the session's bytes for the size of the step — the
+    /// crash or quit in between loses them.
+    private var lastSave = DispatchTime(uptimeNanoseconds: 0)
     private static let key = "usageLedger"
 
     init() {
@@ -31,7 +35,7 @@ final class UsageStats: ObservableObject {
     func record(runStartedAt: Date, received: Int64, sent: Int64, server: ProxyServer?) {
         ledger.record(runStartedAt: runStartedAt, received: received, sent: sent,
                       server: server.map { ($0.id, $0.name) })
-        if Date().timeIntervalSince(lastSave) > 30 { save() }
+        if EngineProcess.seconds(since: lastSave) > 30 { save() }
     }
 
     /// The session ended: the next sample starts a new run.
@@ -53,7 +57,7 @@ final class UsageStats: ObservableObject {
     #endif
 
     private func save() {
-        lastSave = Date()
+        lastSave = DispatchTime.now()
         if let data = try? JSONEncoder().encode(ledger) {
             UserDefaults.standard.set(data, forKey: Self.key)
         }

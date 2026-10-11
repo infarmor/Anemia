@@ -25,11 +25,14 @@ public struct AntiCensorshipOptions: Codable, Sendable, Equatable {
     }
 
     /// Junk / noise packets sent before real data to poison DPI classifiers.
-    /// Maps to Xray `sockopt.noises`.
+    /// Maps to the masking `freedom` outbound's `settings.noises` — not a
+    /// socket option; see ``AntiCensorshipOptions/emittableNoises`` for what
+    /// the engine will actually load.
     public struct Noise: Codable, Sendable, Equatable {
-        /// "rand" (random bytes), "str" (literal), or "base64".
+        /// "rand" (random bytes), "str" (literal), "hex" or "base64" — matched
+        /// case-sensitively by the engine.
         public var type: String
-        /// Packet size range (rand) or the literal/base64 payload.
+        /// Byte length range (rand) or the literal/hex/base64 payload.
         public var packet: String
         /// Delay range in ms before sending, e.g. "10-16".
         public var delay: String
@@ -90,15 +93,24 @@ public struct AntiCensorshipOptions: Codable, Sendable, Equatable {
     /// that field's default — not the whole options struct (which the
     /// synthesized decoder would have failed, making Persistence treat a
     /// perfectly good store as corrupt).
+    ///
+    /// The two arrays get the same rule one level down: read element by
+    /// element, so one poisoned noise costs *that entry*. Decoded through
+    /// `try?` as a whole array, a single bad element emptied `noises` — every
+    /// generator and the ClientHello fragmentation gone while the UI kept
+    /// naming the same masking profile, which is a handshake that dies
+    /// somewhere else entirely. `Persistence.decodeLenientArray` does this
+    /// already but is private to that file; duplicating the wrapper here beats
+    /// editing a file another pass is working in.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         fragment = (try? c.decodeIfPresent(Fragment.self, forKey: .fragment)) ?? nil
-        noises = (try? c.decodeIfPresent([Noise].self, forKey: .noises)) ?? []
+        noises = (try? c.decodeIfPresent([Loose<Noise>].self, forKey: .noises))?.compactMap(\.value) ?? []
         muxEnabled = (try? c.decodeIfPresent(Bool.self, forKey: .muxEnabled)) ?? false
         muxConcurrency = (try? c.decodeIfPresent(Int.self, forKey: .muxConcurrency)) ?? 8
         tcpFastOpen = (try? c.decodeIfPresent(Bool.self, forKey: .tcpFastOpen)) ?? true
         fingerprint = (try? c.decodeIfPresent(String.self, forKey: .fingerprint)) ?? "chrome"
-        mimicry = (try? c.decodeIfPresent([String].self, forKey: .mimicry)) ?? []
+        mimicry = (try? c.decodeIfPresent([Loose<String>].self, forKey: .mimicry))?.compactMap(\.value) ?? []
     }
 
     /// Russian-service fingerprint aliases → the closest real uTLS ClientHello.
@@ -233,5 +245,15 @@ public enum MaskingProfile: String, Codable, Sendable, CaseIterable {
         case .ruYandex: return .ruVK
         case .ruVK:     return nil
         }
+    }
+}
+
+/// One array element, or nothing when it can't be read — so a single corrupt
+/// entry cannot take its whole array down with it.
+private struct Loose<Element: Decodable>: Decodable {
+    let value: Element?
+
+    init(from decoder: Decoder) throws {
+        value = try? Element(from: decoder)
     }
 }

@@ -137,11 +137,27 @@ final class SystemSettingsGuard {
             return (false, "network journal write failed (\(error)) — refusing to change DNS without a restore record")
         }
         let done = targets.filter { shell.setDNSServers(service: $0, servers: servers) }
-        return done.isEmpty ? (false, "failed to set DNS on any service") : (true, nil)
+        let failed = targets.filter { !done.contains($0) }
+        // Any-but-none used to answer ok. Then the app reported "system DNS →
+        // tunnel" while the services networksetup refused to write still
+        // resolved through the ISP — a leak under a Connected UI — and the
+        // journal counted those services as changed by the user, so neither a
+        // retry nor a teardown ever went back for them.
+        guard failed.isEmpty else {
+            return (false, "resolver not set on \(failed.joined(separator: ", "))")
+        }
+        return (true, nil)
     }
 
     /// Put every recorded service's resolvers back. Entries whose restore
-    /// fails stay in the ledger for the next attempt.
+    /// fails stay in the ledger for the next attempt — and "fails" includes
+    /// `networksetup` returning success while the service still answers with
+    /// our tunnel resolver. The exit code is not the evidence: a rejected or
+    /// mis-parsed argument (the `empty` token that means "back to DHCP" is
+    /// documented nowhere in `networksetup -h`) leaves the setting untouched
+    /// and the ledger entry dropped, so the machine stayed unable to resolve
+    /// anything with nothing left to retry and no trace of why. So read back,
+    /// and keep the entry when the value did not move.
     @discardableResult
     func restoreDNS() -> [String] {
         guard !journal.dns.isEmpty else { return [] }
@@ -154,11 +170,21 @@ final class SystemSettingsGuard {
                 serviceExists: existing.contains(entry.service))
             switch action {
             case .restore(let prior):
-                if shell.setDNSServers(service: entry.service, servers: prior) {
-                    report.append("DNS \(entry.service) → \(prior.isEmpty ? "automatic" : prior.joined(separator: ", "))")
-                } else {
+                guard shell.setDNSServers(service: entry.service, servers: prior) else {
                     remaining.append(entry)
                     report.append("DNS \(entry.service): restore failed — will retry")
+                    continue
+                }
+                let after = shell.dnsServers(service: entry.service)
+                if after == nil {
+                    remaining.append(entry)
+                    report.append("DNS \(entry.service): unreadable after the write — will retry")
+                } else if after != prior {
+                    remaining.append(entry)
+                    report.append("DNS \(entry.service): write accepted but the resolver is still "
+                        + "\(after?.joined(separator: ", ") ?? "") — will retry")
+                } else {
+                    report.append("DNS \(entry.service) → \(prior.isEmpty ? "automatic" : prior.joined(separator: ", "))")
                 }
             case .forget:
                 report.append("DNS \(entry.service): changed since the override — left as is")
@@ -202,7 +228,12 @@ final class SystemSettingsGuard {
             return (false, "network journal write failed (\(error)) — refusing to change the proxy without a restore record")
         }
         let done = targets.filter { shell.setSocksProxy(service: $0, setting: applied) }
-        return done.isEmpty ? (false, "failed to set the proxy on any service") : (true, nil)
+        let failed = targets.filter { !done.contains($0) }
+        // Same contract as applyDNS: half-written is not written.
+        guard failed.isEmpty else {
+            return (false, "proxy not set on \(failed.joined(separator: ", "))")
+        }
+        return (true, nil)
     }
 
     @discardableResult
@@ -242,15 +273,21 @@ final class SystemSettingsGuard {
         persist()
     }
 
-    /// Hand the recorded pf state to recovery and clear it from the ledger.
-    func takePFRecovery() -> (token: String?, legacyMainRuleset: Bool) {
-        let result = (journal.pfToken, journal.legacyMainRuleset)
-        if result.0 != nil || result.1 {
-            journal.pfToken = nil
-            journal.legacyMainRuleset = false
-            persist()
-        }
-        return result
+    /// What recovery has to undo in pf. Read-only on purpose: the token is the
+    /// only address for `pfctl -X`, and clearing it before that command has
+    /// run left a window in which a crash or a kill lost the reference — pf
+    /// stayed `Enabled` with nothing anywhere saying who enabled it.
+    /// ``clearPFRecovery`` is what removes it, once the action has run.
+    func pfRecovery() -> (token: String?, legacyMainRuleset: Bool) {
+        (journal.pfToken, journal.legacyMainRuleset)
+    }
+
+    /// Drop the pf state from the ledger after the action consumed it.
+    func clearPFRecovery() {
+        guard journal.pfToken != nil || journal.legacyMainRuleset else { return }
+        journal.pfToken = nil
+        journal.legacyMainRuleset = false
+        persist()
     }
 
     // MARK: - Dead pins without a ledger entry
@@ -261,14 +298,17 @@ final class SystemSettingsGuard {
     /// a loopback proxy nothing listens on. Proxies are never swept at launch:
     /// at boot a user's own local proxy app hasn't started yet and would read
     /// as dead.
-    func sweepDeadPins(includeProxies: Bool, includeLegacyRanges: Bool) -> [String] {
+    func sweepDeadPins(includeProxies: Bool, includeLegacyRanges: Bool,
+                       ourTunnelIsGoingAway: Bool = false) -> [String] {
         var report: [String] = []
         let live = shell.liveIPv4Addresses()
         let trackedDNS = Set(journal.dns.map(\.service))
         let trackedProxy = Set(journal.proxy.map(\.service))
         for service in shell.allServiceNames() {
             if !trackedDNS.contains(service), let dns = shell.dnsServers(service: service),
-               NetworkSettingsPolicy.isDeadDNSPin(dns, liveIPv4: live, includeLegacy: includeLegacyRanges) {
+               NetworkSettingsPolicy.isDeadDNSPin(dns, liveIPv4: live,
+                                                  includeLegacy: includeLegacyRanges,
+                                                  ourTunnelIsGoingAway: ourTunnelIsGoingAway) {
                 report.append(shell.setDNSServers(service: service, servers: [])
                     ? "DNS \(service): dead tunnel resolver \(dns.joined(separator: ", ")) → automatic"
                     : "DNS \(service): could not reset dead resolver \(dns.joined(separator: ", "))")

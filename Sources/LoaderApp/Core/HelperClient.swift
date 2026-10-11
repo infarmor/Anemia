@@ -237,30 +237,36 @@ final class HelperClient {
     // that way — cross-connection order is unspecified — which used to let
     // an in-flight connect re-pin the resolver after the quit's restore
     // landed, leaving the machine DNS-dead with the app gone.
+    //
+    // The error handler releases the wait too: with the helper not installed,
+    // dead, or unwilling to answer, no reply block ever runs, and each of the
+    // three would hold the main thread for its full timeout — nine seconds of
+    // beachball at every ⌘Q, which is also how macOS marks an app
+    // not-responding and can kill it before these restores land.
 
     /// See the comment above the group.
     func stopTunnelOnConnectionBlocking(timeout: TimeInterval = 3) {
-        guard let helper = makeConnection().remoteObjectProxyWithErrorHandler({ _ in }) as? LoaderHelperProtocol
-        else { return }
         let sem = DispatchSemaphore(value: 0)
+        guard let helper = makeConnection().remoteObjectProxyWithErrorHandler({ _ in sem.signal() }) as? LoaderHelperProtocol
+        else { return }
         helper.stopTunnel { _, _ in sem.signal() }
         _ = sem.wait(timeout: .now() + timeout)
     }
 
     /// See the comment above the group.
     func clearSystemProxyOnConnectionBlocking(timeout: TimeInterval = 3) {
-        guard let helper = makeConnection().remoteObjectProxyWithErrorHandler({ _ in }) as? LoaderHelperProtocol
-        else { return }
         let sem = DispatchSemaphore(value: 0)
+        guard let helper = makeConnection().remoteObjectProxyWithErrorHandler({ _ in sem.signal() }) as? LoaderHelperProtocol
+        else { return }
         helper.clearSystemProxy { _, _ in sem.signal() }
         _ = sem.wait(timeout: .now() + timeout)
     }
 
     /// See the comment above the group.
     func clearSystemDNSOnConnectionBlocking(timeout: TimeInterval = 3) {
-        guard let helper = makeConnection().remoteObjectProxyWithErrorHandler({ _ in }) as? LoaderHelperProtocol
-        else { return }
         let sem = DispatchSemaphore(value: 0)
+        guard let helper = makeConnection().remoteObjectProxyWithErrorHandler({ _ in sem.signal() }) as? LoaderHelperProtocol
+        else { return }
         helper.clearSystemDNS { _, _ in sem.signal() }
         _ = sem.wait(timeout: .now() + timeout)
     }

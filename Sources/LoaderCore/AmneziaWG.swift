@@ -194,6 +194,20 @@ public struct WireGuardProfile: Codable, Sendable, Equatable {
         self.mtu = mtu
         self.keepAlive = keepAlive
     }
+
+    /// The resolvers a tunnel may hand the system: the `dns` entries that are
+    /// address literals, in the order the profile lists them.
+    ///
+    /// A conf's `DNS =` line is a mixed list — `wg-quick` sends the address
+    /// entries to resolvconf as `nameserver` and the hostnames as `search`, so
+    /// a name there is legal and is *not* a resolver. Every consumer that feeds
+    /// the list to an API taking addresses (`NEDNSSettings.servers` on iOS,
+    /// `networksetup` through the helper on macOS, `addDnsServer` on Android)
+    /// has to make that cut first, so the cut lives here rather than in three
+    /// places that would then disagree.
+    public var resolverAddresses: [String] {
+        dns.filter { DirectResolver.isIPAddress($0) }
+    }
 }
 
 // MARK: - ProxyServer WireGuard fields
@@ -243,7 +257,16 @@ public enum AmneziaWGConfigBuilder {
         if let psk = profile.presharedKey, !isValidWGKey(psk) {
             problems.append("preshared key is not a 32-byte base64 key")
         }
-        if profile.allowedIPs.isEmpty {
+        let usable = profile.allowedIPs.filter { allowedIP($0) != nil }
+        let unusable = profile.allowedIPs.filter { allowedIP($0) == nil }
+        if !unusable.isEmpty {
+            // The daemon reads every `allowed_ip=` with netip.ParsePrefix and
+            // takes the `set=1` script or nothing: one unparseable entry kills
+            // a tunnel that looked fine at import, with a UAPI error nobody can
+            // act on. Refuse it here instead.
+            problems.append("AllowedIPs \(unusable.map { "'\($0)'" }.joined(separator: ", ")) is not an address/prefix route")
+        }
+        if usable.isEmpty {
             problems.append("AllowedIPs is empty — nothing would route into the tunnel")
         }
         if let mtu = profile.mtu, mtu <= 0 || mtu > 65535 {
@@ -261,6 +284,20 @@ public enum AmneziaWGConfigBuilder {
         if let mtu2 = profile.mtu { problems.append(contentsOf: validateObfuscation(server.awg, mtu: mtu2)) }
         else { problems.append(contentsOf: validateObfuscation(server.awg, mtu: mtu)) }
         return problems
+    }
+
+    /// A route the daemon can use: `address/prefix` with a prefix the family
+    /// allows, or a bare address, which means a host route the way `wg-quick`
+    /// reads it. Nil is "the engine would reject this line".
+    static func allowedIP(_ entry: String) -> String? {
+        let entry = entry.trimmingCharacters(in: .whitespaces)
+        guard !entry.isEmpty else { return nil }
+        let pieces = entry.split(separator: "/", maxSplits: 1).map(String.init)
+        guard let address = pieces.first, DirectResolver.isIPAddress(address) else { return nil }
+        let bits = address.contains(":") ? 128 : 32
+        guard pieces.count == 2 else { return "\(address)/\(bits)" }
+        guard let prefix = Int(pieces[1]), (0...bits).contains(prefix) else { return nil }
+        return "\(address)/\(prefix)"
     }
 
     private static func validateObfuscation(_ o: AWGObfuscation?, mtu: Int) -> [String] {
@@ -294,7 +331,10 @@ public enum AmneziaWGConfigBuilder {
         // A trap documented by AmneziaWG: this coincidence makes the 148-byte
         // initiation and the 92-byte response the same wire size again,
         // re-enabling the size-classification the padding exists to defeat.
-        if let s1 = o.initPadding, let s2 = o.responsePadding, s1 + 56 == s2 {
+        // Subtracted, not added: the range check above only records a problem,
+        // so a link carrying Int.max would overflow `s1 + 56` and take the
+        // process down while it was still explaining why it refused.
+        if let s1 = o.initPadding, let s2 = o.responsePadding, s2 >= 56, s2 - 56 == s1 {
             problems.append("S1 + 56 = S2 (\(s1) + 56 = \(s2)) — initiation and response packets become indistinguishable by size; change one")
         }
         // S4 rides the wire as a u8 padding length — above 255 the daemon
@@ -343,6 +383,17 @@ public enum AmneziaWGConfigBuilder {
                 problems.append("\(name) range \(raw) overlaps \(otherName) range — packets would be dropped as unclassifiable")
             }
             ranges.append((name, r))
+        }
+        // I1–I5 are the one obfuscation family the daemon takes as free text —
+        // a chain spec like `<r 64><b 61 62>`, so nothing parses them before
+        // they ride. They are appended to the UAPI script verbatim, and that
+        // script is line-oriented: a newline in an I value is one more
+        // directive to a root daemon, able to rewrite the private key or the
+        // routes that follow it.
+        for (idx, raw) in o.specialHandshakes.prefix(5).enumerated() {
+            if raw.unicodeScalars.contains(where: { $0.value < 0x20 || $0.value == 0x7f || $0.value > 0x7e }) {
+                problems.append("I\(idx + 1) has a character outside the printable ASCII the chain spec allows")
+            }
         }
         return problems
     }
@@ -536,9 +587,16 @@ public enum AmneziaWGConfigBuilder {
         lines.append("endpoint=\(endpointHost.contains(":") ? "[\(endpointHost)]" : endpointHost):\(server.port)")
         if let ka = profile.keepAlive { lines.append("persistent_keepalive_interval=\(ka)") }
         lines.append("replace_allowed_ips=true")
-        for ip in profile.allowedIPs where !ip.isEmpty { lines.append("allowed_ip=\(ip)") }
+        for route in profile.allowedIPs.compactMap(allowedIP) { lines.append("allowed_ip=\(route)") }
         lines.append("protocol_version=1")
         lines.append("")   // UAPI scripts end with a blank line
+        // The last word on the matter, for the callers that build a script
+        // without validating first (diagnostics, the golden tool): the helper
+        // pipes these lines to a root daemon, so a value that smuggles in a
+        // second directive never leaves this function at all.
+        for line in lines where line.unicodeScalars.contains(where: { $0.value < 0x20 || $0.value == 0x7f }) {
+            throw ParseError.awgConfig("\(line.prefix(while: { $0 != "=" })) carries an unprintable character")
+        }
         return lines.joined(separator: "\n")
     }
 

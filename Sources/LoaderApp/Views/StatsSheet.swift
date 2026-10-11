@@ -164,6 +164,10 @@ private struct UsagePane: View {
 private struct SpeedPane: View {
     @EnvironmentObject var state: AppState
     @ObservedObject var test: SpeedTestModel
+    /// The running test, so closing the sheet can stop it. `speedTest` lives on
+    /// `AppState`, which outlives this view: a dismissed window left up to
+    /// 225 MB of traffic going and kept "Start" disabled on reopen.
+    @State private var run: Task<Void, Never>?
 
     var body: some View {
         Form {
@@ -179,7 +183,8 @@ private struct SpeedPane: View {
                         .font(.caption)
                         .foregroundStyle(Theme.textLo)
                     Button {
-                        Task { await test.run(through: routeServer, proxy: state.appProxy) }
+                        run?.cancel()
+                        run = Task { await test.run(through: routeServer, proxy: state.appProxy) }
                     } label: {
                         Text(test.phase == .done ? "Run Again" : "Start")
                             .frame(minWidth: 160)
@@ -231,6 +236,7 @@ private struct SpeedPane: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .onDisappear { run?.cancel() }
     }
 
     /// The server the test goes through; nil without the VPN.

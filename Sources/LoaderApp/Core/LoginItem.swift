@@ -18,6 +18,15 @@ enum LoginItem {
         SMAppService.mainApp.status == .enabled
     }
 
+    /// Registered, but the system will not run it until the user ticks Anemia
+    /// in System Settings → General → Login Items. A separate state on
+    /// purpose: `register()` succeeded here, yet `isEnabled` is still false,
+    /// and a caller that only re-reads `isEnabled` shows the toggle snapping
+    /// back with nothing said about why.
+    static var needsApproval: Bool {
+        SMAppService.mainApp.status == .requiresApproval
+    }
+
     /// Register/unregister the app. Returns a user-facing error on failure.
     static func setEnabled(_ on: Bool) -> String? {
         do {

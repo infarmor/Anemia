@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 #
-# Fetch the Xray-core and tun2socks binaries the app bundles at runtime.
-# Produces universal (arm64 + x86_64) binaries under Resources/.
+# Fetch the Xray-core and tun2socks binaries the app bundles at runtime, as
+# universal (arm64 + x86_64) files under Resources/.
+#
+# `Scripts/build-app.sh` then thins every bundled engine to arm64 before it
+# signs, on purpose — so a single-arch arm64 file in Resources/ is what the app
+# has been running with here, and this script is the path that would show you
+# the x86_64 slice going missing: the arch checks below are what makes that loud
+# instead of a quiet one-arch "Done".
 #
 # NOTE: This downloads third-party release binaries and verifies their SHA256
 # against the pinned checksums below. If you bump XRAY_VERSION, refresh the
@@ -50,12 +56,54 @@ check_sum() { # file expected
   fi
 }
 
+# lipo -create exits 0 when only one of its inputs was readable: the result is
+# a "fat" file with a single architecture, and the script would still print
+# "Done". Measured on this Mac (`lipo -create -output out one.bin missing.bin`
+# → exit 0, `lipo -info out` → one arch). So both the inputs and the produced
+# slices are checked, and the destination is only replaced after that passed —
+# a failed fetch must not leave the bundle holding half an engine.
+require_input() { # path label
+  [[ -f "$1" ]] || {
+    echo "✗ $2: распаковка не дала $1" >&2
+    echo "  содержимое: $(find "$(dirname "$(dirname "$1")")" -type f 2>/dev/null | sed -n '1,6p' | tr '\n' ' ')" >&2
+    exit 1
+  }
+}
+
+require_arches() { # file label arch-prefix…
+  local file="$1"; shift
+  local label="$1"; shift
+  local have slice
+  have="$(lipo -archs "$file" 2>/dev/null || true)"
+  for want in "$@"; do
+    # Prefix, not equality: a slice can be arm64e, and demanding the literal
+    # name would refuse a perfectly good download. What must not happen is a
+    # whole architecture going missing while the script says "Done".
+    slice=""
+    for found in $have; do
+      case "$found" in "$want"*) slice="$found"; break ;; esac
+    done
+    [[ -n "$slice" ]] || {
+      echo "✗ $label: в собранном бинарнике нет $want (есть: ${have:-ничего})" >&2
+      exit 1
+    }
+  done
+}
+
+# Write beside the destination and rename, so a failure above never touches the
+# file the app already runs from.
+install_bin() { # src dest
+  mv -f "$1" "$2"
+  chmod +x "$2"
+}
+
 fetch_xray() {
   # macOS Xray release assets are per-arch zips: Xray-macos-arm64-v8a.zip etc.
   local tmp; tmp="$(mktemp -d)"
-  # set -e bails mid-function on any failed fetch — the trap keeps the tmp
-  # dir from leaking.
-  trap 'rm -rf "$tmp"' EXIT
+  # The path is bound when the trap is set: `$tmp` is local, so a trap holding
+  # the NAME would run `rm -rf ""` after this function returned (and the second
+  # fetch's trap would already have replaced it anyway).
+  trap "rm -rf '$tmp'" EXIT
   for arch in arm64-v8a 64; do
     local url="https://github.com/XTLS/Xray-core/releases/download/${XRAY_VERSION}/Xray-macos-${arch}.zip"
     echo "  fetching $url"
@@ -70,9 +118,12 @@ fetch_xray() {
     unzip -o -q "$tmp/xray-$arch.zip" -d "$tmp/xray-$arch"
   done
   # Merge into a universal binary.
-  lipo -create -output "$DEST/xray" \
+  require_input "$tmp/xray-arm64-v8a/xray" "Xray-macos-arm64-v8a.zip"
+  require_input "$tmp/xray-64/xray" "Xray-macos-64.zip"
+  lipo -create -output "$tmp/xray.universal" \
     "$tmp/xray-arm64-v8a/xray" "$tmp/xray-64/xray"
-  chmod +x "$DEST/xray"
+  require_arches "$tmp/xray.universal" xray arm64 x86_64
+  install_bin "$tmp/xray.universal" "$DEST/xray"
   rm -rf "$tmp"
   echo "  → $DEST/xray"
   file "$DEST/xray"
@@ -83,7 +134,7 @@ fetch_tun2socks() {
   # tun:// device + socks5 proxy arguments match this project's flags
   # (--device, --proxy, --loglevel, --mtu, --tcp-auto-tuning).
   local tmp; tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' EXIT
+  trap "rm -rf '$tmp'" EXIT
   for arch in arm64 amd64; do
     local url="https://github.com/xjasonlyu/tun2socks/releases/download/${TUN2SOCKS_VERSION}/tun2socks-darwin-${arch}.zip"
     echo "  fetching $url"
@@ -104,8 +155,9 @@ fetch_tun2socks() {
   arm_bin="$(find "$tmp/tun2socks-arm64" -name tun2socks -type f -print -quit)"
   x86_bin="$(find "$tmp/tun2socks-amd64" -name tun2socks -type f -print -quit)"
   [[ -n "$arm_bin" && -n "$x86_bin" ]] || { echo "✗ tun2socks binary not found in zips" >&2; exit 1; }
-  lipo -create -output "$DEST/tun2socks" "$arm_bin" "$x86_bin"
-  chmod +x "$DEST/tun2socks"
+  lipo -create -output "$tmp/tun2socks.universal" "$arm_bin" "$x86_bin"
+  require_arches "$tmp/tun2socks.universal" tun2socks arm64 x86_64
+  install_bin "$tmp/tun2socks.universal" "$DEST/tun2socks"
   rm -rf "$tmp"
   echo "  → $DEST/tun2socks"
   file "$DEST/tun2socks"

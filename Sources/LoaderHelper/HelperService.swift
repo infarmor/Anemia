@@ -125,8 +125,11 @@ final class HelperService: NSObject, LoaderHelperProtocol, @unchecked Sendable {
         var report: [String] = []
         report += settings.restoreDNS()
         report += settings.restoreProxy()
-        let pf = settings.takePFRecovery()
+        let pf = settings.pfRecovery()
         report += KillSwitch.recover(token: pf.token, legacyMainRuleset: pf.legacyMainRuleset)
+        // Only now, with the anchor flushed and the reference released, does
+        // the ledger forget it — see `SystemSettingsGuard.pfRecovery`.
+        settings.clearPFRecovery()
         report += sweepStaleTunnel()
         report += settings.sweepDeadPins(includeProxies: repair, includeLegacyRanges: repair)
         for line in report { logErr("recovery: \(line)") }
@@ -743,7 +746,10 @@ final class HelperService: NSObject, LoaderHelperProtocol, @unchecked Sendable {
         //    it. A SIGKILLed engine can leave its socket file behind, refusing
         //    connects until the new engine replaces it — so wait for a connect
         //    to succeed, not for the file to exist.
-        let deadline = Date().addingTimeInterval(6)
+        // Monotonic for the same reason `SystemCommand.run` is: a wall-clock
+        // step backwards would make this wait never end, and the queue it
+        // blocks is the one that also serves `stopTunnel`.
+        let deadline = DispatchTime.now() + 6
         var assigned: String?
         while assigned == nil {
             if let text = try? String(contentsOfFile: nameFile, encoding: .utf8) {
@@ -753,7 +759,7 @@ final class HelperService: NSObject, LoaderHelperProtocol, @unchecked Sendable {
             if !proc.isRunning {
                 throw TunnelError(message: "amneziawg-go exited during startup: \(tailBox.tail())")
             }
-            if Date() > deadline {
+            if DispatchTime.now() > deadline {
                 throw TunnelError(message: "amneziawg-go created no utun interface")
             }
             Thread.sleep(forTimeInterval: 0.05)
@@ -771,7 +777,7 @@ final class HelperService: NSObject, LoaderHelperProtocol, @unchecked Sendable {
             if !proc.isRunning {
                 throw TunnelError(message: "amneziawg-go exited during startup: \(tailBox.tail())")
             }
-            if Date() > deadline {
+            if DispatchTime.now() > deadline {
                 throw TunnelError(message: "engine UAPI socket \(sockPath) never appeared")
             }
             Thread.sleep(forTimeInterval: 0.05)
@@ -809,6 +815,11 @@ final class HelperService: NSObject, LoaderHelperProtocol, @unchecked Sendable {
     /// SO_SNDTIMEO/SO_RCVTIMEO so a wedged daemon can't hang the XPC reply.
     /// Must run on `queue`.
     private func pushUAPIConfig(socketPath: String, script: String) throws {
+        // The script is checked at the edge where the bytes are actually
+        // written, not only in the builder that produced it — see `UAPIInput`.
+        if let problem = UAPIInput.problem(script) {
+            throw TunnelError(message: "refusing the UAPI script: \(problem)")
+        }
         guard let fd = Self.connectUAPI(socketPath) else {
             throw TunnelError(message: "UAPI connect to \(socketPath) failed: errno \(errno)")
         }
@@ -906,8 +917,14 @@ final class HelperService: NSObject, LoaderHelperProtocol, @unchecked Sendable {
             guard let self, let host = self.serverAddress, self.utun != nil else { return }
             // Refresh the physical gateways first: a same-link change (DHCP
             // renew, gateway swap by the router) can silently move the next-hop.
+            // Keep the last known value when the read fails, for v6 too: the
+            // v6 bypass pins and teardown's host-route removal both sit under
+            // `if let gw6`, so one tick without a v6 default (RA renumbering,
+            // or the privacy-extension route the query prefers not to answer)
+            // used to strand every v6 host route of the session in the table,
+            // permanently, in the pf allow-list.
             if let g4 = SystemCommand.defaultGateway() { self.gatewayV4 = g4 }
-            self.gatewayV6 = SystemCommand.defaultGateway(inet6: true)
+            if let g6 = SystemCommand.defaultGateway(inet6: true) { self.gatewayV6 = g6 }
             self.reassertBypassRoutes(host: host)
             self.reassertSplitRoutes()
             self.refreshSplitTunnel(resolve: true)
@@ -1150,7 +1167,13 @@ final class HelperService: NSObject, LoaderHelperProtocol, @unchecked Sendable {
     private func handleNetworkChange() {
         guard utun != nil, let host = serverAddress else { return }
         if let g4 = SystemCommand.defaultGateway() { gatewayV4 = g4 }
-        gatewayV6 = SystemCommand.defaultGateway(inet6: true)
+        // Keep-last, exactly as the 60 s timer does (see the comment there):
+        // teardown's v6 host-route removal and the v6 re-pin both sit under
+        // `if let gw6`, so one unreadable v6 default during a link change used
+        // to drop the gateway and strand every v6 bypass route of the session
+        // in the table permanently. A link change is precisely when the query
+        // is likeliest to fail — the new interface has not settled yet.
+        if let g6 = SystemCommand.defaultGateway(inet6: true) { gatewayV6 = g6 }
         reassertBypassRoutes(host: host)
         reassertSplitRoutes()
         refreshSplitTunnel(resolve: false)
@@ -1170,9 +1193,12 @@ final class HelperService: NSObject, LoaderHelperProtocol, @unchecked Sendable {
         for line in settings.restoreProxy() { logErr(line) }
         stopOverrideWatchdogIfIdle()
         if killSwitchOn || settings.journal.pfToken != nil {
-            KillSwitch.disarm(token: settings.takePFRecovery().token)
+            let token = settings.pfRecovery().token
+            KillSwitch.disarm(token: token)
+            settings.clearPFRecovery()
             killSwitchOn = false
         }
+        let tunName = utun
         if let name = utun {
             SystemCommand.run("/sbin/route", ["-n", "delete", "-net", "0.0.0.0/1", "-interface", name])
             SystemCommand.run("/sbin/route", ["-n", "delete", "-net", "128.0.0.0/1", "-interface", name])
@@ -1197,13 +1223,17 @@ final class HelperService: NSObject, LoaderHelperProtocol, @unchecked Sendable {
             proc.terminate()
             // Bounded wait: SIGTERM, a short grace period, then SIGKILL — a
             // wedged bridge must never hang the XPC reply.
-            let deadline = Date().addingTimeInterval(3)
-            while proc.isRunning && Date() < deadline {
+            let deadline = DispatchTime.now() + 3
+            while proc.isRunning && DispatchTime.now() < deadline {
                 Thread.sleep(forTimeInterval: 0.05)
             }
-            // Re-verify identity before the SIGKILL (pid recycling).
-            if proc.isRunning,
-               SystemCommand.executablePath(pid: proc.processIdentifier) == proc.executableURL?.path {
+            // Re-verify identity before the SIGKILL (pid recycling) — with both
+            // paths resolved, see `SystemCommand.pid(_:isExecutable:)`: the raw
+            // compare against `executableURL.path` was false for an engine
+            // launched through a symlink or a `/tmp`-style alias, so this rung
+            // silently never fired and a wedged bridge survived teardown.
+            if proc.isRunning, let url = proc.executableURL,
+               SystemCommand.pid(proc.processIdentifier, isExecutable: url.path) {
                 kill(proc.processIdentifier, SIGKILL)
             }
             proc.waitUntilExit()
@@ -1214,13 +1244,42 @@ final class HelperService: NSObject, LoaderHelperProtocol, @unchecked Sendable {
         bypassV4 = []
         bypassV6 = []
         v6Enabled = false
+        // A machine that connected under a helper predating the add-first fix
+        // carries the real default route on OUR utun (that `route change`
+        // rewrite), and this teardown used to delete only the 0/1 + 128/1 pair
+        // that never existed — so the interface went away and the default stayed
+        // pointing at it: connected = fine, disconnected = nothing loads. Drop
+        // it by name once the bridge is dead, not before: while the utun still
+        // carries traffic a deleted default would leak that traffic to the
+        // physical gateway. If the kernel already purged the row with the
+        // interface, the delete is a no-op.
+        if let name = tunName {
+            SystemCommand.run("/sbin/route", ["-n", "delete", "-net", "default", "-interface", name])
+            SystemCommand.run("/sbin/route", ["-n", "delete", "-inet6", "-net", "default", "-interface", name])
+        }
+        // …and now that nothing of ours is running, sweep the pins the ledger
+        // does NOT know about. `restoreDNS`/`restoreProxy` above undo exactly
+        // what this helper recorded; a resolver left on our tunnel range by an
+        // older generation (0.9.2 and earlier captured their own leftover as
+        // the "prior" value, and a pre-journal helper wrote pins with no
+        // record at all) is not in that ledger, so before this line the
+        // machine stayed unable to resolve anything until the next helper
+        // launch — a reboot — or the user ran «Reset network». That is the
+        // "everything stopped loading after I disconnected" report.
+        // Legacy ranges stay off: a dead 198.18.0.x resolver is just as likely
+        // somebody else's fake-IP client, and tearing that down on our
+        // disconnect would be our own kind of leftover.
+        for line in settings.sweepDeadPins(includeProxies: true, includeLegacyRanges: false,
+                                              ourTunnelIsGoingAway: true) {
+            logErr("teardown sweep: \(line)")
+        }
     }
 
     // MARK: - Helpers
 
     private func waitForInterface(_ name: String, timeout: TimeInterval) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
+        let deadline = DispatchTime.now() + timeout
+        while DispatchTime.now() < deadline {
             if SystemCommand.interfaceExists(name) { return true }
             Thread.sleep(forTimeInterval: 0.1)
         }

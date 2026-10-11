@@ -23,6 +23,9 @@ struct ImportView: View {
     @State private var subName = ""
     @State private var subURL = ""
     @State private var working = false
+    /// The in-flight subscription fetch, so Cancel and dismissing the sheet can
+    /// actually stop it.
+    @State private var addTask: Task<Void, Never>?
     @State private var clipboardLinks: [String] = []
     @State private var dropping = false
     /// Text that turned out to be a transfer bundle from another device.
@@ -90,7 +93,12 @@ struct ImportView: View {
             .navigationTitle("Import")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        // Otherwise the fetch keeps running behind a closed
+                        // window and adds the subscription when it lands.
+                        addTask?.cancel()
+                        dismiss()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if working {
@@ -103,6 +111,9 @@ struct ImportView: View {
             }
         }
         .frame(width: 440, height: 400)
+        // Closing the sheet any other way (⌘W, the window's close button) must
+        // stop the fetch too, not just the Cancel button.
+        .onDisappear { addTask?.cancel() }
         .overlay {
             if dropping {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -161,9 +172,14 @@ struct ImportView: View {
             if state.lastImportError == nil { dismiss() }
         case .subscription:
             working = true
-            Task {
+            addTask = Task {
                 await state.addSubscription(name: subName, url: subURL)
+                // Cancel or a dismissed sheet already stopped this: writing
+                // `working` or calling dismiss() from the corpse of the task is
+                // how the sheet used to re-appear as a spinner on next open.
+                guard !Task.isCancelled else { return }
                 working = false
+                addTask = nil
                 if state.lastImportError == nil { dismiss() }
             }
         }

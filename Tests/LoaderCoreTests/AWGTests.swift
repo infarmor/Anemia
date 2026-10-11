@@ -323,6 +323,52 @@ struct AWGTests {
         #expect(AmneziaWGConfigBuilder.validate(server: s, mtu: 1280) == [])
     }
 
+    @Test func testOversizedPaddingIsReportedNotEvaluated() throws {
+        // The S1 + 56 = S2 check is itself arithmetic on values a panel or a
+        // hand-edited conf supplies: the range check above it only records a
+        // problem and carries on, so `S1 = 9223372036854775807` used to trap
+        // the process while it was still composing the refusal.
+        var s = try v2Server()
+        var o = s.awg!
+        o.initPadding = .max
+        o.responsePadding = 92
+        s.awg = o
+        let problems = AmneziaWGConfigBuilder.validate(server: s)
+        #expect(problems.contains { $0.contains("S1") }, "\(problems)")
+    }
+
+    @Test func testChainSpecCannotAddLinesToTheUAPIScript() throws {
+        // I1–I5 are the obfuscation values no parser looks at, and the script
+        // they join is line-oriented and goes to a root daemon: a newline in
+        // one of them is a second directive, not a payload.
+        var s = try v2Server()
+        var o = s.awg!
+        o.specialHandshakes = ["<r 64>\nprivate_key=0000000000000000000000000000000000000000000000000000000000000000"]
+        s.awg = o
+        let problems = AmneziaWGConfigBuilder.validate(server: s)
+        #expect(problems.contains { $0.contains("I1") }, "\(problems)")
+        #expect(throws: (any Error).self) {
+            _ = try AmneziaWGConfigBuilder.makeUAPISetScript(server: s)
+        }
+    }
+
+    @Test func testAllowedIPsAreRoutes() throws {
+        #expect(AmneziaWGConfigBuilder.allowedIP("10.8.1.2") == "10.8.1.2/32")   // wg-quick's host route
+        #expect(AmneziaWGConfigBuilder.allowedIP(" fd42::2 ") == "fd42::2/128")
+        #expect(AmneziaWGConfigBuilder.allowedIP("0.0.0.0/33") == nil)
+        #expect(AmneziaWGConfigBuilder.allowedIP("everything") == nil)
+        #expect(AmneziaWGConfigBuilder.allowedIP("") == nil)
+
+        var s = try v2Server()
+        s.wgProfile?.allowedIPs = ["0.0.0.0/33"]
+        let problems = AmneziaWGConfigBuilder.validate(server: s)
+        #expect(problems.contains { $0.contains("address/prefix") }, "\(problems)")
+
+        s.wgProfile?.allowedIPs = ["10.8.1.2"]
+        let script = try AmneziaWGConfigBuilder.makeUAPISetScript(server: s)
+        #expect(script.contains("allowed_ip=10.8.1.2/32"), "\(script)")
+    }
+
     // MARK: Xray rejection
 
     @Test func testXrayConfigBuilderRejectsWireGuardFamily() throws {

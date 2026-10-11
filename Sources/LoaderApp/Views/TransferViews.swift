@@ -81,13 +81,37 @@ struct TransferSettingsSection: View {
         panel.allowedContentTypes = [.anemiaBundle, .json]
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        problem = nil
+        Task { @MainActor in
+            switch await Self.load(url) {
+            case let .bundle(loaded): incoming = IncomingSync(bundle: loaded)
+            case .newerVersion:
+                problem = "That file comes from a newer Anemia — update this one first."
+            case .unreadable:
+                problem = "That isn't an Anemia transfer file."
+            }
+        }
+    }
+
+    private enum Loaded {
+        case bundle(SyncBundle)
+        case newerVersion
+        case unreadable
+    }
+
+    /// Reading and inflating a file the user pointed at is not bounded by
+    /// anything here — how large a transfer bundle may be is still an open
+    /// policy question — but it no longer needs the settings window's thread
+    /// while it happens. A file on a remote disk used to freeze the UI for as
+    /// long as it took, with no way to tell the app to stop waiting.
+    private nonisolated static func load(_ url: URL) async -> Loaded {
+        guard let data = try? Data(contentsOf: url) else { return .unreadable }
         do {
-            incoming = IncomingSync(bundle: try SyncBundle.decode(Data(contentsOf: url)))
-            problem = nil
+            return .bundle(try SyncBundle.decode(data))
         } catch SyncBundle.DecodeError.newerVersion {
-            problem = "That file comes from a newer Anemia — update this one first."
+            return .newerVersion
         } catch {
-            problem = "That isn't an Anemia transfer file."
+            return .unreadable
         }
     }
 }
@@ -151,6 +175,12 @@ struct SyncImportView: View {
     @State private var working = false
 
     var body: some View {
+        // Read once per render. `preview` copies the whole store — every
+        // server, subscription and learned-masking entry — to diff against,
+        // and `body` asked for it four times (three rows plus the Import
+        // button's disabled state), so each keystroke of this sheet cost four
+        // snapshots of a list the user is looking at.
+        let preview = self.preview
         NavigationStack {
             Form {
                 Section {

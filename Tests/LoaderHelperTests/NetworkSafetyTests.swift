@@ -18,6 +18,10 @@ final class FakeSystem: NetworkSettingsShell, @unchecked Sendable {
     var listening: Set<Int> = []
     var unreadable: Set<String> = []
     var failingWrites: Set<String> = []
+    /// Writes networksetup answers success to without touching the setting —
+    /// the case an exit code cannot see (`-setdnsservers … empty` being one of
+    /// its documented-but-unlisted arguments).
+    var ignoringWrites: Set<String> = []
 
     /// This Mac's real layout: two hardware services, a bridge, and a
     /// device-less VPN service (a third-party client).
@@ -41,6 +45,7 @@ final class FakeSystem: NetworkSettingsShell, @unchecked Sendable {
     }
     func setDNSServers(service: String, servers: [String]) -> Bool {
         guard services[service] != nil, !failingWrites.contains(service) else { return false }
+        if ignoringWrites.contains(service) { return true }
         dns[service] = servers
         return true
     }
@@ -151,6 +156,26 @@ struct NetworkSettingsPolicyTests {
         #expect(NetworkSettingsPolicy.overridableServices(services) == ["USB 10/100/1000 LAN", "Thunderbolt Bridge", "Wi-Fi"])
     }
 
+    /// `networksetup -listallnetworkservices` — the fallback list the helper
+    /// uses when the ordered one fails to parse. Both disabled-marker spellings
+    /// exist, and the marker is not part of the name: the old code trimmed
+    /// before dropping one character, which turned `* Wi-Fi` into " Wi-Fi" and
+    /// `(*) Wi-Fi` into ") Wi-Fi" — a name no service matches, and in the
+    /// restore path "no such service" means the ledger entry is forgotten
+    /// without the resolver ever being put back.
+    @Test func testNetworkServiceListMarkersStripped() {
+        let output = """
+        An asterisk (*) denotes that a network service is disabled.
+        Wi-Fi
+        (*) Thunderbolt Ethernet
+        * Old iPhone USB
+        USB 10/100/1000 LAN
+        """
+        let services = SystemCommand.parseNetworkServices(output)
+        #expect(services.map(\.name) == ["Wi-Fi", "Thunderbolt Ethernet", "Old iPhone USB", "USB 10/100/1000 LAN"])
+        #expect(services.filter { $0.enabled }.map(\.name) == ["Wi-Fi", "USB 10/100/1000 LAN"])
+    }
+
     @Test func testPriorDNSNeverRecordsOurOwnResolvers() {
         #expect(NetworkSettingsPolicy.sanitizePriorDNS([gateway], liveIPv4: []) == [])
         #expect(NetworkSettingsPolicy.sanitizePriorDNS(["172.29.0.2"], liveIPv4: []) == [])
@@ -167,8 +192,14 @@ struct NetworkSettingsPolicyTests {
         #expect(NetworkSettingsPolicy.sanitizePriorProxy(engine, applyingPort: 49152, isPortLive: { _ in true }) == .off)
         let defaultPort = ProxySetting(enabled: true, host: "127.0.0.1", port: LoaderIdentifiers.defaultSocksPort)
         #expect(NetworkSettingsPolicy.sanitizePriorProxy(defaultPort, applyingPort: 1, isPortLive: { _ in true }) == .off)
-        let dead = ProxySetting(enabled: true, host: "localhost", port: 51000)
+        let dead = ProxySetting(enabled: true, host: "127.0.0.1", port: 51000)
         #expect(NetworkSettingsPolicy.sanitizePriorProxy(dead, applyingPort: 1, isPortLive: live) == .off)
+        // `localhost` is somebody else's local proxy. This app only ever writes
+        // an address literal (`HelperClient.swift:145` → 127.0.0.1), so a name
+        // here cannot be one of our dead pins — recording it is what puts the
+        // user's own setting back instead of switching it off.
+        let localName = ProxySetting(enabled: true, host: "localhost", port: 51000)
+        #expect(NetworkSettingsPolicy.sanitizePriorProxy(localName, applyingPort: 1, isPortLive: live) == localName)
         let usersOwn = ProxySetting(enabled: true, host: "127.0.0.1", port: 7890)
         #expect(NetworkSettingsPolicy.sanitizePriorProxy(usersOwn, applyingPort: 10808, isPortLive: live) == usersOwn)
         let corporate = ProxySetting(enabled: true, host: "proxy.corp.example", port: 1080)
@@ -236,6 +267,72 @@ struct SystemSettingsGuardTests {
         #expect(!next.hasDNSOverride)
     }
 
+    /// Half-written is not written. `networksetup` refusing one of three
+    /// services used to answer ok: the app said "system DNS → tunnel" while
+    /// that service kept resolving through the ISP, and the ledger counted it
+    /// as changed by the user, so neither a retry nor a teardown went back
+    /// for it.
+    @Test func testPartialDNSApplyIsNotSuccess() {
+        let sys = FakeSystem()
+        sys.failingWrites = ["USB 10/100/1000 LAN"]
+        let g = SystemSettingsGuard(store: tempStore(), shell: sys, log: { _ in })
+        let result = g.applyDNS(servers: [gateway])
+        #expect(!result.ok)
+        #expect(result.error?.contains("USB 10/100/1000 LAN") == true, "\(result.error ?? "nil")")
+        #expect(sys.dns["Wi-Fi"] == [gateway])
+    }
+
+    @Test func testPartialProxyApplyIsNotSuccess() {
+        let sys = FakeSystem()
+        sys.failingWrites = ["Thunderbolt Bridge"]
+        let g = SystemSettingsGuard(store: tempStore(), shell: sys, log: { _ in })
+        let result = g.applyProxy(host: "127.0.0.1", port: 10800)
+        #expect(!result.ok)
+        #expect(result.error?.contains("Thunderbolt Bridge") == true, "\(result.error ?? "nil")")
+    }
+
+    /// An accepted write is not an applied one. Without the read-back the
+    /// ledger dropped the entry, the watchdog stopped asking, and the service
+    /// kept answering with a resolver inside a tunnel that no longer existed —
+    /// "everything stopped loading after I disconnected", with nothing in the
+    /// log explaining it and no retry left to fix it.
+    @Test func testRestoreIsVerifiedByReadingBack() {
+        let sys = FakeSystem()
+        sys.dns["Wi-Fi"] = ["1.1.1.1"]
+        let g = SystemSettingsGuard(store: tempStore(), shell: sys, log: { _ in })
+        #expect(g.applyDNS(servers: [gateway]).ok)
+        sys.ignoringWrites = ["Wi-Fi"]                 // ok answer, no change
+
+        let report = g.restoreDNS()
+        #expect(report.contains { $0.contains("write accepted but the resolver is still") },
+                "\(report)")
+        #expect(sys.dns["Wi-Fi"] == [gateway])
+        #expect(g.hasDNSOverride, "a pin that is still up was forgotten by the ledger")
+
+        // Once the service honours writes again, the same entry restores.
+        sys.ignoringWrites = []
+        #expect(g.restoreDNS().contains { $0.contains("→ 1.1.1.1") })
+        #expect(sys.dns["Wi-Fi"] == ["1.1.1.1"])
+        #expect(!g.hasDNSOverride)
+    }
+
+    /// The "back to DHCP" case in particular: an empty prior list must end up
+    /// empty, not merely written.
+    @Test func testAutomaticRestoreIsVerifiedToo() {
+        let sys = FakeSystem()
+        sys.dns["Wi-Fi"] = []                           // automatic before we touched it
+        let g = SystemSettingsGuard(store: tempStore(), shell: sys, log: { _ in })
+        #expect(g.applyDNS(servers: [gateway]).ok)
+        sys.ignoringWrites = ["Wi-Fi"]
+        #expect(g.restoreDNS().contains { $0.contains("Wi-Fi") })
+        #expect(g.hasDNSOverride)
+        sys.ignoringWrites = []
+        let report = g.restoreDNS()
+        #expect(report.contains { $0.contains("automatic") }, "\(report)")
+        #expect(sys.dns["Wi-Fi"] == [])
+        #expect(!g.hasDNSOverride)
+    }
+
     @Test func testLeftoverPinIsNeverRestoredAsTheUsersSetting() {
         let sys = FakeSystem()
         sys.dns["Wi-Fi"] = [gateway]          // a dead pin from an older helper
@@ -243,6 +340,63 @@ struct SystemSettingsGuardTests {
         #expect(g.applyDNS(servers: [gateway]).ok)
         g.restoreDNS()
         #expect(sys.dns["Wi-Fi"] == [])       // automatic — not the dead pin again
+    }
+
+    /// What the disconnect must do that the ledger restore alone could not:
+    /// a resolver pinned to our tunnel range by an OLDER generation has no
+    /// entry here, so `restoreDNS` undoes nothing and the machine stayed unable
+    /// to resolve anything until the next helper launch (a reboot) or the user
+    /// ran «Reset network» — the "everything stopped loading after I
+    /// disconnected" report. `tearDown` now ends with the sweep; this pins the
+    /// order it depends on: ledger first, untracked leftovers second, and a
+    /// tracked service is never swept twice.
+    @Test func testTeardownSweepsWhatTheLedgerCannotRestore() {
+        let sys = FakeSystem()
+        sys.dns["Wi-Fi"] = ["1.1.1.1"]
+        // An older generation pinned every service it could see, including one
+        // this helper would not override (no device) — so nothing in the ledger
+        // names it, and `restoreDNS` will never reach it.
+        sys.dns["Happ"] = [gateway]
+        let g = SystemSettingsGuard(store: tempStore(), shell: sys, log: { _ in })
+        #expect(g.applyDNS(servers: [gateway]).ok)     // records Wi-Fi as tracked
+
+        let restored = g.restoreDNS()
+        #expect(sys.dns["Wi-Fi"] == ["1.1.1.1"], "\(restored)")
+        #expect(sys.dns["Happ"] == [gateway],
+                "the ledger restored a service it never recorded")
+        sys.live = ["192.168.0.103"]                   // the tunnel is gone now
+
+        let swept = g.sweepDeadPins(includeProxies: true, includeLegacyRanges: false)
+        #expect(swept.contains { $0.contains("Happ") }, "\(swept)")
+        #expect(sys.dns["Happ"] == [])
+        #expect(!swept.contains { $0.contains("Wi-Fi") },
+                "a service the ledger owns must be restored, not swept: \(swept)")
+        #expect(sys.dns["Wi-Fi"] == ["1.1.1.1"])
+    }
+
+    /// The race the disconnect actually has: the bridge process is gone but the
+    /// kernel can still show our utun holding 172.28.0.0/24, so the ordinary
+    /// "is anybody there to answer?" test says *alive* and an untracked pin
+    /// would survive the very teardown it is being swept in. On the disconnect
+    /// path our own range is dead by definition; a legacy range is not, because
+    /// that one belongs to whoever else is running.
+    @Test func testTunnelRangeIsSweptOnDisconnectEvenWhileTheUtunIsDying() {
+        let sys = FakeSystem()
+        sys.dns["Happ"] = [gateway]
+        sys.dns["USB 10/100/1000 LAN"] = ["198.18.0.2"]
+        sys.live = ["192.168.0.103", "172.28.0.1"]     // our utun, still disappearing
+
+        let launch = SystemSettingsGuard(store: tempStore(), shell: sys, log: { _ in })
+        #expect(launch.sweepDeadPins(includeProxies: false, includeLegacyRanges: false).isEmpty)
+        #expect(sys.dns["Happ"] == [gateway], "a live range was swept at launch")
+
+        let teardown = SystemSettingsGuard(store: tempStore(), shell: sys, log: { _ in })
+        let lines = teardown.sweepDeadPins(includeProxies: false, includeLegacyRanges: false,
+                                           ourTunnelIsGoingAway: true)
+        #expect(lines.contains { $0.contains("Happ") }, "\(lines)")
+        #expect(sys.dns["Happ"] == [])
+        #expect(sys.dns["USB 10/100/1000 LAN"] == ["198.18.0.2"],
+                "the legacy range is not ours to clear on a disconnect")
     }
 
     @Test func testFailedRestoreKeepsTheEntryForTheNextAttempt() {
@@ -343,14 +497,24 @@ struct SystemSettingsGuardTests {
         #expect(sys.dns["Wi-Fi"] == [gateway])
     }
 
-    @Test func testPFReferenceIsHandedToRecoveryExactlyOnce() {
+    @Test func testPFReferenceSurvivesUntilTheActionHasRun() {
         let store = tempStore()
         let g = SystemSettingsGuard(store: store, shell: FakeSystem(), log: { _ in })
         g.recordPFToken("777")
         let next = SystemSettingsGuard(store: store, shell: FakeSystem(), log: { _ in })
-        #expect(next.takePFRecovery().token == "777")
-        #expect(next.takePFRecovery().token == nil)
+        // Reading does not consume: the token is the only address `pfctl -X`
+        // takes, and clearing it before that command ran left a window where a
+        // crash lost the reference and pf stayed Enabled with no ledger entry
+        // saying who enabled it.
+        #expect(next.pfRecovery().token == "777")
+        #expect(next.pfRecovery().token == "777")
+        #expect(store.load().pfToken == "777")
+        next.clearPFRecovery()
+        #expect(next.pfRecovery().token == nil)
         #expect(store.load().pfToken == nil)
+        // Clearing an empty ledger changes nothing.
+        next.clearPFRecovery()
+        #expect(next.pfRecovery().token == nil)
     }
 }
 

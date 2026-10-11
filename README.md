@@ -107,7 +107,7 @@ re-validates every entry it receives. Changes apply on the next connect.
 | Requirement                | Xray feature                              |
 |----------------------------|-------------------------------------------|
 | Traffic can't be read      | VLESS + **Reality** + **XTLS-Vision** (TLS 1.3, real-site handshake mimicry) |
-| Protect with junk          | `sockopt.noises` (junk packets) + `fragment` (ClientHello shredding) |
+| Protect with junk          | `settings.noises` (junk packets) + `settings.fragment` (ClientHello shredding), both on the masking `freedom` dialer — xray has no `sockopt.noises` |
 | Fast                       | XTLS-Vision splice, uTLS `chrome` fingerprint, large utun MTU + tun2socks TCP auto-tuning |
 
 See `Sources/LoaderCore/AntiCensorship.swift` and a generated example in

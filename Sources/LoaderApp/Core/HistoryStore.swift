@@ -21,10 +21,10 @@ struct HistoryStore {
         var series: [String: [Float]]
     }
 
-    init(maxSamples: Int = 256) {
+    init(maxSamples: Int = 256, fileURL: URL? = nil) {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support")
-        fileURL = base.appendingPathComponent("Loader/history.json")
+        self.fileURL = fileURL ?? base.appendingPathComponent("Loader/history.json")
         self.maxSamples = maxSamples
     }
 
@@ -34,9 +34,25 @@ struct HistoryStore {
         if let env = try? JSONDecoder().decode(Envelope.self, from: data) {
             return env.schema == Self.schema ? env.series : [:]
         }
+        // Unreadable is not the same thing as absent: the next ping round
+        // saves what it has, and that write replaces this file — so every
+        // series in it would go out with it and nothing else holds them.
+        // Same rule as the state store, which keeps a corrupt document aside
+        // before it is overwritten (`StatePersistence.backUp`).
+        backUpUnreadable(data)
         // Legacy bare-dictionary file (pre-versioning, TCP era): discard it so
         // stale near-zero samples can't leak into the new TLS-based rankings.
         return [:]
+    }
+
+    /// `<name>.corrupt-<ms>.bak` next to the file. Milliseconds, because two
+    /// launches inside one second would otherwise overwrite the earlier copy.
+    private func backUpUnreadable(_ raw: Data) {
+        let directory = fileURL.deletingLastPathComponent()
+        let stem = fileURL.deletingPathExtension().lastPathComponent
+        let url = directory.appendingPathComponent("\(stem).corrupt-\(Int(Date().timeIntervalSince1970 * 1000)).bak")
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try? raw.write(to: url)
     }
 
     func save(_ history: [String: [Float]]) {

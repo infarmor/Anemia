@@ -175,4 +175,39 @@ struct AWGProtocolTests {
         let minimal = try JSONDecoder().decode(AWGObfuscation.self, from: Data("{}".utf8))
         #expect(minimal.isEmpty)
     }
+
+    /// `DNS =` mixes resolvers and search domains: wg-quick sends the
+    /// hostnames as `search`, never as a nameserver. The tunnel settings of
+    /// every platform take addresses, so a name must not reach them — and must
+    /// not take the addresses listed after it down with it.
+    @Test func dnsLineHostnamesAreNotResolvers() throws {
+        let s = try ShareLinkParser.parseConfigText("""
+        [Interface]
+        PrivateKey = \(privateKey)
+        Address = 10.8.1.2/32
+        DNS = resolver.lan, 10.8.1.1, 2606:4700:4700::1111
+
+        [Peer]
+        PublicKey = \(publicKey)
+        Endpoint = 198.51.100.4:51820
+        """)
+        #expect(s.wgProfile?.dns == ["resolver.lan", "10.8.1.1", "2606:4700:4700::1111"])
+        #expect(s.wgProfile?.resolverAddresses == ["10.8.1.1", "2606:4700:4700::1111"])
+    }
+
+    /// A list of nothing but names leaves no resolver at all — the caller's
+    /// fallback (an open resolver) is what the tunnel has to use then.
+    @Test func dnsLineOfOnlyNamesLeavesNoResolver() throws {
+        let s = try ShareLinkParser.parseConfigText("""
+        [Interface]
+        PrivateKey = \(privateKey)
+        DNS = dns.google
+
+        [Peer]
+        PublicKey = \(publicKey)
+        Endpoint = 198.51.100.4:51820
+        """)
+        #expect(s.wgProfile?.dns == ["dns.google"])
+        #expect(s.wgProfile?.resolverAddresses.isEmpty == true)
+    }
 }

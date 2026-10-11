@@ -131,3 +131,32 @@ struct EngineLogTests {
         #expect(EngineLog.failureReason(from: []) == "engine exited during startup")
     }
 }
+
+// The cause returned by the engine, not read from its log — the Android shape of the
+// same text. Pinned here as well as in `engine/cases.golden.txt`.
+struct EngineCauseTests {
+    @Test func chainWithoutTheCommandLineWrapper() {
+        // `AnemiaStartXray` answers with what Go's error chain prints; xray's
+        // own "Failed to start: " prefix exists only in the CLI's stderr.
+        #expect(EngineLog.cause(from: "xray config: infra/conf: failed to build outbound config with tag proxy > infra/conf: unknown config id: nope")
+                == "unknown config id: nope")
+        #expect(EngineLog.cause(from: "app/proxyman/inbound: failed to listen TCP on 1 > transport/internet/tcp: failed to listen TCP on 127.0.0.1:1 > listen tcp 127.0.0.1:1: bind: permission denied")
+                == "listen tcp 127.0.0.1:1: bind: permission denied")
+        // Без цепочки — как пришла: обёртку снимать не с чего, а оставить
+        // «Failed to start: boom» целиком честнее одного слова «boom».
+        #expect(EngineLog.cause(from: "Failed to start: boom") == "Failed to start: boom")
+        #expect(EngineLog.cause(from: "  a/b: one   >    c/d: two   ") == "two")
+        #expect(EngineLog.cause(from: "a/b: one >  > c/d: two") == "two")
+        #expect(EngineLog.cause(from: "   ") == "")
+    }
+
+    @Test func failureWordSearchIgnoresLocale() {
+        #expect(EngineLog.looksLikeFailure("FAILED: app/proxyman: something"))
+        #expect(EngineLog.looksLikeFailure("ОШИБКА: proxy/vless: failed to dial"))
+        // Турецкая I:localized-складка Foundation перестала бы видеть здесь
+        // «failed» на  устройстве с tr-локалью; ASCII-складка видит её одинаково
+        // везде — и ровно поэтому «FAİLED» не отказ, а не «отказ» в одной локали.
+        #expect(!EngineLog.looksLikeFailure("FAİLED: İ not I"))
+        #expect(!EngineLog.looksLikeFailure("Xray 26.3.27 (Xray, Penetrates Everything.)"))
+    }
+}

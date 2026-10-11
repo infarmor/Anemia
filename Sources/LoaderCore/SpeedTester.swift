@@ -52,6 +52,15 @@ public enum SpeedTester {
         return Result(latency: latency, download: download, upload: upload)
     }
 
+    /// Seconds between two monotonic readings. Everything measured here is
+    /// elapsed time rather than a calendar moment, and the wall clock moves:
+    /// an NTP correction after sleep or a manual change stepped backwards
+    /// would keep a "10 second" run looping to its byte budget, and one
+    /// stepped forwards would end it early.
+    private static func seconds(from: DispatchTime, to: DispatchTime) -> Double {
+        Double(to.uptimeNanoseconds &- from.uptimeNanoseconds) / 1_000_000_000
+    }
+
     /// Median of five small requests over one kept-alive connection; the
     /// first, which also sets the connection up, doesn't count.
     static func measureLatency(proxy: LocalProxy? = nil) async throws -> Int {
@@ -60,10 +69,10 @@ public enum SpeedTester {
         let url = base.appendingPathComponent("__down").appending(queryItems: [URLQueryItem(name: "bytes", value: "0")])
         var times: [Double] = []
         for attempt in 0..<6 {
-            let start = Date()
+            let start = DispatchTime.now()
             let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)
             _ = try await session.data(for: request)
-            if attempt > 0 { times.append(Date().timeIntervalSince(start) * 1000) }
+            if attempt > 0 { times.append(seconds(from: start, to: .now()) * 1000) }
         }
         times.sort()
         return Int(times[times.count / 2].rounded())
@@ -93,33 +102,33 @@ public enum SpeedTester {
         var tasks = (0..<max(limits.streams, 1)).map { _ in makeTask() }
         tasks.forEach { $0.resume() }
 
-        let start = Date()
+        let start = DispatchTime.now()
         let budget = upload ? limits.uploadBudget : limits.downloadBudget
-        var warm: (time: Date, bytes: Int64)?
+        var warm: (time: DispatchTime, bytes: Int64)?
         var previous = (time: start, bytes: Int64(0))
         var live = 0.0
-        while Date().timeIntervalSince(start) < limits.window, meter.bytes < budget {
+        while seconds(from: start, to: .now()) < limits.window, meter.bytes < budget {
             try await Task.sleep(for: .milliseconds(250))
             if meter.error != nil, meter.bytes == 0 { break }
             for index in tasks.indices where tasks[index].state == .completed {
                 tasks[index] = makeTask()
                 tasks[index].resume()
             }
-            let now = Date()
+            let now = DispatchTime.now()
             let bytes = meter.bytes
-            let rate = Double(bytes - previous.bytes) * 8 / max(now.timeIntervalSince(previous.time), 0.05)
+            let rate = Double(bytes - previous.bytes) * 8 / max(seconds(from: previous.time, to: now), 0.05)
             live = live == 0 ? rate : live * 0.6 + rate * 0.4
             progress(live)
             previous = (now, bytes)
-            if warm == nil, now.timeIntervalSince(start) >= 1 { warm = (now, bytes) }
+            if warm == nil, seconds(from: start, to: now) >= 1 { warm = (now, bytes) }
         }
         tasks.forEach { $0.cancel() }
 
-        let end = Date()
+        let end = DispatchTime.now()
         let total = meter.bytes
         if total == 0 { throw meter.error ?? URLError(.zeroByteResource) }
         let from = warm ?? (start, 0)
-        return Double(total - from.bytes) * 8 / max(end.timeIntervalSince(from.time), 0.25)
+        return Double(total - from.bytes) * 8 / max(seconds(from: from.time, to: end), 0.25)
     }
 }
 

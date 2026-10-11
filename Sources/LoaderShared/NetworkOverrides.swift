@@ -85,13 +85,29 @@ public struct NetworkJournal: Codable, Equatable, Sendable {
     public init() {}
 
     /// Lenient decode: a field that fails to decode costs that field, never
-    /// the whole ledger (a ledger that reads as "empty" restores nothing).
+    /// the whole ledger (a ledger that reads as "empty" restores nothing) — and
+    /// the same rule one level down, where it matters most: an entry that can't
+    /// be read costs **that entry**, not the array. Before that, one drifted
+    /// field in one service's record discarded every DNS entry: the helper
+    /// booted, saw an empty ledger, restored nothing at all, and the first
+    /// `persist()` wrote the emptiness over the only copy that could have put
+    /// the machine's DNS back.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         version = (try? c.decode(Int.self, forKey: .version)) ?? Self.currentVersion
-        dns = (try? c.decode([DNSEntry].self, forKey: .dns)) ?? []
-        proxy = (try? c.decode([ProxyEntry].self, forKey: .proxy)) ?? []
+        dns = (try? c.decode([Loose<DNSEntry>].self, forKey: .dns))?.compactMap(\.value) ?? []
+        proxy = (try? c.decode([Loose<ProxyEntry>].self, forKey: .proxy))?.compactMap(\.value) ?? []
         pfToken = (try? c.decodeIfPresent(String.self, forKey: .pfToken)) ?? nil
         legacyMainRuleset = (try? c.decode(Bool.self, forKey: .legacyMainRuleset)) ?? false
+    }
+}
+
+/// One ledger entry, or nothing when the entry can't be read — so a single
+/// unreadable record cannot take its whole array with it.
+private struct Loose<Element: Decodable>: Decodable {
+    let value: Element?
+
+    init(from decoder: Decoder) throws {
+        value = try? Element(from: decoder)
     }
 }

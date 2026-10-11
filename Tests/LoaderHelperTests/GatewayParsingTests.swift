@@ -54,6 +54,23 @@ struct GatewayParsingTests {
         #expect(parsed.gateway == nil)
     }
 
+    /// Measured on a live tunnel here: `route -n get default` answers with
+    /// `gateway: index: 25 utun90` — an ifindex and a name, not a hop. Taken
+    /// literally it becomes `route add -host <server> index: 25 utun90`, and
+    /// the diagnostics string reads as if it were an address.
+    @Test func testRouteGetIndexGatewayIsRejected() {
+        let output = """
+           route to: default
+        destination: default
+           gateway: index: 25 utun90
+            interface: utun90
+              flags: <UP,GATEWAY,DONE,STATIC,PRCLONING,GLOBAL>
+        """
+        let parsed = SystemCommand.parseRouteGet(output)
+        #expect(parsed.gateway == nil, "got: \(parsed.gateway ?? "nil")")
+        #expect(parsed.interface == "utun90")
+    }
+
     @Test func testRouteGetEmptyOutput() {
         let parsed = SystemCommand.parseRouteGet("")
         #expect(parsed.gateway == nil)
@@ -161,6 +178,25 @@ struct GatewayParsingTests {
                                                         isDeadInterface: { _ in true })
         #expect(rows.map(\.destination) == ["::/1", "8000::/1"])
         #expect(rows.allSatisfy { $0.inet6 })
+    }
+
+    /// A helper built before the add-first fix rewrote the machine's real
+    /// default onto its utun instead of installing the /1 pair, and its
+    /// teardown (`delete -net 0/1`) removed nothing — so the residue is a
+    /// default route into a device that no longer exists, i.e. a machine with
+    /// no way out. The sweep has to recognise that row, and still leave a
+    /// physical default and a *live* foreign utun's default alone.
+    @Test func testStaleSplitRoutesSweepsADefaultLeftOnADeadUtun() {
+        let output = """
+        Destination        Gateway            Flags        Netif Expire
+        default            utun91             UGScg       utun91
+        default            192.168.1.1        UGScg          en0
+        default            utun5              UGScg        utun5
+        """
+        let rows = SystemCommand.parseStaleSplitRoutes(output, inet6: false,
+                                                       isDeadInterface: { $0 == "utun91" })
+        #expect(rows.map(\.destination) == ["default"])
+        #expect(rows.map(\.iface) == ["utun91"], "must delete by the same spelling `route` was given")
     }
 
     /// Physical rows (en0) and unknown prefixes are never touched.

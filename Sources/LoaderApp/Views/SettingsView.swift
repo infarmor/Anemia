@@ -574,8 +574,10 @@ private struct DiagnosticsSettingsPane: View {
                     HStack {
                         Button(copied ? "Copied" : "Copy Report") {
                             Task {
-                                await state.copyDiagnosticsToPasteboard()
-                                copied = true
+                                // The result, not an unconditional `true`:
+                                // a refused pasteboard write used to relabel
+                                // the button "Copied" with nothing in it.
+                                copied = await state.copyDiagnosticsToPasteboard()
                             }
                         }
                         Button("Show Log File") { state.revealLogFile() }

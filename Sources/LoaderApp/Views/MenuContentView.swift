@@ -169,11 +169,19 @@ struct MenuContentView: View {
 
     // MARK: - Server
 
+    /// While a session is up the menu names the exit it actually dials, not
+    /// whatever row the list last moved the selection to (same rule as
+    /// RootView.serverBar and MiniMap).
+    private var shownServer: ProxyServer? {
+        let live = state.isConnected || state.connection == .connecting
+        return (live ? state.sessionServer : nil) ?? state.selectedServer
+    }
+
     private var serverRow: some View {
         Button { listExpanded = true } label: {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(state.selectedServer?.name ?? "Choose a Server")
+                    Text(shownServer?.name ?? "Choose a Server")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Theme.textHi)
                         .lineLimit(1)
@@ -183,7 +191,7 @@ struct MenuContentView: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 8)
-                if let id = state.selectedServerID {
+                if let id = shownServer?.id {
                     PingBadge(result: state.pings[id])
                 }
                 Image(systemName: "chevron.down")
@@ -236,7 +244,7 @@ struct MenuContentView: View {
     }
 
     private var serverSubtitle: String {
-        guard let s = state.selectedServer else { return "Open the list to pick one" }
+        guard let s = shownServer else { return "Open the list to pick one" }
         var parts = [s.proto.rawValue.uppercased()]
         if s.security != .none { parts.append(s.security.rawValue) }
         return parts.joined(separator: " · ")

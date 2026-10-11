@@ -43,9 +43,22 @@ public enum NetworkSettingsPolicy {
         return liveIPv4.contains { prefix24($0) == p }
     }
 
+    /// A loopback *address*, not any name that happens to begin with "127.".
+    /// The prefix test read `127.attacker.test` as loopback, and this predicate
+    /// is the helper's only check before it writes a system-wide proxy into
+    /// every network service as root — a name resolves wherever its owner
+    /// wants, so the machine's traffic would leave through somebody else's
+    /// proxy. `startTunnel` already holds its SOCKS upstream to an IPv4 literal
+    /// (`HelperService.swift:166`); the same rule belongs here.
+    /// Narrowing also changes two read-back paths in the useful direction: a
+    /// user's own `localhost:3128` is no longer mistaken for ours — neither
+    /// swept as a dead pin (line 138) nor zeroed out as a prior value
+    /// (`NetworkJournal.swift:132`) — while everything this app writes is
+    /// `127.0.0.1` (`HelperClient.swift:145`).
     public static func isLoopbackHost(_ host: String) -> Bool {
         let h = host.lowercased()
-        return h == "localhost" || h == "::1" || h.hasPrefix("127.")
+        if h == "::1" { return true }
+        return DirectResolver.isIPv4(h) && h.hasPrefix("127.")
     }
 
     // MARK: - Capturing the user's prior value
@@ -125,10 +138,21 @@ public enum NetworkSettingsPolicy {
     /// is name-resolution-dead until it is reset. The legacy range is only
     /// considered on explicit repair — at boot a fake-IP VPN that owns it
     /// simply hasn't connected yet.
-    public static func isDeadDNSPin(_ servers: [String], liveIPv4: Set<String>, includeLegacy: Bool) -> Bool {
+    /// `ourTunnelIsGoingAway` is the disconnect call: at that moment the kernel
+    /// may still show our utun holding the range, and asking "is anybody there
+    /// to answer?" would answer YES about an interface that is already being
+    /// destroyed — so an untracked pin in our own range would survive the very
+    /// teardown that should remove it, and the machine stays dead. Only OUR
+    /// reserved range is treated this way; a legacy-range pin still needs the
+    /// interface to be gone, because that range is also clash/sing-box's.
+    public static func isDeadDNSPin(_ servers: [String], liveIPv4: Set<String>,
+                                    includeLegacy: Bool,
+                                    ourTunnelIsGoingAway: Bool = false) -> Bool {
         !servers.isEmpty && servers.allSatisfy { ip in
-            (isOwnedResolver(ip) || (includeLegacy && isLegacyResolver(ip)))
-                && !isHeldLocally(ip, liveIPv4: liveIPv4)
+            if isOwnedResolver(ip) {
+                return ourTunnelIsGoingAway || !isHeldLocally(ip, liveIPv4: liveIPv4)
+            }
+            return includeLegacy && isLegacyResolver(ip) && !isHeldLocally(ip, liveIPv4: liveIPv4)
         }
     }
 

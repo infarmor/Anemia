@@ -126,17 +126,17 @@ final class LeakTestModel: ObservableObject {
 
     nonisolated private static func curl(interface: String, url: String) async -> Data? {
         await Task.detached(priority: .userInitiated) { () -> Data? in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
-            process.arguments = ["--interface", interface, "-s", "--max-time", "6",
-                                 "-A", "Anemia", url]
-            let output = Pipe()
-            process.standardOutput = output
-            process.standardError = FileHandle.nullDevice
-            do { try process.run() } catch { return nil }
-            let data = output.fileHandleForReading.readDataToEndOfFile()
-            process.waitUntilExit()
-            return process.terminationStatus == 0 && !data.isEmpty ? data : nil
+            // runCapturing owns both the pipe and the deadline. Reading to EOF
+            // and waiting with no bound meant a curl stuck in a kernel call —
+            // the `--interface` it was bound to vanished mid-session, which a
+            // reconnect routinely causes — left this task blocked forever and
+            // the Leak Test spinning until the app was quit.
+            guard let run = XrayController.runCapturing(
+                    binaryPath: "/usr/bin/curl",
+                    arguments: ["--interface", interface, "-s", "--max-time", "6", "-A", "Anemia", url],
+                    qos: .userInitiated, timeout: 12, mergeStderr: false),
+                    run.status == 0, !run.output.isEmpty else { return nil }
+            return Data(run.output.utf8)
         }.value
     }
 

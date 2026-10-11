@@ -85,8 +85,9 @@ public enum PhysicalInterface {
     /// hung child (route/scutil are reliable but not guaranteed), and this runs
     /// inside the connect path — a wedged child stalled the whole connect. On
     /// timeout the child is terminated and nil returned; the caller just omits
-    /// the interface pin.
-    private static func shell(_ path: String, _ args: [String], timeout: TimeInterval = 2) -> String? {
+    /// the interface pin. Internal rather than private so the bound itself can
+    /// be tested, not just believed.
+    static func shell(_ path: String, _ args: [String], timeout: TimeInterval = 2) -> String? {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: path)
         proc.arguments = args
@@ -100,15 +101,22 @@ public enum PhysicalInterface {
         }
         do { try proc.run() } catch { return nil }
 
-        let deadline = Date().addingTimeInterval(timeout)
-        while proc.isRunning && Date() < deadline {
+        // Monotonic, not `Date()`: this is the connect path, and the one
+        // failure mode the function exists to prevent is an unbounded wait. A
+        // clock step backwards (an NTP correction after sleep, a manual change)
+        // used to make `Date() < deadline` true forever, and one forwards
+        // abandoned a perfectly healthy `route -n get` before it answered.
+        // `SystemCommand.run` and `EngineProcess.waitForReady` were converted
+        // for the same reason.
+        let deadline = DispatchTime.now() + timeout
+        while proc.isRunning && DispatchTime.now() < deadline {
             Thread.sleep(forTimeInterval: 0.02)
         }
         pipe.fileHandleForReading.readabilityHandler = nil
         if proc.isRunning {
             proc.terminate()
-            let killDeadline = Date().addingTimeInterval(0.5)
-            while proc.isRunning && Date() < killDeadline {
+            let killDeadline = DispatchTime.now() + 0.5
+            while proc.isRunning && DispatchTime.now() < killDeadline {
                 Thread.sleep(forTimeInterval: 0.02)
             }
             if proc.isRunning { kill(proc.processIdentifier, SIGKILL) }

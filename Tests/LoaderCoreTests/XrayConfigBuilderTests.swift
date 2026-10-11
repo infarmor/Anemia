@@ -121,7 +121,11 @@ struct XrayConfigBuilderTests {
         let fragSockopt = fragStream["sockopt"] as! [String: Any]
         #expect(fragSockopt["tcpFastOpen"] == nil, "TFO is EINVAL-fatal on Darwin — never emit it")
         #expect(fragSockopt["tcpNoDelay"] as? Bool == true)
-        #expect(fragSockopt["noises"] != nil, "junk noises should be present")
+        #expect(fragSockopt["noises"] == nil,
+                "xray has no sockopt.noises — it is silently ignored there")
+        let fragSettings = fragment!["settings"] as! [String: Any]
+        #expect((fragSettings["noises"] as? [[String: Any]])?.isEmpty == false,
+                "junk noises belong in the freedom outbound's settings.noises")
 
         // Proxy chains into the fragment dialer.
         let proxy = outbounds.first { $0["tag"] as? String == "proxy" }!

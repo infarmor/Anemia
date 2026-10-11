@@ -153,6 +153,11 @@ final class AppState: ObservableObject {
     private var reconnectTask: Task<Void, Never>?
     /// Post-connect health check (cancelled on teardown so a stale result
     /// can't land after disconnect).
+    /// Newest scan wins: each call runs a dozen subprocesses, so a Wi-Fi flap
+    /// or a burst of reconnects used to have several in flight at once, and the
+    /// one that happened to finish last — possibly the oldest, holding the
+    /// pre-flap snapshot — decided what the "network needs repair" banner said.
+    private var healthScanGeneration = 0
     private var healthTask: Task<Void, Never>?
 
     private let persistence: StatePersistence
@@ -195,7 +200,11 @@ final class AppState: ObservableObject {
 
     /// When the health monitor last decided the proxy is unreachable (nil
     /// while reachable). Feeds the tunnel watchdog's dead-time measurement.
-    private var proxyUnreachableSince: Date?
+    /// Monotonic on purpose: the watchdog compares a duration, and a wall clock
+    /// stepped backwards past the mark made `dead` negative — the reconnect it
+    /// exists to force simply never fired, which under a kill switch is a
+    /// blackholed machine reading "Connected".
+    private var proxyUnreachableSince: DispatchTime?
     /// Tunnel watchdog: a background safety net forcing a reconnect when the
     /// proxy has been unreachable for too long (see startTunnelWatchdog).
     private var watchdogTask: Task<Void, Never>?
@@ -608,6 +617,15 @@ final class AppState: ObservableObject {
             launchAtLoginError = nil
         }
         launchAtLogin = LoginItem.isEnabled
+        // `.requiresApproval` is a registration that *succeeded* and still
+        // reads as off one line above: the item won't run until the user ticks
+        // Anemia in System Settings. With nothing said there, a working
+        // registration looked exactly like a failed one — the toggle just
+        // flipped back.
+        if on, LoginItem.needsApproval {
+            launchAtLoginError = "Registered — allow Anemia in System Settings → General → Login Items"
+            appendLog("launch at login: registered, awaiting approval in System Settings")
+        }
     }
 
     func setKillSwitch(_ on: Bool) {
@@ -785,13 +803,22 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// `name`/`url` arrive from a text field: a pasted value often carries the
+    /// space or newline around it, and a leading space makes `URL(string:)` nil
+    /// ("Bad subscription URL" blaming a good link), a trailing one gets
+    /// percent-encoded into the path ("HTTP 404").
     func addSubscription(name: String, url: String) async {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let url = url.trimmingCharacters(in: .whitespacesAndNewlines)
         var sub = Subscription(name: name.isEmpty ? url : name, url: url)
         // A failed fetch must not append an empty (server-less) subscription:
         // it would persist, re-error on every 6-hour auto-refresh, and stack
         // up one empty entry per retry. The error is already surfaced via
         // lastImportError — drop the candidate instead.
         guard await refresh(&sub) else { return }
+        // The sheet's Cancel kills this task; without the check the panel's
+        // servers showed up half a minute after the user had closed the window.
+        guard !Task.isCancelled else { return }
         subscriptions.append(sub)
         if selectedServerID == nil { selectedServerID = sub.servers.first?.id }
         persist()
@@ -802,7 +829,11 @@ final class AppState: ObservableObject {
         guard let idx = subscriptions.firstIndex(where: { $0.id == id }) else { return }
         var sub = subscriptions[idx]
         guard await refresh(&sub) else { return }
-        subscriptions[idx] = sub
+        // A fetch takes up to 30 s; a subscription deleted in that window would
+        // leave `idx` past the end of the array — or, worse, pointing at the
+        // neighbour that slid into its slot.
+        guard let live = subscriptions.firstIndex(where: { $0.id == id }) else { return }
+        subscriptions[live] = sub
         persist()
     }
 
@@ -1357,23 +1388,22 @@ final class AppState: ObservableObject {
     nonisolated private static func geoCountryViaPhysicalInterface() async -> String? {
         guard let phys = PhysicalInterface.primary() else { return nil }
         return await Task.detached(priority: .utility) {
-            let p = Process()
-            p.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
             // HTTPS to Cloudflare (already our DoH provider) over the physical
             // NIC; returns a line "loc=RU". Bounded so it can't hang startup.
-            p.arguments = ["--interface", phys, "-s", "--max-time", "5",
-                           "https://www.cloudflare.com/cdn-cgi/trace"]
-            let out = Pipe()
-            let err = Pipe()
-            err.fileHandleForReading.readabilityHandler = { h in h.readabilityHandler = nil }  // drain & drop
-            p.standardOutput = out
-            p.standardError = err
-            do { try p.run() } catch { return nil }
-            p.waitUntilExit()
-            guard p.terminationStatus == 0 else { return nil }
-            let text = String(data: out.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-            out.fileHandleForReading.closeFile()
-            for line in text.split(separator: "\n") where line.hasPrefix("loc=") {
+            //
+            // runCapturing, not a hand-rolled Process: reading stdout only
+            // after waitUntilExit deadlocks the moment the answer is bigger
+            // than the 64 KB pipe buffer — the child blocks on write, `--max-time`
+            // cannot interrupt a blocked write, and whoever awaits this task
+            // (a connect, for one) waits forever. A captive portal or a
+            // spoofed trace is exactly what produces that here.
+            guard let run = XrayController.runCapturing(
+                    binaryPath: "/usr/bin/curl",
+                    arguments: ["--interface", phys, "-s", "--max-time", "5",
+                                "https://www.cloudflare.com/cdn-cgi/trace"],
+                    qos: .utility, timeout: 8, mergeStderr: false),
+                    run.status == 0 else { return nil }
+            for line in run.output.split(separator: "\n") where line.hasPrefix("loc=") {
                 return String(line.dropFirst(4)).trimmingCharacters(in: .whitespaces)
             }
             return nil
@@ -1493,11 +1523,21 @@ final class AppState: ObservableObject {
 
     // MARK: - Privileged helper (system-wide tunnel)
 
+    /// Counts helper status queries. Each one waits up to 10 s on an XPC round
+    /// trip, and the flag it writes decides whether «Helper update» is offered
+    /// at all — with two in flight (launch and Settings opening, or a helper
+    /// that answers late) the older answer could land last and call an
+    /// outdated helper current.
+    private var helperQuery = 0
+
     func refreshHelperStatus() {
         helperInstalled = HelperInstaller.isInstalled
+        helperQuery += 1
+        let query = helperQuery
         Task { [weak self] in
             guard let self else { return }
             let version = await self.helper.version()
+            guard self.helperQuery == query else { return }
             self.helperVersion = version
             self.helperCurrent = version == LoaderHelperVersion
         }
@@ -1509,9 +1549,16 @@ final class AppState: ObservableObject {
     /// doesn't answer isn't reported here; its start call fails on its own.
     private func helperNeedsUpdate() async -> Bool {
         guard helperInstalled, !helperCurrent else { return false }
+        helperQuery += 1
+        let query = helperQuery
         guard let version = await helper.version() else { return false }
-        helperVersion = version
-        helperCurrent = version == LoaderHelperVersion
+        // Shares the counter with `refreshHelperStatus`: if a query started
+        // after this one, its answer is the newer fact and writing this one
+        // over it would put a stale version on screen.
+        if helperQuery == query {
+            helperVersion = version
+            helperCurrent = version == LoaderHelperVersion
+        }
         return !helperCurrent
     }
 
@@ -1567,6 +1614,11 @@ final class AppState: ObservableObject {
         watchdogTask?.cancel()
         networkHoldTask?.cancel()
         maintenancePingTask?.cancel()
+        // The stats poller throttles its own writes, so cancelling it above
+        // leaves the session's bytes in memory and they die with the process —
+        // Statistics opened the next day is short by however much was running
+        // at the moment of quitting.
+        usage.sessionEnded()
         awg.endSession()
         hysteria.stop()
         flushHistorySync()
@@ -1604,7 +1656,17 @@ final class AppState: ObservableObject {
             // Promote an active SOCKS-only session to the full tunnel.
             if isConnected, !tunnelActive {
                 connectionTask?.cancel()
-                connectionTask = Task { await disconnect(); await connect() }
+                connectionTask = Task {
+                    await disconnect()
+                    // The user may have switched the tunnel off while the
+                    // disconnect's XPC calls were in flight — `setConnected`
+                    // cancels this very task when they do. connect() is what
+                    // claims the generation, so without this check a cancelled
+                    // promotion turns the VPN back on over their command.
+                    // (Not `intentionalStop`: the disconnect just above set it.)
+                    guard !Task.isCancelled else { return }
+                    await connect()
+                }
             }
             return nil
         } catch let e as HelperInstaller.InstallError {
@@ -1731,6 +1793,18 @@ final class AppState: ObservableObject {
         // learned to keep THIS server flowing; else the user's global setting.
         let (maskOpts, profile) = maskingForConnect(server)
         activeProfile = profile
+        // The engine reads the masking keys strictly, so the emitter drops any
+        // record `xray` would refuse to load (see `MaskingEmission.swift`).
+        // Say it out loud: a profile the UI names while part of its junk never
+        // goes on the wire is a silent omission, and this log line is the only
+        // place a panel's unreadable record shows up anywhere the user can see.
+        let droppedNoises = maskOpts.noises.count - maskOpts.emittableNoises.count
+        if maskOpts.fragment != nil && maskOpts.emittableFragment == nil {
+            appendLog("masking: engine rejected profile «\(profile.title)» fragment — not sent")
+        }
+        if droppedNoises > 0 {
+            appendLog("masking: engine rejected \(droppedNoises) junk record(s) of «\(profile.title)» — not sent")
+        }
         let bypassEntries = splitTunnel.activeEntries
         xray.bypass = bypassEntries
         xray.adBlock = adBlockEnabled
@@ -1757,11 +1831,19 @@ final class AppState: ObservableObject {
         // The live hysteria run's token — the supersede sweep below stops
         // exactly this run, never a successor's.
         var hyRun: UUID?
+        // …and the same for a WireGuard session's bookkeeping (utun name,
+        // token the stats poll reads byte counters off).
+        var wgRun: UUID?
         // Local start closure so the busy-retry loop below can re-run either
         // engine's start without duplicating its branches.
         let startEngine: () async throws -> Void = {
             if isWG {
                 if self.awg.isSessionUp { self.awg.endSession() }
+                // The same belt and braces as the xray branch: neither engine
+                // takes part in a WireGuard session, so a bridge left by an
+                // aborted hysteria connect would outlive it holding a port.
+                if self.hysteria.isRunning { self.hysteria.stop() }
+                if self.xray.isRunning { self.xray.stop() }
                 try self.awg.validate(server: server)
                 _ = try self.awg.makeConfigScript(server: server)   // fail before the helper spawns anything
                 return
@@ -1821,7 +1903,10 @@ final class AppState: ObservableObject {
                 } catch XrayError.alreadyRunning { continue }
                 catch XrayError.cancelled { stopHyEngine(ifNeeded: hyRun); return }
                 catch {
-                    guard !Task.isCancelled, commandGeneration == gen else { return }
+                    guard !Task.isCancelled, commandGeneration == gen else {
+                        stopHyEngine(ifNeeded: hyRun)   // bridge may be up from a prior iteration
+                        return
+                    }
                     stopHyEngine(ifNeeded: hyRun)
                     if isReconnect {
                         appendLog("start failed (\(server.name)): \(error.localizedDescription)")
@@ -1833,7 +1918,10 @@ final class AppState: ObservableObject {
                 }
             }
             guard started else {
-                guard commandGeneration == gen else { return }
+                guard commandGeneration == gen else {
+                    stopHyEngine(ifNeeded: hyRun)
+                    return
+                }
                 stopHyEngine(ifNeeded: hyRun)
                 appendLog("engine start stayed busy — giving up")
                 connection = .error("Engine start did not finish — try connecting again")
@@ -1933,7 +2021,17 @@ final class AppState: ObservableObject {
             activeSessionIsWG = true
             // On success the reply's message carries the kernel-assigned utun
             // name (see the XPC contract) — the netstat counters key off it.
-            if ok { awg.beginSession(utun: err) } else { awg.endSession() }
+            // The token is recorded here, while it is still ours: the sweep
+            // below may run after a successor has begun its own session.
+            if ok {
+                awg.beginSession(utun: err)
+                wgRun = awg.runToken
+            }
+            // A failure has no session of ours to clear: beginSession is the
+            // only writer of the token, and the stale bookkeeping this connect
+            // inherited was already dropped in startEngine. Whatever is set now
+            // belongs to a successor — blanking its utun name is how a live WG
+            // session ends up showing no traffic at all.
         } else if staleHelper {
             ok = false
             err = "the installed privileged helper is outdated — update it in Settings → Network"
@@ -1957,8 +2055,11 @@ final class AppState: ObservableObject {
         if Task.isCancelled || intentionalStop || commandGeneration != gen {
             if let engineRun { xray.stop(ifRunning: engineRun) }
             // A WG session begun right before the supersede must not leak its
-            // bookkeeping (the tunnel itself is epoch-guarded below).
-            if isWG { awg.endSession() }
+            // bookkeeping (the tunnel itself is epoch-guarded below) — but only
+            // its own: a successor that already began its session has cleared
+            // the utun name this task would otherwise blank, and its speed and
+            // volume counters then read nothing for the rest of the session.
+            if let wgRun { awg.endSession(ifRunning: wgRun) }
             // Same for a hysteria engine spawned right before the supersede:
             // stop only the run THIS task started.
             if let hyRun { hysteria.stop(ifRunning: hyRun) }
@@ -2038,7 +2139,12 @@ final class AppState: ObservableObject {
                 // Block ads: AdGuard DNS instead of the profile's own,
                 // reached inside the tunnel like it.
                 r = await helper.setSystemDNS(server: AdBlockDNS.servers[0])
-            } else if isWG, let dns = server.wgProfile?.dns.first(where: { !$0.isEmpty }) {
+            } else if isWG, let dns = server.wgProfile?.resolverAddresses.first {
+                // `resolverAddresses`, not `dns.first`: a conf's `DNS =` may
+                // lead with a hostname (wg-quick sends those as search
+                // domains), and the helper refuses a non-literal resolver — so
+                // picking the first entry used to fail the override even when
+                // a usable address followed it.
                 r = await helper.setSystemDNS(server: dns)
             } else if isWG {
                 appendLog("profile lists no DNS servers — leaving the system resolver untouched")
@@ -2138,7 +2244,7 @@ final class AppState: ObservableObject {
                 consecutiveFailures = (ms == nil) ? consecutiveFailures + 1 : 0
                 self.proxyReachable = consecutiveFailures < 2
                 if consecutiveFailures == 2 {
-                    self.proxyUnreachableSince = Date()
+                    self.proxyUnreachableSince = .now()
                     self.appendLog("proxy unreachable — engine up but no route to server"
                         + (failure.map { " (\($0))" } ?? ""))
                 }
@@ -2238,7 +2344,7 @@ final class AppState: ObservableObject {
                 guard !Task.isCancelled else { return }
                 guard self.isConnected, !self.intentionalStop else { continue }
                 guard !self.proxyReachable, let since = self.proxyUnreachableSince else { continue }
-                let dead = Date().timeIntervalSince(since)
+                let dead = EngineProcess.seconds(since: since)
                 guard dead > 25 else { continue }
                 self.appendLog("watchdog: proxy unreachable for \(Int(dead))s — forcing reconnect")
                 self.proxyUnreachableSince = nil
@@ -2278,10 +2384,16 @@ final class AppState: ObservableObject {
     /// recovery's `startTunnel` then tears the old tunnel down and re-arms it
     /// against the new engine (the helper's start is self-healing/idempotent).
     private func teardown(gen: Int? = nil, keepTunnel: Bool = false) async {
+        // The guard comes FIRST. Both of these stop the *live* session's loops
+        // and reset its counters (stopStatsPolling zeroes the speed, the totals
+        // and the traffic curve), so running them from a teardown that a newer
+        // command had already superseded left the successor running with no
+        // health monitor, no stats poller and a Statistics panel cleared
+        // mid-session — the same orphan-token mistake as awg.endSession above.
+        guard !isSuperseded(gen) else { return }
         healthTask?.cancel()
         healthTask = nil
         stopStatsPolling()
-        guard !isSuperseded(gen) else { return }
         if helperInstalled {
             // All three restores are issued unconditionally — not gated on
             // the active flags. A 20 s XPC timeout leaves a flag false while
@@ -2294,7 +2406,18 @@ final class AppState: ObservableObject {
             // DNS first: with the utun going away, a resolver still pointed
             // at the tunnel gateway would leave the whole machine
             // name-resolution-dead.
-            if !keepTunnel { _ = await helper.clearSystemDNS() }
+            if !keepTunnel {
+                // The helper answers with its ledger, so `ok == false` means a
+                // service is still pinned — lookups then go to a resolver
+                // inside a tunnel that no longer exists, which is exactly
+                // "nothing loads after I disconnected". Saying it here is the
+                // point: the state stays visible in the log the user can open,
+                // instead of looking like a working machine with a dead network.
+                let dns = await helper.clearSystemDNS()
+                if !dns.ok {
+                    appendLog("system DNS not fully restored: \(dns.error ?? "helper still holds an override")")
+                }
+            }
             guard !isSuperseded(gen) else { return }
             if !keepTunnel { systemDNSActive = false }
             // Restore the system proxy, so apps stop pointing at a SOCKS
@@ -2661,9 +2784,12 @@ extension AppState {
     /// Re-scan for broken leftovers off the main actor. A result that lands
     /// while a session is live is dropped — its own overrides are expected.
     func rescanNetworkHealth() {
+        healthScanGeneration += 1
+        let gen = healthScanGeneration
         Task { [weak self] in
             let issues = await Task.detached(priority: .utility) { NetworkHealthScan.scan() }.value
-            guard let self, !self.isConnected, self.connection != .connecting else { return }
+            guard let self, !Task.isCancelled, gen == self.healthScanGeneration else { return }
+            guard !self.isConnected, self.connection != .connecting else { return }
             guard issues != self.networkIssues else { return }
             self.networkIssues = issues
             for issue in issues { self.appendLog("network check: \(issue.message)") }
@@ -2728,11 +2854,25 @@ extension AppState {
         return lines.joined(separator: "\n")
     }
 
-    func copyDiagnosticsToPasteboard() async {
+    /// - Returns: whether the text really landed. Both pasteboard calls can
+    /// fail — another process owning the pasteboard makes `clearContents()`
+    /// return false — and the button used to say "Copied" either way, sending
+    /// the user to a forum with an empty clipboard.
+    @discardableResult
+    func copyDiagnosticsToPasteboard() async -> Bool {
         let text = await diagnosticsReport()
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
-        appendLog("diagnostics copied to the clipboard")
+        let board = NSPasteboard.general
+        // `!= 0` because this SDK imports `clearContents` as an Int return
+        // (measured: the compiler rejects it as a boolean) while `setString`
+        // comes back as Bool.
+        guard board.clearContents() != 0 else {
+            appendLog("diagnostics copy refused: the pasteboard is held by another app")
+            return false
+        }
+        let ok = board.setString(text, forType: .string)
+        appendLog(ok ? "diagnostics copied to the clipboard"
+                     : "diagnostics copy failed: the pasteboard refused the write")
+        return ok
     }
 
     /// Reveal the persistent app log in Finder.

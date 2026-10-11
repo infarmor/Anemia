@@ -36,14 +36,20 @@ enum SystemCommand {
             pipe.fileHandleForReading.readabilityHandler = nil
             return Result(status: -1, output: "spawn failed: \(error.localizedDescription)")
         }
-        let deadline = Date().addingTimeInterval(timeout)
-        while proc.isRunning && Date() < deadline {
+        // Monotonic, not `Date()`: everything here is elapsed time, and the
+        // wall clock moves. A step backwards used to make each bound
+        // unbounded — on the helper's one serial queue, which is also the one
+        // that answers `stopTunnel` — and a step forwards ended a healthy wait
+        // at once. `SpeedTester` and `EngineProcess` were converted for the
+        // same reason on the app side.
+        let deadline = DispatchTime.now() + timeout
+        while proc.isRunning && DispatchTime.now() < deadline {
             Thread.sleep(forTimeInterval: 0.02)
         }
         if proc.isRunning {
             proc.terminate()
-            let killDeadline = Date().addingTimeInterval(1)
-            while proc.isRunning && Date() < killDeadline {
+            let killDeadline = DispatchTime.now() + 1
+            while proc.isRunning && DispatchTime.now() < killDeadline {
                 Thread.sleep(forTimeInterval: 0.02)
             }
             if proc.isRunning { kill(proc.processIdentifier, SIGKILL) }
@@ -172,9 +178,28 @@ enum SystemCommand {
                 iface = t.dropFirst("interface:".count).trimmingCharacters(in: .whitespaces)
             }
         }
-        // A link#N "gateway" is the bare interface route again — not a hop.
-        if let g = gw, g.hasPrefix("link#") { gw = nil }
+        // Only a real next-hop counts. `route -n get` prints the *best match*,
+        // and for an interface route the gateway line is not an address at all:
+        // measured on a live tunnel here — `gateway: index: 25 utun90`. The old
+        // `link#` special case caught one of the two shapes, so a default
+        // leaving through a physical interface without a gateway handed this
+        // string straight to `route add -host …`, and diagnostics printed
+        // "via index: 25 utun90" as if it were an address.
+        if let g = gw, !isGatewayAddress(g) { gw = nil }
         return (gw, iface)
+    }
+
+    /// Whether a parsed gateway column can be a next-hop for `route`: an
+    /// address literal, and for IPv6 with its interface zone — measured on this
+    /// Mac, `netstat -rn -f inet6` writes every link-local gateway as
+    /// `fe80::%utunN`, and a link-local next-hop has to be written with that
+    /// zone to be reachable. Two one-sided tests used to sit on either side of
+    /// this: `route get` threw a real `fe80::%en0` away, and `netstat`'s row
+    /// for an interface-scoped route (`default en0 … en0`, where the gateway
+    /// column carries the interface *name*) came back as a gateway.
+    static func isGatewayAddress(_ text: String) -> Bool {
+        let address = String(text.prefix { $0 != "%" })
+        return DirectResolver.isIPAddress(address)
     }
 
     /// Physical default gateway from `netstat -rn -f inet|inet6`: the first
@@ -194,7 +219,9 @@ enum SystemCommand {
             guard fields.first == "default", fields.count >= 4 else { continue }
             let gateway = String(fields[1])
             let iface = String(fields[3])
-            if !gateway.hasPrefix("link#"), !isTunnelInterface(iface) {
+            // `isGatewayAddress` also covers the old `link#N` marker: an
+            // interface name in the gateway column is not an address either.
+            if isGatewayAddress(gateway), !isTunnelInterface(iface) {
                 return gateway
             }
         }
@@ -267,27 +294,47 @@ enum SystemCommand {
 
     /// Enabled network services (e.g. "Wi-Fi", "Ethernet") from
     /// `networksetup -listallnetworkservices`. The first line is a header, and
-    /// a leading "*" marks a disabled service — both are skipped.
+    /// a disabled service carries a leading marker — see
+    /// ``parseNetworkServices``.
     static func enabledNetworkServices() -> [String] {
         let r = run("/usr/sbin/networksetup", ["-listallnetworkservices"])
         guard r.ok else { return [] }
-        return r.output
-            .split(separator: "\n")
-            .dropFirst()                                   // header line
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty && !$0.hasPrefix("*") }  // "*" = disabled
+        return parseNetworkServices(r.output).filter { $0.enabled }.map { $0.name }
     }
 
-    /// Every network service, enabled or not (the "*" disabled marker stripped).
+    /// Every network service, enabled or not, with the disabled marker
+    /// stripped.
     static func allNetworkServices() -> [String] {
         let r = run("/usr/sbin/networksetup", ["-listallnetworkservices"])
         guard r.ok else { return [] }
-        return r.output
-            .split(separator: "\n")
-            .dropFirst()
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .map { $0.hasPrefix("*") ? String($0.dropFirst()) : $0 }
-            .filter { !$0.isEmpty }
+        return parseNetworkServices(r.output).map { $0.name }
+    }
+
+    /// `networksetup -listallnetworkservices`: one header line, then one
+    /// service per line, a disabled one carrying a leading marker (`* Wi-Fi`;
+    /// the ordered variant of the same listing spells it `(*) Wi-Fi`, so both
+    /// are tolerated). The marker is not part of the name. Trimming before
+    /// dropping one character made `* Wi-Fi` come back as " Wi-Fi": a name no
+    /// service matches, which in the restore path reads as "the user changed
+    /// this one" and drops the ledger entry without putting anything back.
+    static func parseNetworkServices(_ output: String) -> [(name: String, enabled: Bool)] {
+        var services: [(name: String, enabled: Bool)] = []
+        for raw in output.split(separator: "\n").dropFirst() {
+            var line = raw.trimmingCharacters(in: .whitespaces)
+            guard !line.isEmpty else { continue }
+            var enabled = true
+            if line.hasPrefix("*") {
+                enabled = false
+                line = String(line.dropFirst())
+            } else if line.hasPrefix("(*)") {
+                enabled = false
+                line = String(line.dropFirst(3))
+            }
+            line = line.trimmingCharacters(in: .whitespaces)
+            guard !line.isEmpty else { continue }
+            services.append((line, enabled))
+        }
+        return services
     }
 
     /// Drop cached name resolutions so a restored resolver takes effect for
@@ -307,6 +354,32 @@ enum SystemCommand {
         guard proc_pidpath(pid, &buf, UInt32(buf.count)) > 0 else { return nil }
         let bytes = buf.prefix(while: { $0 != 0 }).map { UInt8(bitPattern: $0) }
         return String(decoding: bytes, as: UTF8.self)
+    }
+
+    /// Whether `pid` still runs the executable launched at `launchPath` — the
+    /// gate on the SIGKILL after a teardown grace, so getting it wrong means
+    /// either a wedged engine that survives (the common half) or killing
+    /// somebody else's recycled pid.
+    ///
+    /// Both sides have to be resolved before comparing: `proc_pidpath` answers
+    /// with the path the kernel really used (`/tmp/…` comes back as
+    /// `/private/tmp/…`, a brew symlink as its `Cellar/…` target — measured on
+    /// this Mac while fixing the identical flaw app-side), while
+    /// `Process.executableURL.path` is the launch path as the caller wrote it.
+    /// The raw string compare that used to sit here was therefore false for
+    /// every symlinked engine, and the kill rung simply never fired.
+    static func pid(_ pid: pid_t, isExecutable launchPath: String) -> Bool {
+        guard let live = executablePath(pid: pid) else { return false }
+        return live == canonical(launchPath)
+    }
+
+    /// `realpath(3)` — the same resolution the kernel applies. Falls back to
+    /// the input when the path cannot be resolved, which fails the comparison
+    /// above rather than killing anything.
+    static func canonical(_ path: String) -> String {
+        guard let resolved = realpath(path, nil) else { return path }
+        defer { free(resolved) }
+        return String(cString: resolved)
     }
 
     /// Split-default rows (0/1, 128/1, ::/1, 8000::/1 — netstat prints both
@@ -332,9 +405,18 @@ enum SystemCommand {
         _ output: String, inet6: Bool,
         isDeadInterface: (String) -> Bool = { !SystemCommand.interfaceExists($0) }
     ) -> [(destination: String, inet6: Bool, iface: String)] {
+        // "default" is in the table because a helper built before the
+        // add-first fix left one there: change-first `ensureNetRoute` had
+        // rewritten the machine's real default onto a utun, and its teardown
+        // (`delete -net 0/1`) removed nothing — so the residue of a dead
+        // tunnel was a default route into a device that no longer exists, i.e.
+        // a machine with no way out. The same liveness rules below keep a
+        // physical default (netif is not a utun) and a coexisting client's
+        // live utun untouched.
         let v4Forms = ["0/1": "0.0.0.0/1", "0.0.0.0/1": "0.0.0.0/1",
-                       "128/1": "128.0.0.0/1", "128.0.0.0/1": "128.0.0.0/1"]
-        let v6Forms = ["::/1": "::/1", "8000::/1": "8000::/1"]
+                       "128/1": "128.0.0.0/1", "128.0.0.0/1": "128.0.0.0/1",
+                       "default": "default"]
+        let v6Forms = ["::/1": "::/1", "8000::/1": "8000::/1", "default": "default"]
         var rows: [(destination: String, inet6: Bool, iface: String)] = []
         for line in output.split(separator: "\n") {
             let fields = line.split(separator: " ", omittingEmptySubsequences: true)
@@ -347,11 +429,15 @@ enum SystemCommand {
         return rows
     }
 
-    /// Make sure a `-net` route points at `interface`: `route change` first
-    /// (moves an existing entry, e.g. one a coexisting VPN client re-added via
-    /// its own utun), falling back to `route add` when there is nothing to
-    /// change. A bare `add` on an existing entry fails with EEXIST and leaves
-    /// the stale route in place — the re-assert would silently do nothing.
+    /// Make sure a `-net` route points at `interface`: `route add` first, and
+    /// `route change` only when the entry really is there. Change-first was the
+    /// bug: RTM_CHANGE edits the longest-prefix *match*, so with no 0/1 in the
+    /// table yet it rewrote the machine's default route onto our utun and
+    /// exited 0 — the add never ran, the /1 pair the whole design rests on never
+    /// existed, and the comment's promise ("the legitimate default route a VPN
+    /// takes over survives, teardown restores it") was quietly false: teardown's
+    /// `delete -net 0/1` then removed nothing and left the default pointing at a
+    /// dead utun. Same lesson `ensureHostRoute` records for `-host`.
     ///
     /// Ownership guard: the entry is only *changed* when it currently leaves
     /// through a physical interface (the legitimate default route a VPN takes
@@ -375,15 +461,17 @@ enum SystemCommand {
                 return Result(status: 1, output: "refusing to steal \(destination) from \(owner) (owned by another tunnel)")
             }
         }
-        var change = ["-n", "change"]
-        if inet6 { change.append("-inet6") }
-        change += ["-net", destination, "-interface", interface]
-        let c = run("/sbin/route", change)
-        if c.ok { return c }
         var add = ["-n", "add"]
         if inet6 { add.append("-inet6") }
         add += ["-net", destination, "-interface", interface]
-        return run("/sbin/route", add)
+        var result = run("/sbin/route", add)
+        if !result.ok, result.output.contains("File exists") {
+            var change = ["-n", "change"]
+            if inet6 { change.append("-inet6") }
+            change += ["-net", destination, "-interface", interface]
+            result = run("/sbin/route", change)
+        }
+        return result
     }
 
     /// `route -n get` argument list for a destination prefix (both the short

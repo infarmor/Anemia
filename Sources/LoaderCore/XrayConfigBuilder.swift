@@ -97,7 +97,10 @@ public enum ConfigBuilderError: Error, LocalizedError, Equatable, Sendable {
 ///
 ///  * `fragment` → a `freedom` outbound used as `dialerProxy` that shreds the
 ///    TLS ClientHello so SNI-based DPI can't classify the handshake.
-///  * `noises`   → junk packets emitted before real data (`sockopt.noises`).
+///  * `noises`   → junk packets emitted before real data (`settings.noises` on the
+///    same masking `freedom` outbound as `fragment` — xray has no socket option
+///    by that name). Both are filtered by what the engine loads; see
+///    ``AntiCensorshipOptions/emittableNoises``.
 ///  * `mux`      → connection multiplexing with padding (skipped under
 ///    XTLS-Vision, which is faster unmuxed).
 public struct XrayConfigBuilder {
@@ -240,23 +243,39 @@ public struct XrayConfigBuilder {
     public func makeConfig(server: ProxyServer, anti: AntiCensorshipOptions = .recommended) throws -> [String: Any] {
         var outbounds: [[String: Any]] = []
 
-        // --- Fragment dialer (optional) ---------------------------------
-        // When fragmentation is on, the physical socket is opened by this
-        // freedom outbound, so junk-noise + TFO sockopts live here.
-        let useFragment = anti.fragment != nil
+        // --- Masking dialer (optional) ---------------------------------
+        // Both features xray attaches to the dial — ClientHello fragmentation
+        // and junk packets — live on one `freedom` outbound the proxy chains to
+        // through `sockopt.dialerProxy`, and both in its `settings`:
+        // `settings.fragment` and `settings.noises` (`infra/conf/freedom.go` of
+        // 26.3.27). xray has no `sockopt.noises` at all — measured on the
+        // shipped binary a bad `sockopt.interface` fails the decode while
+        // `sockopt.noises`, garbage included, is ignored — so emitting them
+        // there gave every profile except `off` a knob that did nothing while
+        // the UI named it. Both keys are read STRICTLY now, so anything the
+        // engine would refuse to load is filtered out
+        // (`emittableNoises`/`emittableFragment`): one poisoned record must
+        // cost its own junk packet, not the tunnel.
+        let maskNoises = anti.emittableNoises
+        let maskFragment = anti.emittableFragment
+        let viaMaskDialer = maskFragment != nil || !maskNoises.isEmpty
         let pinDial = pinsServerDial(server)
-        if let frag = anti.fragment {
+        if viaMaskDialer {
+            var maskSettings: [String: Any] = ["domainStrategy": "AsIs"]
+            if let frag = maskFragment {
+                maskSettings["fragment"] = [
+                    "packets": frag.packets, "length": frag.length, "interval": frag.interval,
+                ]
+            }
+            if !maskNoises.isEmpty {
+                maskSettings["noises"] = maskNoises.map {
+                    ["type": $0.type, "packet": $0.packet, "delay": $0.delay] as [String: Any]
+                }
+            }
             var fragmentOutbound: [String: Any] = [
                 "tag": "fragment",
                 "protocol": "freedom",
-                "settings": [
-                    "domainStrategy": "AsIs",
-                    "fragment": [
-                        "packets": frag.packets,
-                        "length": frag.length,
-                        "interval": frag.interval
-                    ]
-                ]
+                "settings": maskSettings,
             ]
             if let sockopt = makeSockopt(anti: anti, dialerProxy: nil, pinServerDial: pinDial) {
                 fragmentOutbound["streamSettings"] = ["sockopt": sockopt]
@@ -265,7 +284,7 @@ public struct XrayConfigBuilder {
         }
 
         // --- Main proxy outbound ---------------------------------------
-        outbounds.insert(try makeProxyOutbound(server: server, anti: anti, useFragment: useFragment), at: 0)
+        outbounds.insert(try makeProxyOutbound(server: server, anti: anti, viaMaskDialer: viaMaskDialer), at: 0)
 
         // --- Direct + block --------------------------------------------
         outbounds.append(["tag": "direct", "protocol": "freedom", "settings": ["domainStrategy": "UseIP"]])
@@ -554,7 +573,7 @@ public struct XrayConfigBuilder {
         !server.proto.isHysteriaFamily && dnsHosts[server.address] != nil
     }
 
-    private func makeProxyOutbound(server: ProxyServer, anti: AntiCensorshipOptions, useFragment: Bool) throws -> [String: Any] {
+    private func makeProxyOutbound(server: ProxyServer, anti: AntiCensorshipOptions, viaMaskDialer: Bool) throws -> [String: Any] {
         // Xray-core's wireguard outbound speaks the plain WireGuard handshake
         // only — it cannot carry the AmneziaWG junk/padding/header parameters,
         // so emitting one would silently strip every obfuscation setting and
@@ -623,7 +642,7 @@ public struct XrayConfigBuilder {
             }
         }
 
-        outbound["streamSettings"] = makeStreamSettings(server, anti: anti, useFragment: useFragment)
+        outbound["streamSettings"] = makeStreamSettings(server, anti: anti, viaMaskDialer: viaMaskDialer)
 
         // Mux with padding — but not with XTLS-Vision (incompatible + slower),
         // and not over XHTTP, which multiplexes on its own (XMUX).
@@ -786,7 +805,7 @@ public struct XrayConfigBuilder {
         }
     }
 
-    private func makeStreamSettings(_ server: ProxyServer, anti: AntiCensorshipOptions, useFragment: Bool) -> [String: Any] {
+    private func makeStreamSettings(_ server: ProxyServer, anti: AntiCensorshipOptions, viaMaskDialer: Bool) -> [String: Any] {
         var stream: [String: Any] = ["network": server.network.rawValue]
 
         // Stealth SNI: an explicit link SNI always wins. Otherwise borrow a
@@ -909,9 +928,9 @@ public struct XrayConfigBuilder {
             break
         }
 
-        // Socket options: when fragmenting, the fragment outbound owns the
-        // physical socket (TFO/noises), and we only chain to it here.
-        if useFragment {
+        // Socket options: when masking, the dialer outbound owns the physical
+        // socket, and we only chain to it here.
+        if viaMaskDialer {
             stream["sockopt"] = ["dialerProxy": "fragment"]
         } else if let sockopt = makeSockopt(anti: anti, dialerProxy: nil,
                                             pinServerDial: pinsServerDial(server)) {
@@ -950,11 +969,8 @@ public struct XrayConfigBuilder {
         if pinServerDial {
             sockopt["domainStrategy"] = "UseIPv4"
         }
-        if !anti.noises.isEmpty {
-            sockopt["noises"] = anti.noises.map { noise in
-                ["type": noise.type, "packet": noise.packet, "delay": noise.delay] as [String: Any]
-            }
-        }
+        // `noises` deliberately absent: xray reads junk packets from the masking
+        // freedom outbound's `settings.noises`, never from a socket option.
         if let dialerProxy { sockopt["dialerProxy"] = dialerProxy }
         return sockopt
     }

@@ -156,10 +156,15 @@ extension Color {
 /// Human-readable byte + speed + duration formatting for the stats UI.
 enum Format {
     static func bytes(_ n: Int64) -> String {
+        // Decimal, like the labels say and like both other ports
+        // (`Formatting.kt`'s bytes ladder, `ActivityText.swift`): with 1024 the
+        // Mac showed 953.7 MB for the same allowance the phone and the island
+        // called 1,0 ГБ. `bitRate` below already divides by 1000 — two ladders
+        // in one sheet were the other half of the same inconsistency.
         let units = ["B", "KB", "MB", "GB", "TB"]
         var value = Double(max(0, n))
         var i = 0
-        while value >= 1024 && i < units.count - 1 { value /= 1024; i += 1 }
+        while value >= 999.5 && i < units.count - 1 { value /= 1000; i += 1 }
         return i == 0 ? "\(Int(value)) B" : String(format: "%.1f %@", value, units[i])
     }
 

@@ -42,15 +42,61 @@ struct NetworkJournalStore: Sendable {
     }
 
     /// The ledger plus anything a legacy helper left behind. A missing or
-    /// unreadable file is an empty ledger.
+    /// unreadable file is an empty ledger — but an unreadable one gets a copy
+    /// kept aside FIRST, and a newer format does too: this file is the only
+    /// thing that can put a Mac's resolver and proxy back, and the caller that
+    /// sees an empty ledger will re-save an empty ledger over the real one.
     func load() -> NetworkJournal {
         var journal = NetworkJournal()
-        if let data = FileManager.default.contents(atPath: path),
-           let decoded = try? JSONDecoder().decode(NetworkJournal.self, from: data) {
-            journal = decoded
+        if let data = FileManager.default.contents(atPath: path) {
+            if let decoded = try? JSONDecoder().decode(NetworkJournal.self, from: data) {
+                journal = decoded
+                if let reason = unreadabilityReason(data: data, decoded: journal) {
+                    keepAside(data, reason: reason)
+                }
+            } else {
+                keepAside(data, reason: "it does not decode as a ledger at all")
+            }
         }
         mergeLegacy(into: &journal)
         return journal
+    }
+
+    /// Why the loaded ledger is not the file it came from: written by a newer
+    /// helper (whose semantics this one can't know), or holding more entries
+    /// than the lenient decode recovered. nil means the ledger is complete.
+    private func unreadabilityReason(data: Data, decoded: NetworkJournal) -> String? {
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            // The decoder succeeded, so this is JSON that isn't an object —
+            // nothing to keep aside that the ledger comparison didn't cover.
+            return nil
+        }
+        if let version = obj["version"] as? Int, version > NetworkJournal.currentVersion {
+            return "it was written by a newer helper (version \(version), this one reads \(NetworkJournal.currentVersion))"
+        }
+        var lost: [String] = []
+        if let raw = obj["dns"] as? [Any], raw.count > decoded.dns.count {
+            lost.append("\(raw.count - decoded.dns.count) DNS record(s)")
+        }
+        if let raw = obj["proxy"] as? [Any], raw.count > decoded.proxy.count {
+            lost.append("\(raw.count - decoded.proxy.count) proxy record(s)")
+        }
+        return lost.isEmpty ? nil : "the decode gave up " + lost.joined(separator: " and ")
+    }
+
+    /// `<file>.unreadable-<ms>.bak` next to the ledger. Milliseconds, because a
+    /// helper that crashes on every boot would otherwise overwrite the earlier
+    /// copy of its own ledger within the same second.
+    private func keepAside(_ raw: Data, reason: String) {
+        let name = "network-journal.json.unreadable-\(Int(Date().timeIntervalSince1970 * 1000)).bak"
+        let target = directory + "/" + name
+        if FileManager.default.fileExists(atPath: directory + "/network-journal.json") {
+            // Keep the copy private: the ledger holds the pf token and the
+            // machine's service names, and this directory is 0700 already.
+            try? raw.write(to: URL(fileURLWithPath: target), options: .atomic)
+            chmod(target, 0o600)
+            FileHandle.standardError.write(Data("[helper] ledger kept aside as \(name): \(reason)\n".utf8))
+        }
     }
 
     func save(_ journal: NetworkJournal) throws {

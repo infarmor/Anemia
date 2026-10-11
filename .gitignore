@@ -14,3 +14,17 @@ Sources/LoaderApp/Resources/kxc.mlmodelc
 # (Android/Scripts/verify-tunnel.sh) — it lands in the directory the server
 # was started from, so the repo never sees it.
 tunnel-access.log
+
+# Editor and tool leftovers
+.swiftpm/
+.aider*
+__pycache__/
+
+# Windows client build output (dotnet bin/obj) and the packaged snapshot —
+# the sources under windows-version-alpha/src are what the repo keeps.
+windows-version-alpha/**/bin/
+windows-version-alpha/**/obj/
+windows-version-alpha.zip
+
+# A stray screen recording nothing in the app references.
+Sources/LoaderApp/Resources/video.mp4

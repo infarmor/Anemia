@@ -355,8 +355,11 @@ final class XrayController {
             // period, mirroring runCapturing's ladder but off-actor: stop()
             // must return immediately.
             Task.detached(priority: .utility) { [proc] in
-                let deadline = Date().addingTimeInterval(2)
-                while proc.isRunning && Date() < deadline {
+                // Monotonic grace: a clock stepped forwards would cut the grace
+                // to nothing and SIGKILL an engine that was exiting cleanly on
+                // SIGTERM, holding its ports for a start that then fails.
+                let grace = DispatchTime.now()
+                while proc.isRunning, EngineProcess.seconds(since: grace) < 2 {
                     try? await Task.sleep(nanoseconds: 50_000_000)
                 }
                 if proc.isRunning, Self.pidStillIs(proc) { kill(proc.processIdentifier, SIGKILL) }
@@ -387,10 +390,8 @@ final class XrayController {
     /// stale-engine sweep does; if the child already exited, proc_pidpath
     /// finds nothing and no signal is sent at all.
     nonisolated private static func pidStillIs(_ proc: Process) -> Bool {
-        var buf = [CChar](repeating: 0, count: 1024)   // PROC_PIDPATHINFO_MAXSIZE
-        let n = proc_pidpath(proc.processIdentifier, &buf, UInt32(buf.count))
-        guard n > 0 else { return false }
-        return String(decoding: buf.prefix(Int(n)).map(UInt8.init), as: UTF8.self) == proc.executableURL?.path
+        EngineProcess.pid(proc.processIdentifier,
+                          isExecutable: proc.executableURL?.path ?? "")
     }
 
     /// Spawn a short-lived xray subprocess, capture its stdout (merging stderr

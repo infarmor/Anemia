@@ -91,8 +91,14 @@ public enum XrayStatsAPI {
 
         private func finish(_ error: String?) {
             lock.lock()
-            if failure == nil { failure = error }
+            // The FIRST call decides the verdict. `failure == nil` *is* success
+            // for the caller below, so a second call — the "eof" that follows a
+            // complete response delivered in the same read, or the cancel
+            // handler racing the timeout path — used to overwrite a parsed
+            // answer with an error string, and the poll fell back to the 28 MB
+            // CLI fork even though the stats had arrived.
             let alreadyDone = finished
+            if !alreadyDone { failure = error }
             finished = true
             lock.unlock()
             if !alreadyDone { done.signal() }

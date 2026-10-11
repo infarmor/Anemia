@@ -223,10 +223,23 @@ public enum LoaderIdentifiers {
 /// pid-reuse window); a route left on a dead utun no longer blocks bring-up as
 /// "another VPN"; orphaned engines are killed before the stale-route sweep;
 /// the SOCKS upstream must be loopback; uninstall removes the AmneziaWG engine.
-/// 0.9.2: server bypass host routes are added first and read back — the
-/// `route change -host` used since 0.6.4 edits the longest-prefix route on
-/// Darwin and never created the pin, so the engine's server dial had no path
-/// once the /1 split routes were up (every full-tunnel session died within
-/// seconds). AmneziaWG asks the kernel for a `utun` (macOS refuses any other
+/// 0.9.2: AmneziaWG asks the kernel for a `utun` (macOS refuses any other
 /// name) and finds its UAPI socket through WG_TUN_NAME_FILE.
-public let LoaderHelperVersion = "0.9.2"
+/// 0.9.3: the number 0.9.2 was already carrying this behaviour, and that is
+/// the problem — `helperCurrent` compares the installed helper's version by
+/// equality (`AppState.swift:1523`), and the only thing that re-blesses a
+/// helper is the `Update…` button, which appears when `!helperCurrent`. Every
+/// machine that installed 0.9.2 earlier is therefore told it is up to date
+/// while it runs the old code. Measured on this Mac while a session was live:
+/// `/Library/PrivilegedHelperTools/com.loader.vpn.Helper --version` answers
+/// `0.9.2` (installed Sep 15), `netstat -rn -f inet` has no `0/1` and no
+/// `128.0.0.0/1` rows at all, and `default` points straight at the utun — the
+/// split-route pair the design rests on was never installed. Same under a new
+/// number so the update offers itself: server bypass host routes are added
+/// first and read back (`route change -host` used since 0.6.4 edits the
+/// longest-prefix route on Darwin and never created the pin, so every
+/// full-tunnel session died within seconds); the physical v6 gateway is kept
+/// when a re-detect fails instead of being nil-ed, which stranded the
+/// session's v6 host routes; SIGTERM during launch recovery is honoured after
+/// the recovery rather than exiting in the middle of it.
+public let LoaderHelperVersion = "0.9.3"

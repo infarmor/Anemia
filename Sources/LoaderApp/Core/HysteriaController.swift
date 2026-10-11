@@ -182,8 +182,11 @@ final class HysteriaController {
             // the user killed it by hand. Escalate off-actor: stop() must
             // return immediately.
             Task.detached(priority: .utility) { [proc] in
-                let deadline = Date().addingTimeInterval(2)
-                while proc.isRunning && Date() < deadline {
+                // Monotonic grace, same reason as in XrayController: a clock
+                // stepped forwards would SIGKILL a client that was closing its
+                // QUIC session on SIGTERM just fine.
+                let grace = DispatchTime.now()
+                while proc.isRunning, EngineProcess.seconds(since: grace) < 2 {
                     try? await Task.sleep(nanoseconds: 50_000_000)
                 }
                 if proc.isRunning, Self.pidStillIs(proc) { kill(proc.processIdentifier, SIGKILL) }
@@ -195,10 +198,8 @@ final class HysteriaController {
     /// proc_pidpath re-verification (same contract as XrayController): the
     /// child at this pid must still be OUR binary before signaling it.
     nonisolated private static func pidStillIs(_ proc: Process) -> Bool {
-        var buf = [CChar](repeating: 0, count: 1024)   // PROC_PIDPATHINFO_MAXSIZE
-        let n = proc_pidpath(proc.processIdentifier, &buf, UInt32(buf.count))
-        guard n > 0 else { return false }
-        return String(decoding: buf.prefix(Int(n)).map(UInt8.init), as: UTF8.self) == proc.executableURL?.path
+        EngineProcess.pid(proc.processIdentifier,
+                          isExecutable: proc.executableURL?.path ?? "")
     }
 
     /// Stop only if the live run is still the one `token` identifies.
@@ -228,7 +229,12 @@ final class HysteriaController {
         if let exeDir = Bundle.main.executableURL?.deletingLastPathComponent() {
             candidates.append(exeDir.appendingPathComponent("hysteria"))
         }
-        candidates.append(URL(fileURLWithPath: "/opt/homebrew/bin/hysteria"))
+        // Homebrew's prefix is CPU-specific — Apple Silicon installs under
+        // /opt/homebrew, Intel under /usr/local — the same two paths
+        // `EngineInventory.xrayPath()` searches. Looking only at the first
+        // made a brewed engine invisible on Intel Macs.
+        candidates.append(contentsOf: ["/opt/homebrew/bin/hysteria", "/usr/local/bin/hysteria"]
+            .map { URL(fileURLWithPath: $0) })
         return candidates.first { fm.isExecutableFile(atPath: $0.path) }
     }
 

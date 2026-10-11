@@ -247,12 +247,22 @@ struct RootView: View {
 
     // MARK: - Server
 
+    /// The server the bar names. While a session is up (or coming up) that is
+    /// the one it dials: picking a row in the list moves the selection without
+    /// reconnecting, so naming `selectedServer` there printed the address of an
+    /// exit no traffic was going through, under "Protected". MiniMap and
+    /// StatsSheet already read the session this way.
+    private var shownServer: ProxyServer? {
+        let live = state.isConnected || state.connection == .connecting
+        return (live ? state.sessionServer : nil) ?? state.selectedServer
+    }
+
     private var serverBar: some View {
         HStack(spacing: 10) {
             Button { showServers = true } label: {
                 HStack(spacing: 10) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(state.selectedServer?.name ?? "Choose a Server")
+                        Text(shownServer?.name ?? "Choose a Server")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(Theme.textHi)
                             .lineLimit(1)
@@ -262,7 +272,7 @@ struct RootView: View {
                             .lineLimit(1)
                     }
                     Spacer(minLength: 8)
-                    if let id = state.selectedServerID {
+                    if let id = shownServer?.id {
                         if let s = state.stability[id] { StabilityBars(score: s) }
                         PingBadge(result: state.pings[id])
                     }
@@ -312,7 +322,7 @@ struct RootView: View {
     }
 
     private var serverSubtitle: String {
-        guard let s = state.selectedServer else { return "Import a link or pick from your list" }
+        guard let s = shownServer else { return "Import a link or pick from your list" }
         var parts = [s.proto.rawValue.uppercased(), s.address]
         if s.security != .none { parts.append(s.security.rawValue) }
         return parts.joined(separator: " · ")

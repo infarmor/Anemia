@@ -51,6 +51,42 @@ struct PersistenceTests {
         }
     }
 
+    /// The drift detector used to compare only `servers`, `subscriptions` and
+    /// `learnedMasking`, while its comment promised every collection — so a
+    /// `splitTunnel` whose `entries` no longer decode (a renamed field, a
+    /// downgraded build, an edited file) loaded as "no bypass rules" with no
+    /// backup, and the next save() overwrote the only copy the user had.
+    @Test func testUnreadableSplitTunnelRulesAreBackedUp() throws {
+        let url = tempURL()
+        let base = url.deletingPathExtension().lastPathComponent
+        func backupsNow() -> [String] {
+            (try? FileManager.default.contentsOfDirectory(atPath: url.deletingLastPathComponent().path))?
+                .filter { $0.hasPrefix(base + ".json.corrupt-") } ?? []
+        }
+        defer {
+            try? FileManager.default.removeItem(at: url)
+            for f in backupsNow() {
+                try? FileManager.default.removeItem(at: url.deletingLastPathComponent().appendingPathComponent(f))
+            }
+        }
+
+        // Control: the same shape with decodable rules must NOT be treated as
+        // drift — otherwise every ordinary load would write a backup.
+        try Data(#"{"servers":[],"splitTunnel":{"enabled":true,"entries":["example.com","172.28.0.0/24"]}}"#.utf8)
+            .write(to: url)
+        let clean = StatePersistence(fileURL: url).load()
+        #expect(clean.splitTunnel.entries == ["example.com", "172.28.0.0/24"])
+        #expect(backupsNow().isEmpty, "a healthy store must not be called corrupt")
+
+        // An entry that cannot be a String empties the whole array through the
+        // lenient decoder — the loss the backup exists to make recoverable.
+        try Data(#"{"servers":[],"splitTunnel":{"enabled":true,"entries":[{"poisoned":true}]}}"#.utf8)
+            .write(to: url)
+        let drifted = StatePersistence(fileURL: url).load()
+        #expect(drifted.splitTunnel.entries.isEmpty)
+        #expect(!backupsNow().isEmpty, "a silently-emptied splitTunnel must still get a backup")
+    }
+
     @Test func testRoundTripPreservesState() throws {
         let url = tempURL()
         defer { try? FileManager.default.removeItem(at: url) }

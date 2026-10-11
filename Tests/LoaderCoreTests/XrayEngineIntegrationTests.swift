@@ -69,6 +69,22 @@ struct XrayEngineIntegrationTests {
         let clientURL = dir.appendingPathComponent("client.json")
         try builder.makeConfigData(server: server, anti: anti).write(to: clientURL)
 
+        // The 204 below only means something if the masking dialer really went
+        // on the wire: `settings.noises` is read strictly, so a dropped or
+        // misplaced key would have the connection succeed with the knob off.
+        if variant == .pinnedWithFragment {
+            let written = try JSONSerialization.jsonObject(
+                with: Data(contentsOf: clientURL)) as! [String: Any]
+            let dialer = try #require(((written["outbounds"] as? [[String: Any]])?
+                .first { $0["tag"] as? String == "fragment" }))
+            let settings = try #require(dialer["settings"] as? [String: Any])
+            #expect((settings["noises"] as? [[String: Any]])?.isEmpty == false,
+                    "the round trip must carry junk in settings.noises")
+            #expect(settings["fragment"] != nil, "… and the fragmented ClientHello")
+            let sockopt = (dialer["streamSettings"] as? [String: Any])?["sockopt"] as? [String: Any]
+            #expect(sockopt?["noises"] == nil, "sockopt.noises is not a key the engine reads")
+        }
+
         let serverProc = try Self.launch(xray, config: serverURL)
         defer { serverProc.terminate() }
         let clientProc = try Self.launch(xray, config: clientURL)

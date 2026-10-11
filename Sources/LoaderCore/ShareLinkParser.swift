@@ -97,11 +97,19 @@ public enum ShareLinkParser {
             if extras["portHopping"] == nil, let hop = lq["mport"] ?? lq["ports"] {
                 extras["portHopping"] = hop
             }
+            // `alpn` is a hysteria2 link parameter (v2rayN and the panel
+            // generators write it, and HysteriaConfigBuilder prints `alpn:`
+            // from `server.alpn`) — dropping it here meant a server pinned to
+            // `http/1.1` got the client's default `h3`, and every handshake
+            // failed with no config error anywhere. Split with the same rule as
+            // the v1 branch below: both spellings feed one YAML builder.
+            let hy2Alpn: [String] = (lq["alpn"] ?? "").isEmpty ? [] : lq["alpn"]!.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             return ProxyServer(
                 name: name, proto: .hysteria2, address: host, port: port,
                 credential: auth,
                 security: .tls,
                 sni: lq["sni"] ?? lq["peer"],
+                alpn: hy2Alpn,
                 allowInsecure: boolParam(lq["insecure"]),
                 userData: extras)
         }

@@ -144,7 +144,13 @@ enum ProxyCheck {
     /// Kills every throwaway engine still running: at quit, a check in
     /// flight would leave them behind, each holding a port.
     static func stopAll() {
-        for pid in Engine.running.withLock({ $0 }) {
+        for (pid, path) in Engine.running.withLock({ $0 }) {
+            // Re-identify before signalling. `running` drops a pid only in
+            // stop(), so an engine that died on its own while its check was
+            // still awaiting leaves the pid here — and after the reap the
+            // kernel hands that number to the next fork, which would take a
+            // SIGKILL meant for a throwaway xray.
+            guard EngineProcess.pid(pid, isExecutable: path) else { continue }
             kill(pid, SIGKILL)
         }
     }
@@ -158,15 +164,21 @@ enum ProxyCheck {
 /// One throwaway xray process: started, waited on, stopped. Its output is
 /// kept (the last few KB) to tell why a check failed.
 private final class Engine: @unchecked Sendable {
-    /// Every engine started and not yet stopped (ProxyCheck.stopAll).
-    static let running = OSAllocatedUnfairLock(initialState: Set<pid_t>())
+    /// Every engine started and not yet stopped, with the binary it was
+    /// launched from — `stopAll` re-checks that the pid still runs it
+    /// (ProxyCheck.stopAll).
+    static let running = OSAllocatedUnfairLock(initialState: [pid_t: String]())
 
     private let process = Process()
+    private let binaryPath: String
     private let lock = NSLock()
     private var output = ""
 
     init(binary: URL, config: URL) {
         process.executableURL = binary
+        // Stored resolved, the way `proc_pidpath` reports it — see
+        // EngineProcess.pid(_:isExecutable:).
+        binaryPath = EngineProcess.canonical(binary.path)
         process.arguments = ["run", "-c", config.path]
         process.qualityOfService = .utility
     }
@@ -194,7 +206,7 @@ private final class Engine: @unchecked Sendable {
         do {
             try process.run()
             let pid = process.processIdentifier
-            Self.running.withLock { _ = $0.insert(pid) }
+            Self.running.withLock { $0[pid] = binaryPath }
             return true
         } catch {
             pipe.fileHandleForReading.readabilityHandler = nil
@@ -215,7 +227,7 @@ private final class Engine: @unchecked Sendable {
 
     func stop() {
         let pid = process.processIdentifier
-        Self.running.withLock { _ = $0.remove(pid) }
+        Self.running.withLock { _ = $0.removeValue(forKey: pid) }
         guard process.isRunning else { return }
         process.terminate()
         // Held until then: a check that returned doesn't wait for the exit.

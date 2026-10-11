@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import LoaderCore
 
 /// Process plumbing shared by the user-side engines (xray, hysteria): how a
@@ -18,14 +19,57 @@ enum EngineProcess {
     /// 50 ms. Blocking (Thread.sleep is banned inside async closures): call
     /// via a detached task.
     static func waitForReady(port: Int, exited: ExitLatch, timeout: TimeInterval) -> EngineReadiness {
-        let start = Date()
-        let deadline = start.addingTimeInterval(timeout)
-        while Date() < deadline {
+        // Monotonic, not `Date()`: a clock stepped backwards (an NTP correction
+        // after wake, a manual change) would stretch this poll by the size of
+        // the step, and one stepped forwards ends it immediately — the engine
+        // then reads "did not open its port in time" while it is up and
+        // working. The interval is elapsed time, so uptime is the right clock.
+        let start = DispatchTime.now()
+        while seconds(since: start) < timeout {
             if exited.isMarked { return .exited }
             if PortFinder.canConnect(port) { return exited.isMarked ? .exited : .ready }
-            Thread.sleep(forTimeInterval: Date().timeIntervalSince(start) < 0.5 ? 0.005 : 0.05)
+            Thread.sleep(forTimeInterval: seconds(since: start) < 0.5 ? 0.005 : 0.05)
         }
         return exited.isMarked ? .exited : .timeout
+    }
+
+    /// Seconds of monotonic time since `mark`.
+    static func seconds(since mark: DispatchTime) -> Double {
+        Double(DispatchTime.now().uptimeNanoseconds &- mark.uptimeNanoseconds) / 1_000_000_000
+    }
+
+    // MARK: - Who is this pid
+
+    /// The executable a pid is running, as the kernel names it — fully resolved,
+    /// so `/tmp/…` comes back as `/private/tmp/…` and a brew symlink as its
+    /// `Cellar/…` target. Nil when the process is gone.
+    nonisolated static func executablePath(of pid: pid_t) -> String? {
+        var buf = [CChar](repeating: 0, count: 1024)   // PROC_PIDPATHINFO_MAXSIZE
+        let n = proc_pidpath(pid, &buf, UInt32(buf.count))
+        guard n > 0 else { return nil }
+        return String(decoding: buf.prefix(Int(n)).map(UInt8.init), as: UTF8.self)
+    }
+
+    /// realpath(3): the same resolution the kernel applies. Falls back to the
+    /// input when the path cannot be resolved, which then simply fails the
+    /// comparison below rather than killing anything.
+    nonisolated static func canonical(_ path: String) -> String {
+        guard let resolved = realpath(path, nil) else { return path }
+        defer { free(resolved) }
+        return String(cString: resolved)
+    }
+
+    /// Whether `pid` still runs the executable launched at `launchPath`.
+    ///
+    /// Both sides have to be resolved before comparing. Measured on this Mac:
+    /// launching `/tmp/linktest/bin/sleep` (a symlink) reports
+    /// `/private/tmp/linktest/real/sleep`, while `executableURL.path` is the
+    /// launch path and even `resolvingSymlinksInPath()` stops at `/tmp/…` — so
+    /// a raw string compare is false for every symlinked or temp-dir engine,
+    /// and the SIGKILL rung that checks it never fires.
+    nonisolated static func pid(_ pid: pid_t, isExecutable launchPath: String) -> Bool {
+        guard let live = executablePath(of: pid) else { return false }
+        return live == canonical(launchPath)
     }
 }
 
@@ -45,8 +89,16 @@ final class ExitLatch: @unchecked Sendable {
 /// start failed can never be the previous run's last line.
 final class LogLineBuffer: @unchecked Sendable {
     private static let tailCapacity = 20
+    /// Ceiling on one unterminated line. `tailCapacity` bounds how much is
+    /// *kept*, but nothing bounded what is *accumulated*: an engine that writes
+    /// without ever emitting `\n` (a `\r` progress loop, or anything dumping
+    /// binary on stdout) grew `pending` by one allocation per read for the
+    /// whole run, and the readiness gate holds this buffer until the process
+    /// is reaped.
+    static let pendingCapacity = 64 * 1024
     private let lock = NSLock()
     private let eof = DispatchSemaphore(value: 0)
+    private(set) var pendingCount = 0
     private var pending = Data()
     private var tail: [String] = []
     private var finished = false
@@ -62,6 +114,12 @@ final class LogLineBuffer: @unchecked Sendable {
             pending.removeSubrange(pending.startIndex...nl)
             if let line = Self.text(slice) { lines.append(line) }
         }
+        if pending.count > Self.pendingCapacity {
+            let fragment = Data(pending.prefix(Self.pendingCapacity))
+            pending.removeAll(keepingCapacity: false)
+            if let line = Self.text(fragment) { lines.append(line + " …[truncated]") }
+        }
+        pendingCount = pending.count
         remember(lines)
         return lines
     }

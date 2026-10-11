@@ -44,11 +44,31 @@ enum NetworkHealthScan {
 
     private static func serviceNames() -> [String] {
         guard let out = networksetup(["-listallnetworkservices"]) else { return [] }
-        return out.split(separator: "\n")
-            .dropFirst()                                   // header line
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .map { $0.hasPrefix("*") ? String($0.dropFirst()) : $0 }
-            .filter { !$0.isEmpty }
+        return parseServiceNames(out)
+    }
+
+    /// One header line, then one service per line; a disabled service carries
+    /// a marker that is not part of its name (`* Wi-Fi`, and the ordered
+    /// listing spells it `(*) Wi-Fi`). Trimming before dropping the marker was
+    /// the bug: `* Wi-Fi` came back as " Wi-Fi", which `networksetup` refuses
+    /// — measured here: `-getdnsservers " Wi-Fi"` exits 4 with "not a
+    /// recognized network service", so both reads in `scan()` returned nil and
+    /// the disabled service was skipped as cleanly as if it were healthy. The
+    /// rule is the helper's own (`SystemCommand.parseNetworkServices`, which
+    /// documents the same trap); this file promises "same definitions as the
+    /// helper's own sweep".
+    static func parseServiceNames(_ output: String) -> [String] {
+        output.split(separator: "\n").dropFirst().compactMap { raw in
+            var line = raw.trimmingCharacters(in: .whitespaces)
+            guard !line.isEmpty else { return nil }
+            if line.hasPrefix("(*)") {
+                line = String(line.dropFirst(3))
+            } else if line.hasPrefix("*") {
+                line = String(line.dropFirst())
+            }
+            line = line.trimmingCharacters(in: .whitespaces)
+            return line.isEmpty ? nil : line
+        }
     }
 
     private static func networksetup(_ args: [String]) -> String? {

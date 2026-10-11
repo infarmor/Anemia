@@ -141,6 +141,39 @@ public struct StatePersistence: Sendable {
             if let n = rawCount("learnedMasking") {
                 droppedEntries = droppedEntries || ((decoded?.learnedMasking.count ?? 0) < n)
             }
+            // `splitTunnel` is an object, so `rawCount` on it would compare the
+            // two keys `enabled`/`entries` against a rule count — meaningless.
+            // Its own decoder is the lenient one that cannot fail: an
+            // unreadable `entries` array comes back empty, the file still
+            // "loads", and the next save() replaces the only copy of the user's
+            // bypass rules with nothing. Check the nested array by name.
+            if let rules = obj["splitTunnel"] as? [String: Any],
+               let entries = rules["entries"] as? [Any] {
+                droppedEntries = droppedEntries || ((decoded?.splitTunnel.entries.count ?? 0) < entries.count)
+            }
+            // `anti` is the other lenient struct, and two of its shapes cost
+            // more than the field that broke:
+            //  * `noises` is read element by element, so one poisoned entry costs
+            //    that entry — but a `noises` that is not an array at all, or an
+            //    element shape nothing decodes, still falls back per *field* and
+            //    can empty the list;
+            //  * `fragment` is a single all-or-nothing struct: a panel writing
+            //    `length: 200` instead of "100-200" loses the whole ClientHello
+            //    fragmentation, silently.
+            // Both are invisible in the worst way — the UI keeps naming the
+            // anti-DPI profile while the engine gets less of it, and the
+            // connection fails somewhere else — so the raw document is compared
+            // with what the decode recovered before the next save overwrites it.
+            if let anti = obj["anti"] as? [String: Any] {
+                if let noises = anti["noises"] as? [Any] {
+                    droppedEntries = droppedEntries || ((decoded?.anti.noises.count ?? 0) < noises.count)
+                }
+                // A present-but-unreadable fragment object, not `"fragment":null`
+                // (which is the user turning fragmentation off, and decodes fine).
+                if anti["fragment"] is [String: Any] {
+                    droppedEntries = droppedEntries || (decoded?.anti.fragment == nil)
+                }
+            }
         }
         if decoded == nil || droppedEntries {
             // Millisecond timestamp: a same-second collision would silently

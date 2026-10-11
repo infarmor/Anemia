@@ -185,10 +185,17 @@ enum HelperInstaller {
         // script's stdout, and a full 64 KB pipe would block it forever.
         proc.standardOutput = FileHandle.nullDevice
         try proc.run()
+        // Drain stderr to EOF *before* waiting for the exit. osascript writes
+        // the failing root script's stderr here, and a child blocked on a full
+        // 64 KB pipe never exits: the installer hung in the spinner with the
+        // detached thread parked in waitUntilExit, with no error to show.
+        // (The wait stays unbounded on purpose — this is where the user may sit
+        // on the admin prompt, and a deadline would cancel a legitimate install.)
+        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
         proc.waitUntilExit()
 
         guard proc.terminationStatus != 0 else { return }
-        let err = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+        let err = String(data: errData, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         // osascript returns "User canceled. (-128)" when the prompt is dismissed.
         if err.contains("-128") || err.lowercased().contains("cancel") {

@@ -52,21 +52,41 @@ thin_arm64() {
     fi
 }
 for core in xray tun2socks amneziawg-go hysteria; do
-    if [[ -f "$ROOT/Resources/$core" ]]; then
-        cp "$ROOT/Resources/$core" "$OUT/Contents/Resources/"
-        thin_arm64 "$OUT/Contents/Resources/$core"
-    fi
+    # Required, not optional. Engines are fetched by separate scripts and never
+    # downloaded at build time, so a fresh clone (or a wiped Resources/) used to
+    # produce a signed app whose hysteria/AWG/tun connections simply failed at
+    # engine launch — the bundle looked finished because it *built*.
+    [[ -f "$ROOT/Resources/$core" ]] \
+        || { echo "✗ нет Resources/$core — Собери его Scripts/fetch-cores.sh (xray, tun2socks)" \
+                  "или Scripts/fetch-extra-engines.sh (amneziawg-go, hysteria)" >&2; exit 1; }
+    cp "$ROOT/Resources/$core" "$OUT/Contents/Resources/"
+    thin_arm64 "$OUT/Contents/Resources/$core"
 done
 
 # Privileged helper — bundled so the app can install it (one admin prompt) to
 # enable the system-wide tunnel; see HelperInstaller. The reset script is the
 # helper-independent network recovery the app falls back to.
-[[ -f "$SCRATCH/$CONFIG/LoaderHelper" ]] && cp "$SCRATCH/$CONFIG/LoaderHelper" "$OUT/Contents/Resources/LoaderHelper"
+# Required, not optional — and said loudly: `set -e` does not stop a failing
+# `[[ … ]] && cp` (the failing test is part of an && list, so the line exits 1
+# and the script walks on), which is how a bundle without any helper used to
+# print "Done". Without the helper the app cannot install or update the tunnel,
+# and the version check that offers «Helper update» has nothing to compare.
+HELPER="$SCRATCH/$CONFIG/LoaderHelper"
+if [[ ! -f "$HELPER" ]]; then
+    echo "× no helper at $HELPER — the build produced no LoaderHelper product" >&2
+    exit 1
+fi
+cp "$HELPER" "$OUT/Contents/Resources/LoaderHelper"
 cp "$ROOT/Scripts/anemia-network-reset.sh" "$OUT/Contents/Resources/anemia-network-reset.sh"
 
 # Strip any xattr detritus then ad-hoc sign so Gatekeeper lets it run locally.
+# A bundle that failed to sign is not "Done": the app launches, the helper
+# refuses an unverified client, and every privileged call fails later.
 xattr -cr "$OUT" 2>/dev/null || true
-codesign --force --deep --sign - "$OUT" 2>/dev/null || echo "(codesign skipped)"
+if ! codesign --force --deep --sign - "$OUT"; then
+    echo "× codesign failed for $OUT" >&2
+    exit 1
+fi
 
 echo "Done: $OUT"
 echo "Run:  open \"$OUT\"    (set LOADER_XRAY_PATH for the engine in dev)"

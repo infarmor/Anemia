@@ -42,6 +42,7 @@ func usage() -> Never {
     FileHandle.standardError.write(Data("""
     usage: LoaderTool emit <share-link> [--no-anti] [--profile <name>]
            LoaderTool emit-tun <share-link|conf> [--no-anti] [--profile <name>]
+                                    [--anti <json>]
                                     [--mtu <n>] [--bypass a,b] [--adblock] [--log <path>]
            LoaderTool awg-uapi <wg-quick conf file | amnezia:// / wireguard:// / vpn:// link>
            LoaderTool hysteria-yaml <hysteria2:// link> [--socks-port <port>]
@@ -52,6 +53,11 @@ func usage() -> Never {
            LoaderTool sub <file>          # subscription bodies, one per line
            LoaderTool subinfo <file>      # subscription headers, one set per line
            LoaderTool subdue <file>       # auto-refresh verdict, one panel per line
+           LoaderTool switchdue <file>    # auto-switch verdict, one case per line
+           LoaderTool health <file>     # tunnel-health verdict, one case per line
+           LoaderTool healthdue <file>  # may a health check run now, one case per line
+           LoaderTool enginelog <file>  # engine's last words: reason + cause, one case per line
+           LoaderTool budget <file>     # switch bookkeeping, one case per line
            LoaderTool state <dir>         # PersistedState cases: decode, load, backups
            LoaderTool state-read <file…>  # a state file from another platform
 
@@ -183,6 +189,25 @@ func canonicalJSON(_ data: Data) -> String? {
           let out = try? JSONSerialization.data(withJSONObject: object,
                                                 options: [.sortedKeys, .fragmentsAllowed])
     else { return nil }
+    return String(decoding: out, as: UTF8.self)
+}
+
+/// Foundation пишет словарь с не-строковыми ключами плоским массивом
+/// «ключ, значение…» — в порядке словаря, то есть каждый запуск своим. Для
+/// сверки документов трафика пары ставятся по ключу, иначе сравнивался бы
+/// порядок, а не содержимое.
+func sortedTrafficServers(_ document: String) -> String {
+    guard let data = document.data(using: .utf8),
+          let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let flat = root["servers"] as? [Any], flat.count % 2 == 0 else { return document }
+    let pairs = stride(from: 0, to: flat.count, by: 2).map { index in
+        (key: flat[index] as? String ?? "\(flat[index])", value: flat[index + 1])
+    }.sorted { $0.key < $1.key }
+    var rebuilt = root
+    rebuilt["servers"] = pairs.flatMap { [$0.key, $0.value] }
+    guard let out = try? JSONSerialization.data(withJSONObject: rebuilt, options: [.sortedKeys]) else {
+        return document
+    }
     return String(decoding: out, as: UTF8.self)
 }
 
@@ -339,6 +364,19 @@ case "emit-tun":
     if let i = args.firstIndex(of: "--profile"), i + 1 < args.count,
        let p = MaskingProfile(rawValue: args[i + 1]) {
         antiTun = p.options
+    }
+    // A masking block as a panel's state file would carry it — the way to put
+    // unreadable records in front of the emitter, whose filter is otherwise
+    // only ever shown built-in presets. Refused loudly rather than falling
+    // back to `.recommended`: a fixture that silently changed profile would
+    // certify someone else's config.
+    if let i = args.firstIndex(of: "--anti"), i + 1 < args.count {
+        guard let data = args[i + 1].data(using: .utf8),
+              let parsed = try? JSONDecoder().decode(AntiCensorshipOptions.self, from: data) else {
+            FileHandle.standardError.write(Data("error: --anti ждёт объект AntiCensorshipOptions: \(args[i + 1])\n".utf8))
+            exit(2)
+        }
+        antiTun = parsed
     }
     var builder = XrayConfigBuilder(apiPort: nil, bufferSizeKB: 4)
     // MTU вне 576…65535 валидатор AWG отвергает, а сюда он попадал молча, и
@@ -589,6 +627,329 @@ case "subdue":
         print("\(label)\tmaxAge=\(ageText(maxAge))\tdue=\(due ? 1 : 0)")
     }
 
+case "switchdue":
+    // Golden source for the auto-switch decision: one case per line —
+    // `label  enabled  connected  busy  serverCount  healthFailures  sessionAge  recentSwitches`.
+    // Флаги — только `0`/`1`: пустой столбец здесь означал бы «не заполнили», а
+    // не «выключено», и одна опечатка в фикстуре молча перевернула бы вердикт.
+    // Пустой `healthFailures` — это nil («здоровья ещё не мерили»), пустой
+    // `recentSwitches` — пустой список. Печатается и число записей, оставшихся
+    // после окна: без него сдвинутый на секунду `window` был бы виден только в
+    // тех кейсах, где счёт пересекает потолок.
+    guard args.count >= 2, let text = try? String(contentsOfFile: args[1], encoding: .utf8) else { usage() }
+    let policy = AutoSwitchPolicy()
+    for rawLine in text.split(separator: "\n") {
+        let line = String(rawLine)
+        let parts = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+        guard let label = parts.first, !label.isEmpty else {
+            print("error\tno label\t\(line)")
+            continue
+        }
+        // `readLines()` на JVM режет строку по CR, Swift — нет.
+        if line.contains("\r") {
+            print("\(label)\terror\tcr")
+            continue
+        }
+        guard parts.count == 8 else {
+            print("\(label)\terror\tcolumns \(parts.count)")
+            continue
+        }
+        var problem: String?
+        func flag(_ index: Int, _ name: String) -> Bool {
+            switch parts[index] {
+            case "0": return false
+            case "1": return true
+            default:
+                if problem == nil { problem = name }
+                return false
+            }
+        }
+        /// Не-конечные числа в входах решения не разбираются: Swift `Double("nan")`
+        /// — это число, а JVM-`toDoubleOrNull` — null, и одна и та же фикстура
+        /// прочиталась бы на двух сторонах по-разному.
+        func real(_ index: Int, _ name: String) -> Double? {
+            let raw = parts[index]
+            guard let value = number(raw), value.isFinite else {
+                if problem == nil { problem = name }
+                return nil
+            }
+            return value
+        }
+        /// Узкие целые из фикстуры: `Int` в Swift — 64 бита, `toIntOrNull` на JVM
+        /// — 32, и число между ними прочиталось бы на двух сторонах по-разному.
+        func narrow(_ index: Int, _ name: String) -> Int? {
+            guard let value = Int32(parts[index]) else {
+                if problem == nil { problem = name }
+                return nil
+            }
+            return Int(value)
+        }
+        let enabled = flag(1, "enabled")
+        let connected = flag(2, "connected")
+        let busy = flag(3, "busy")
+        let serverCount = narrow(4, "serverCount")
+        let failures = parts[5].isEmpty ? nil : narrow(5, "healthFailures")
+        let sessionAge = real(6, "sessionAge")
+        let recent = parts[7].isEmpty ? [] : parts[7].split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+        var ages: [TimeInterval] = []
+        for age in recent {
+            guard let value = number(age), value.isFinite else {
+                if problem == nil { problem = "recentSwitches" }
+                break
+            }
+            ages.append(value)
+        }
+        if let problem {
+            print("\(label)\terror\t\(problem)")
+            continue
+        }
+        let verdict = policy.decide(
+            enabled: enabled, connected: connected, busy: busy,
+            serverCount: serverCount ?? 0, healthFailures: failures,
+            sessionAge: sessionAge ?? 0, recentSwitches: ages
+        )
+        print("\(label)\tkept=\(policy.retained(recentSwitches: ages).count)\tverdict=\(verdict.rawValue)")
+    }
+
+case "health":
+    // Golden source for the health rules of a live tunnel: one case per line —
+    // `label  mode  ms  prevUp  prevDown  curUp  curDown  latency  limit  sendFloor  startFailures  startHealth`.
+    // `mode` — xray|awg; пустой `ms` — запрос не ответил; пустая пара `prev*` —
+    // предыдущего снимка нет; пустая пара `cur*` — движок не ответил вовсе;
+    // пустые `limit`/`sendFloor` — дефолт самой политики (правка константы
+    // обязана покраснеть здесь). Печатается и счётчик отказов после шага,
+    // отсчёт от `startFailures`: без него «сброс после ответа» и «накопление»
+    // неразличимы.
+    guard args.count >= 2, let text = try? String(contentsOfFile: args[1], encoding: .utf8) else { usage() }
+    for rawLine in text.split(separator: "\n") {
+        let line = String(rawLine)
+        let parts = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+        guard let label = parts.first, !label.isEmpty else {
+            print("error\tno label\t\(line)")
+            continue
+        }
+        if line.contains("\r") {
+            print("\(label)\terror\tcr")
+            continue
+        }
+        guard parts.count == 12 else {
+            print("\(label)\terror\tcolumns \(parts.count)")
+            continue
+        }
+        var problem: String?
+        /// Узкие целые: `Int` Swift — 64 бита, `toIntOrNull` на JVM — 32, и
+        /// счётчики байтов как раз туда влезают, а вот что-то больше — нет.
+        func int(_ index: Int, _ name: String, required: Bool = true) -> Int? {
+            let raw = parts[index]
+            if raw.isEmpty {
+                if required, problem == nil { problem = name }
+                return nil
+            }
+            guard let value = Int32(raw) else {
+                if problem == nil { problem = name }
+                return nil
+            }
+            return Int(value)
+        }
+        let mode = parts[1]
+        if mode != "xray", mode != "awg", problem == nil { problem = "mode" }
+        let ms = int(2, "ms", required: false)
+        let prevUp = int(3, "prevUp", required: false)
+        let prevDown = int(4, "prevDown", required: false)
+        if (prevUp == nil) != (prevDown == nil), problem == nil { problem = "prev pair" }
+        let curUp = int(5, "curUp", required: false)
+        let curDown = int(6, "curDown", required: false)
+        if (curUp == nil) != (curDown == nil), problem == nil { problem = "counters pair" }
+        let latency = int(7, "latency", required: false)
+        let limit = int(8, "limit", required: false)
+        let floor = int(9, "sendFloor", required: false)
+        let start = int(10, "startFailures")
+        let startHealth = int(11, "startHealth", required: false)
+        if let problem {
+            print("\(label)\terror\t\(problem)")
+            continue
+        }
+        // Пустой столбец порога оставляет дефолт самой политики: иначе харнесс
+        // подставлял бы константу сам и её правка золотой бы не заметила.
+        var rules = TunnelHealth()
+        limit.map { rules.requestLimitMs = $0 }
+        floor.map { rules.sendFloorBytes = Int64($0) }
+        let outcome: HealthOutcome
+        if mode == "xray" {
+            outcome = rules.request(ms)
+        } else {
+            let counters = curUp.flatMap { sent in curDown.map { received in TrafficCounters(up: Int64(sent), down: Int64(received)) } }
+            let previous = prevUp.flatMap { sent in prevDown.map { received in TrafficCounters(up: Int64(sent), down: Int64(received)) } }
+            outcome = rules.counters(counters, previous: previous, latency: latency)
+        }
+        let state = rules.apply(outcome, to: HealthState(health: startHealth, failures: start ?? 0))
+        var printed = "\(label)\tstart=\(start ?? 0)\tfrom=\(startHealth.map(String.init) ?? "nil")"
+        switch outcome {
+        case .silence:
+            printed += "\toutcome=silence"
+        case .measured(let value, let failed):
+            printed += "\toutcome=measured\tms=\(value)\tfailed=\(failed ? 1 : 0)"
+        }
+        printed += "\thealth=\(state.health.map(String.init) ?? "nil")\tfailures=\(state.failures)"
+        print(printed)
+    }
+
+case "healthdue":
+    // Golden source for the health *schedule*: one case per line —
+    // `label  watchedAge  wantedAge  checkedAge  watchedWindow  wantedWindow  interval` (плюс `staleAfter` — восьмой колонкой).
+    // Возраст — секунды на момент решения, пустое поле — «этого ещё не было».
+    // Пустой столбец окна отдаёт дефолт самой политики, а не удвоенную константу:
+    // правка 60/60/30 обязана покраснеть именно здесь (иначе харнесс подставлял
+    // бы числа сам и ничего бы не заметил).
+    guard args.count >= 2, let text = try? String(contentsOfFile: args[1], encoding: .utf8) else { usage() }
+    for rawLine in text.split(separator: "\n") {
+        let line = String(rawLine)
+        let parts = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+        guard let label = parts.first, !label.isEmpty else {
+            print("error\tno label\t\(line)")
+            continue
+        }
+        if line.contains("\r") {
+            print("\(label)\terror\tcr")
+            continue
+        }
+        guard parts.count == 8 else {
+            print("\(label)\terror\tcolumns \(parts.count)")
+            continue
+        }
+        var problem: String?
+        func age(_ index: Int, _ name: String, required: Bool) -> Double? {
+            let raw = parts[index]
+            if raw.isEmpty {
+                if required, problem == nil { problem = name }
+                return nil
+            }
+            guard let value = number(raw), value.isFinite else {
+                if problem == nil { problem = name }
+                return nil
+            }
+            return value
+        }
+        let watched = age(1, "watchedAge", required: false)
+        let wanted = age(2, "wantedAge", required: false)
+        let checked = age(3, "checkedAge", required: false)
+        let watchWindow = age(4, "watchedWindow", required: false)
+        let wantWindow = age(5, "wantedWindow", required: false)
+        let every = age(6, "interval", required: false)
+        let stale = age(7, "staleAfter", required: false)
+        if let problem {
+            print("\(label)\terror\t\(problem)")
+            continue
+        }
+        var schedule = HealthSchedule()
+        watchWindow.map { schedule.watchedWindow = $0 }
+        wantWindow.map { schedule.wantedWindow = $0 }
+        every.map { schedule.interval = $0 }
+        stale.map { schedule.staleAfter = $0 }
+        let due = schedule.healthDue(watchedAge: watched, wantedAge: wanted, checkedAge: checked)
+        // Свежесть показывается всегда: без неё «проверка не идёт» и «данных
+        // нет» печатались бы одной строкой, а решение о переключении различает
+        // именно их.
+        let fresh = schedule.signalFresh(checkedAge: checked)
+        print("\(label)\tdue=\(due ? 1 : 0)\tfresh=\(fresh ? 1 : 0)")
+    }
+
+case "enginelog":
+    // Golden source for the engine's last words: `label  text`, where `text`
+    // carries `\n`-escaped log lines. Печатается и `reason` (выбор строки из
+    // хвоста лога — как на macOS), и `cause` (та же цепочка, приехавшая
+    // возвращённой ошибкой — как на Android): у двух платформ один текст в
+    // разных конвертах, и проверять надо обе дороги.
+    guard args.count >= 2, let text = try? String(contentsOfFile: args[1], encoding: .utf8) else { usage() }
+    for rawLine in text.split(separator: "\n") {
+        let line = String(rawLine)
+        let parts = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+        guard let label = parts.first, !label.isEmpty else {
+            print("error\tno label\t\(line)")
+            continue
+        }
+        if line.contains("\r") {
+            print("\(label)\terror\tcr")
+            continue
+        }
+        guard parts.count == 2 else {
+            print("\(label)\terror\tcolumns \(parts.count)")
+            continue
+        }
+        let body = unescaped(parts[1])
+        guard !body.isEmpty else {
+            print("\(label)\terror\tempty")
+            continue
+        }
+        // `<empty>` — хвоста лога нет вовсе: движок умер так рано, что ничего не
+        // успел написать. Без этого кейса ветка «exited during startup» была бы
+        // недостижима из харнесса и любой её мутант переживал бы сверку.
+        let lines = body == "<empty>" ? [] : body.components(separatedBy: "\n")
+        print("\(label)\treason=\(EngineLog.failureReason(from: lines))\tcause=\(EngineLog.cause(from: lines.last ?? ""))")
+    }
+
+case "budget":
+    // Golden source for the switch budget: `label  op  now  window  marks`.
+    // `op` — note|refund|prune|ages; `marks` — абсолютные отметки через запятую
+    // (пусто — список пуст). Печатаются и сами отметки, и возраст для
+    // предиката: правило окна одно на две функции, и мутант в нём обязан быть
+    // виден в обоих столбцах, а не только там, где его искали.
+    guard args.count >= 2, let text = try? String(contentsOfFile: args[1], encoding: .utf8) else { usage() }
+    for rawLine in text.split(separator: "\n") {
+        let line = String(rawLine)
+        let parts = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+        guard let label = parts.first, !label.isEmpty else {
+            print("error\tno label\t\(line)")
+            continue
+        }
+        if line.contains("\r") {
+            print("\(label)\terror\tcr")
+            continue
+        }
+        guard parts.count == 5 else {
+            print("\(label)\terror\tcolumns \(parts.count)")
+            continue
+        }
+        var problem: String?
+        func real(_ index: Int, _ name: String) -> Double? {
+            guard let value = number(parts[index]), value.isFinite else {
+                if problem == nil { problem = name }
+                return nil
+            }
+            return value
+        }
+        let op = parts[1]
+        if !["note", "refund", "prune", "ages"].contains(op), problem == nil { problem = "op" }
+        let now = real(2, "now")
+        let window = real(3, "window")
+        // Разбор по запятой: каждое поле — отдельное число, и первое
+        // неразобранное — отказ кейса, а не молча выброшенная отметка.
+        var marks: [TimeInterval] = []
+        if !parts[4].isEmpty {
+            for raw in parts[4].split(separator: ",", omittingEmptySubsequences: false).map(String.init) {
+                guard let one = number(raw), one.isFinite else {
+                    if problem == nil { problem = "marks" }
+                    continue
+                }
+                marks.append(one)
+            }
+        }
+        if let problem {
+            print("\(label)\terror\t\(problem)")
+            continue
+        }
+        var budget = SwitchBudget(window: window ?? 15 * 60, marks: marks)
+        switch op {
+        case "note": budget.note(now ?? 0)
+        case "refund": budget.refund(now ?? 0)
+        case "prune": budget.prune(now ?? 0)
+        default: break
+        }
+        let list = budget.marks.map { String($0) }.joined(separator: ",")
+        let ages = budget.ages(at: now ?? 0).map { String($0) }.joined(separator: ",")
+        print("\(label)\top=\(op)\tmarks=\(list.isEmpty ? "-" : list)\tages=\(ages.isEmpty ? "-" : ages)")
+    }
+
 case "state":
     // Golden source for the Kotlin state layer. Every `case.json` in the
     // directory goes through the same lenient decoder the apps use, and the
@@ -741,17 +1102,23 @@ case "ledger":
                 ledger.forget(Set(parts.dropFirst().compactMap { UUID(uuidString: $0) }))
             case "days":
                 guard parts.count >= 3, let count = Int(parts[1]), let now = number(parts[2]) else { continue }
+                // The timezone column is optional, and reading `parts[3]`
+                // under the `count >= 3` guard trapped the whole harness on a
+                // three-field line — the fixture case was supposed to be
+                // skipped, not take the run down with it.
+                let zone = parts.count > 3 ? TimeZone(identifier: parts[3]) : nil
                 for day in ledger.recentDays(count, now: Date(timeIntervalSince1970: now),
-                                             timeZone: TimeZone(identifier: parts[3]) ?? .current) {
+                                             timeZone: zone ?? .current) {
                     print("day\t" + dayDump(day))
                 }
             case "today", "month":
                 guard parts.count >= 2, let now = number(parts[1]) else { continue }
+                let zone = parts.count > 2 ? TimeZone(identifier: parts[2]) : nil
                 let day = verb == "today"
                     ? ledger.today(now: Date(timeIntervalSince1970: now),
-                                   timeZone: TimeZone(identifier: parts[2]) ?? .current)
+                                   timeZone: zone ?? .current)
                     : ledger.month(now: Date(timeIntervalSince1970: now),
-                                   timeZone: TimeZone(identifier: parts[2]) ?? .current)
+                                   timeZone: zone ?? .current)
                 print("\(verb)\t" + dayDump(day))
             case "top":
                 for total in ledger.topServers {
@@ -768,10 +1135,36 @@ case "ledger":
                 let zone = TimeZone(identifier: parts[1]) ?? .current
                 let date = TrafficLedger.date(ofDay: parts[2], timeZone: zone)
                 print("dayof\t\(date.map { exact($0.timeIntervalSince1970) } ?? "nil")")
+            case "json":
+                // Документ, который пишет `JSONEncoder`: его перечитывает Kotlin,
+                // а запись Kotlin перечитывает Swift (`ledger-read`). Даты там
+                // секунды от reference date, и это именно то, что сверяется.
+                guard let data = try? JSONEncoder().encode(ledger) else {
+                    print("json\tthrow")
+                    continue
+                }
+                print("json\t\(canonicalJSON(data) ?? "?")")
             default:
                 print("error\tunknown verb \(verb)")
             }
         }
+    }
+
+case "ledger-read":
+    // Третий контур для трафика: документ, записанный Kotlin, перечитывается
+    // Swift-декодером и переписывается обратно. Совпал с эталонной строкой
+    // `json` — значит Android пишет то, что Mac и iPhone прочитают без потерь;
+    // сдвиг reference date здесь виден по датам серверов и по `lastRun`.
+    guard args.count >= 2 else { usage() }
+    for path in args.dropFirst() {
+        let name = (path as NSString).lastPathComponent
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+              let ledger = try? JSONDecoder().decode(TrafficLedger.self, from: data),
+              let written = try? JSONEncoder().encode(ledger) else {
+            print("\(name)\tthrow")
+            continue
+        }
+        print("\(name)\t\(sortedTrafficServers(canonicalJSON(written) ?? "?"))")
     }
 
 case "leak":

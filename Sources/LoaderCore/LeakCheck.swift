@@ -59,7 +59,13 @@ public enum LeakCheck {
     public static func publicAddress(ipv6: Bool = false, session: URLSession = .shared) async throws -> IPInfo {
         let host = ipv6 ? "https://api-ipv6.ip.sb/geoip" : "https://api-ipv4.ip.sb/geoip"
         do {
-            return try await ipSB(URL(string: host)!, session: session)
+            let info = try await ipSB(URL(string: host)!, session: session)
+            // An IPv4 answer to an IPv6 request means the request went out over
+            // IPv4; showing it in the IPv6 row would hide a real leak.
+            if ipv6, !info.ip.contains(":") {
+                throw Failure(message: "ip.sb: answered \(info.ip) to an IPv6 request")
+            }
+            return info
         } catch where !ipv6 {
             // Cloudflare knows the country, not the provider.
             return try await cloudflareTrace(session: session)

@@ -50,15 +50,30 @@ public struct SubscriptionInfo: Codable, Equatable, Sendable {
     }
 
     /// 0…1 of the allowance used; nil when unlimited.
+    ///
+    /// Clamped at both ends, not just the top. `used` refuses to overflow and
+    /// `remaining` treats negative counters as a lie — this is the value the UI
+    /// multiplies by 100 and hands to `Int(...)`, and a panel answering
+    /// `upload=-99999999999999999999` (which the parser bounds to `Int64.min`)
+    /// made the fraction about −9.2e18, so the traffic row trapped instead of
+    /// reading 0 %.
     public var usedFraction: Double? {
         guard let total, total > 0 else { return nil }
-        return min(Double(used ?? 0) / Double(total), 1)
+        return max(0, min(Double(used ?? 0) / Double(total), 1))
     }
 
     /// Worth a word: nearly out of time (3 days) or traffic (90 %).
+    ///
+    /// `>=`, the same comparison the reminder planner uses
+    /// (`SubscriptionReminders.plan`) and the same one `SubscriptionAlerts`
+    /// uses to decide whether a "already warned" mark still applies. With `>`
+    /// here, a subscription sitting at exactly 90 % was marked as warned by the
+    /// filter and then never planned a reminder — so when it climbed past 90 %
+    /// there was nothing left to fire, and the badge stayed grey for a plan
+    /// nobody could see.
     public func needsAttention(now: Date = Date()) -> Bool {
         if let expires, expires.timeIntervalSince(now) < 3 * 86_400 { return true }
-        if let fraction = usedFraction, fraction > 0.9 { return true }
+        if let fraction = usedFraction, fraction >= 0.9 { return true }
         return false
     }
 

@@ -1,5 +1,17 @@
 import Foundation
 
+/// Sum of two cumulative counters, saturating instead of trapping. A restored
+/// `state.json` carries whatever the previous run wrote, and `received + sent`
+/// on values near `Int64.max` crashed the stats sheet — the same overflow
+/// `SubscriptionInfo.used` was fixed for. Kotlin's version wraps to a negative
+/// and its formatter prints `0 Б`; a clamped ledger at least keeps the day the
+/// user can still read.
+private func saturated(_ a: Int64, _ b: Int64) -> Int64 {
+    let (value, overflow) = a.addingReportingOverflow(b)
+    guard overflow else { return value }
+    return a < 0 ? .min : .max
+}
+
 /// How much went through the VPN, per day and per server, from a running
 /// engine's cumulative counters. The counters restart with every engine run,
 /// so each reading is compared with the previous one of the same run.
@@ -12,7 +24,7 @@ public struct TrafficLedger: Codable, Equatable, Sendable {
         /// Seconds connected.
         public var time: TimeInterval = 0
 
-        public var total: Int64 { received + sent }
+        public var total: Int64 { saturated(received, sent) }
 
         public init(id: String, received: Int64 = 0, sent: Int64 = 0, time: TimeInterval = 0) {
             self.id = id
@@ -29,7 +41,7 @@ public struct TrafficLedger: Codable, Equatable, Sendable {
         public var sent: Int64 = 0
         public var lastUsed: Date = .distantPast
 
-        public var total: Int64 { received + sent }
+        public var total: Int64 { saturated(received, sent) }
     }
 
     public private(set) var days: [String: Day] = [:]
