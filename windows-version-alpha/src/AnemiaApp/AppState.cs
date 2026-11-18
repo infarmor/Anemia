@@ -40,6 +40,7 @@ public sealed class AppState : IDisposable
     private readonly HelperClient _helper = new();
     private readonly StatePersistence _persistence;
     private readonly SubscriptionInfoStore _panels = new();
+    private readonly SubscriptionDeviceIdentity _subscriptionDevice = new();
     private readonly HashSet<Guid> _refreshingSubscriptions = new();
     /// <summary>The shared tunnel-health rules — the same numbers macOS, iOS and
     /// Android run, so this client does not act on a different amount of evidence
@@ -299,16 +300,15 @@ public sealed class AppState : IDisposable
                 return $"{sub.Name}: неверный адрес подписки";
 
             if (!isNew) _panels.RecordAttempt(sub.Id);
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-            // Panels gate on User-Agent and answer an HTML error page to unknown
-            // clients; v2rayN is the most widely allow-listed header.
-            http.DefaultRequestHeaders.UserAgent.ParseAdd(PanelClient.UserAgent);
-            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            var response = await PanelClient.FetchAsync(uri, () => SubscriptionDeviceId, ct);
+            if (response.Refusal == PanelRefusal.DeviceLimit)
+                return $"{sub.Name}: достигнут лимит устройств. Удалите старое устройство в кабинете провайдера или обратитесь в поддержку";
+            if (response.Refusal == PanelRefusal.DeviceIdRequired)
+                return $"{sub.Name}: провайдер не получил или не принял идентификатор устройства. Проверьте прямую HTTPS-ссылку подписки";
             if (!response.IsSuccessStatusCode)
                 return $"{sub.Name}: ошибка загрузки HTTP {(int)response.StatusCode}";
 
-            var body = await PanelClient.ReadBodyCappedAsync(response, ct);
+            var body = response.Body;
             if (body is null)
                 return $"{sub.Name}: размер подписки превышает {PanelClient.MaxBodyBytes / 1024 / 1024} МБ";
 
@@ -316,7 +316,7 @@ public sealed class AppState : IDisposable
             if (!isNew && !_state.Subscriptions.Contains(sub)) return "Подписка удалена";
 
             // Traffic, expiry, the panel's own name and interval: all in headers.
-            var info = SubscriptionInfo.Parse(PanelClient.Headers(response));
+            var info = SubscriptionInfo.Parse(response.Headers);
             var result = SubscriptionParser.Parse(body);
             var (verdict, servers) = SubscriptionRules.DecideRefresh(
                 sub.Servers, result, info, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
@@ -345,7 +345,8 @@ public sealed class AppState : IDisposable
         }
         catch (OperationCanceledException)
         {
-            return $"{sub.Name}: загрузка отменена";
+            return ct.IsCancellationRequested ? $"{sub.Name}: загрузка отменена"
+                : $"{sub.Name}: истекло время загрузки подписки";
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or TaskCanceledException
                                        or InvalidOperationException or UriFormatException)
@@ -491,6 +492,15 @@ public sealed class AppState : IDisposable
     }
 
     internal string? InstalledXrayPath => _xray.ResolveBinary();
+
+    internal string? SubscriptionDeviceId
+    {
+        get
+        {
+            try { return _subscriptionDevice.GetOrCreate(); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+        }
+    }
 
     internal Task<bool> IsVpnHelperAvailableAsync(CancellationToken token) =>
         _helper.IsAvailableAsync(token);

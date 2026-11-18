@@ -61,6 +61,7 @@ import app.anemia.data.ProbeStore
 import app.anemia.data.Recovery
 import app.anemia.data.AutoSwitchFlow
 import app.anemia.data.ServerStore
+import app.anemia.data.SubscriptionDeviceId
 import app.anemia.data.SessionStarter
 import app.anemia.data.LeakChecker
 import app.anemia.data.SpeedTest
@@ -1001,6 +1002,7 @@ internal fun sharedStore(context: Context): ServerStore = synchronized(storeLock
     shared ?: ServerStore(
         StatePersistence(File(context.applicationContext.filesDir, STATE_FILE)),
         PanelStore(context.applicationContext.getSharedPreferences(PANELS, Context.MODE_PRIVATE)),
+        SubscriptionDeviceId(File(context.applicationContext.noBackupFilesDir, "subscription-hwid"))::get,
     ).also { it.reload(); shared = it }
 }
 

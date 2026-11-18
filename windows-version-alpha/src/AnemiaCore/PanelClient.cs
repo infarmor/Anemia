@@ -1,10 +1,19 @@
 using System.Globalization;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace AnemiaCore;
+
+public enum PanelRefusal { None, DeviceIdRequired, DeviceLimit }
+
+public sealed record PanelResponse(HttpStatusCode StatusCode, PanelRefusal Refusal,
+                                   IReadOnlyDictionary<string, string> Headers, string? Body)
+{
+    public bool IsSuccessStatusCode => (int)StatusCode is >= 200 and <= 299;
+}
 
 /// <summary>
 /// The shared rules of a subscription fetch, so the Windows client asks the same
@@ -22,6 +31,68 @@ public static class PanelClient
     /// the cap the iOS/macOS layer settled on: a captive portal or a hostile
     /// redirect can otherwise stream forever while the client waits to parse.</summary>
     public const int MaxBodyBytes = 4 * 1024 * 1024;
+
+    public static async Task<PanelResponse> FetchAsync(Uri uri, Func<string?> deviceId, CancellationToken ct,
+                                                       HttpMessageHandler? handler = null)
+    {
+        using var http = new HttpClient(handler ?? new HttpClientHandler { AllowAutoRedirect = false },
+                                        disposeHandler: handler is null) { Timeout = Timeout.InfiniteTimeSpan };
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(TimeSpan.FromSeconds(30));
+
+        var current = uri;
+        var id = uri.Scheme == Uri.UriSchemeHttps ? deviceId() : null;
+        var sendDeviceId = id is not null;
+        const int maxRedirects = 50; // HttpClientHandler's default before redirect handling moved here.
+        for (var redirects = 0; ; redirects++)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, current);
+            request.Headers.UserAgent.ParseAdd(UserAgent);
+            if (sendDeviceId)
+            {
+                request.Headers.Add("x-hwid", id);
+                request.Headers.Add("x-device-os", "Windows");
+            }
+
+            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
+                                                       deadline.Token).ConfigureAwait(false);
+            var refusal = ReadRefusal(response);
+            if (refusal == PanelRefusal.None && redirects < maxRedirects &&
+                RedirectTarget(current, response) is { } next)
+            {
+                sendDeviceId = sendDeviceId && next.Scheme == uri.Scheme && next.Port == uri.Port &&
+                               string.Equals(next.IdnHost, uri.IdnHost, StringComparison.OrdinalIgnoreCase);
+                current = next;
+                continue;
+            }
+
+            var body = response.IsSuccessStatusCode && refusal == PanelRefusal.None
+                ? await ReadBodyCappedAsync(response, deadline.Token).ConfigureAwait(false) : null;
+            return new PanelResponse(response.StatusCode, refusal, Headers(response), body);
+        }
+    }
+
+    private static Uri? RedirectTarget(Uri current, HttpResponseMessage response)
+    {
+        if (response.StatusCode is not (HttpStatusCode.MultipleChoices or HttpStatusCode.MovedPermanently or
+            HttpStatusCode.Found or HttpStatusCode.SeeOther or HttpStatusCode.TemporaryRedirect or
+            HttpStatusCode.PermanentRedirect) || response.Headers.Location is not { } location ||
+            !Uri.TryCreate(current, location, out var target) ||
+            (target.Scheme != Uri.UriSchemeHttps && target.Scheme != Uri.UriSchemeHttp) ||
+            (current.Scheme == Uri.UriSchemeHttps && target.Scheme == Uri.UriSchemeHttp)) return null;
+        return target;
+    }
+
+    private static PanelRefusal ReadRefusal(HttpResponseMessage response)
+    {
+        bool IsTrue(string name) => response.Headers.TryGetValues(name, out var values) &&
+            values.Any(value => bool.TryParse(value, out var enabled) && enabled);
+
+        // Remnawave also sends the legacy limit flag when the ID was missing.
+        if (IsTrue("x-hwid-not-supported")) return PanelRefusal.DeviceIdRequired;
+        if (IsTrue("x-hwid-max-devices-reached") || IsTrue("x-hwid-limit")) return PanelRefusal.DeviceLimit;
+        return PanelRefusal.None;
+    }
 
     /// <summary>Headers as <see cref="SubscriptionInfo.Parse"/> wants them: wire
     /// case preserved, first value of a repeated name.</summary>
@@ -44,12 +115,12 @@ public static class PanelClient
     /// truncated list — half a subscription is not a smaller subscription.</summary>
     public static async Task<string?> ReadBodyCappedAsync(HttpResponseMessage response, CancellationToken ct)
     {
-        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
         var buffer = new byte[64 * 1024];
-        var collected = new MemoryStream();
+        using var collected = new MemoryStream();
         while (true)
         {
-            var read = await stream.ReadAsync(buffer, ct);
+            var read = await stream.ReadAsync(buffer, ct).ConfigureAwait(false);
             if (read == 0) break;
             if (collected.Length + read > MaxBodyBytes) return null;
             collected.Write(buffer, 0, read);

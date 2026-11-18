@@ -32,7 +32,9 @@ class ServerStore(
     private val persistence: StatePersistence,
     /** Куда ложатся заголовки панелей; `null` — только в память (прогоны `:core`). */
     private val panels: PanelStore? = null,
+    private val getSubscriptionDeviceId: () -> String? = { null },
 ) {
+    fun subscriptionDeviceId(): String? = getSubscriptionDeviceId()
 
     /**
      * Магазин живёт в процессе интерфейса, но обновлением подписок занимается
@@ -364,11 +366,11 @@ class ServerStore(
 
     private fun fetchInto(subscription: Subscription): Fetched {
         val response = try {
-            SubscriptionFetcher.fetch(subscription.url)
+            SubscriptionFetcher.fetch(subscription.url, getSubscriptionDeviceId)
         } catch (error: SubscriptionFetcher.FetchError) {
             return Fetched.Failed(error.message ?: "Fetch failed")
         } catch (error: Exception) {
-            return Fetched.Failed("Fetch failed: ${error.message ?: error.javaClass.simpleName}")
+            return Fetched.Failed("Fetch failed: ${error.javaClass.simpleName}")
         }
         if (response.status !in 200..299) {
             return Fetched.Failed("Fetch failed: HTTP ${response.status}")

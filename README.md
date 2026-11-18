@@ -151,6 +151,21 @@ before a subscription runs out. See [iOS/README.md](iOS/README.md) (in Russian).
   WPF window, `AnemiaHelper` the privileged service. Sources only; the build
   output is not kept in the repository.
 
+### Subscription device limits
+
+Windows and Android send a persistent Anemia installation ID in the
+`X-HWID` header when adding or refreshing an HTTPS subscription. You can
+copy the ID from **Settings → About**. Anemia creates a random ID on the
+device and keeps it outside transfer bundles. Clearing Android app data
+creates a new ID. The header stays on the original HTTPS origin when a
+subscription redirects.
+
+For a Remnawave provider, enable **HWID Device Limit** under
+**Subscription → Settings** and set the device allowance in the panel. The
+panel controls device registration and subscription access. Anemia reports a
+device-limit rejection and keeps the last successfully loaded server list.
+[Remnawave device limit documentation](https://docs.rw/features/hwid-device-limit/).
+
 ## What it does
 
 | | |

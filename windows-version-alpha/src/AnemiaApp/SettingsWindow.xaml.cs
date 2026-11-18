@@ -172,6 +172,17 @@ public partial class SettingsWindow : AnemiaToolWindow
         Group(AboutPane, "Приложение",
             Row("info", "Anemia для Windows", VersionLabel()),
             Row("info", "Система", $"Windows {Environment.OSVersion.Version} · {RuntimeInformation.OSArchitecture}"));
+        var deviceId = _app.SubscriptionDeviceId;
+        var deviceFeedback = Caption();
+        deviceFeedback.Visibility = Visibility.Collapsed;
+        Group(AboutPane, "Подписки",
+            Row("info", "Идентификатор устройства (HWID)", deviceId ?? "Не удалось прочитать или сохранить идентификатор",
+                deviceId is null ? null : Action("Скопировать", (_, _) =>
+                {
+                    Copy(deviceId, deviceFeedback);
+                    deviceFeedback.Visibility = Visibility.Visible;
+                })));
+        AboutPane.Children.Add(deviceFeedback);
         Group(AboutPane, "Компоненты",
             Row("engine", "Xray", ComponentState(_app.InstalledXrayPath)),
             Row("engine", "AmneziaWG", ComponentState(FindComponent("anemia-engine.exe"))),
@@ -325,21 +336,22 @@ public partial class SettingsWindow : AnemiaToolWindow
         _ => "Отключён",
     };
 
-    private void Copy(string text)
+    private void Copy(string text, TextBlock? feedback = null)
     {
+        feedback ??= _diagnosticsInfo;
         if (string.IsNullOrWhiteSpace(text))
         {
-            _diagnosticsInfo.Text = "В журнале пока нет записей.";
+            feedback.Text = "В журнале пока нет записей.";
             return;
         }
         try
         {
             Clipboard.SetText(text);
-            _diagnosticsInfo.Text = "Скопировано в буфер обмена.";
+            feedback.Text = "Скопировано в буфер обмена.";
         }
         catch (ExternalException)
         {
-            _diagnosticsInfo.Text = "Буфер обмена занят. Повторите копирование.";
+            feedback.Text = "Буфер обмена занят. Повторите копирование.";
         }
     }
 

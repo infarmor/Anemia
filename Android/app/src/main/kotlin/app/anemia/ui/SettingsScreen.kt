@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.os.PersistableBundle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import app.anemia.core.MaskingProfile
 import app.anemia.core.PersistedState
@@ -80,6 +82,15 @@ internal fun SettingsScreen(
     var section by rememberSaveable { mutableStateOf(SettingsSection.General) }
     var logRevision by remember { mutableIntStateOf(0) }
     var notice by remember { mutableStateOf<String?>(null) }
+    val showDeviceId = section == SettingsSection.About
+    var deviceId by remember { mutableStateOf<String?>(null) }
+    var deviceIdLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(showDeviceId) {
+        if (showDeviceId && deviceId == null) {
+            deviceId = withContext(Dispatchers.IO) { store.subscriptionDeviceId() }
+            deviceIdLoaded = true
+        }
+    }
     val showReport = section == SettingsSection.Diagnostics || section == SettingsSection.About
     var reportResult by remember { mutableStateOf<Result<DiagnosticsReport>?>(null) }
     LaunchedEffect(showReport, logRevision) {
@@ -204,18 +215,44 @@ internal fun SettingsScreen(
                             }) { Text("Поделиться") }
                         }
                     }
-                    SettingsSection.About -> SettingsCard {
-                        SettingRow("Anemia", report?.appVersion) {}
-                        SettingsDivider()
-                        SettingRow("Система", report?.androidVersion) {}
-                        SettingsDivider()
-                        SettingRow("Движок VPN", report?.engineVersion) {}
+                    SettingsSection.About -> {
+                        SettingsCard {
+                            SettingRow("Anemia", report?.appVersion) {}
+                            SettingsDivider()
+                            SettingRow("Система", report?.androidVersion) {}
+                            SettingsDivider()
+                            SettingRow("Движок VPN", report?.engineVersion) {}
+                        }
+                        SettingsCard {
+                            SettingRow("Идентификатор устройства (HWID)", "Передаётся провайдеру подписки по HTTPS") {
+                                TextButton(enabled = deviceId != null, onClick = {
+                                    val id = deviceId ?: return@TextButton
+                                    notice = if (copyDeviceId(context, id)) "HWID скопирован"
+                                        else "Буфер обмена недоступен"
+                                }) { Text("Копировать") }
+                            }
+                            Text(
+                                deviceId ?: if (deviceIdLoaded) "Идентификатор недоступен" else "Загрузка…",
+                                modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontFamily = FontFamily.Monospace,
+                            )
+                        }
                     }
                 }
                 notice?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant) }
             }
         }
     }
+}
+
+private fun copyDeviceId(context: Context, id: String): Boolean {
+    val clipboard = context.getSystemService(ClipboardManager::class.java) ?: return false
+    val clip = ClipData.newPlainText("Anemia HWID", id)
+    clip.description.extras = PersistableBundle().apply {
+        putBoolean("android.content.extra.IS_SENSITIVE", true)
+    }
+    return runCatching { clipboard.setPrimaryClip(clip) }.isSuccess
 }
 
 @Composable
