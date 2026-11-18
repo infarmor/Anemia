@@ -4,43 +4,31 @@ using System.IO.Pipes;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json.Nodes;
 using AnemiaCore;
 
 namespace AnemiaHelper;
 
-/// <summary>
-/// Privileged tunnel supervisor. Protocol: one JSON line in → one JSON line
-/// out per connection, commands: ping / start-tunnel / stop-tunnel / status.
-///
-/// Design notes (mirroring the macOS LoaderHelper):
-///  • The wintun adapter is created and owned by tun2socks (--device anemia),
-///    so this process never links wintun.dll itself — one less native
-///    dependency to pin and update.
-///  • The kill switch is fail-closed: the firewall's default outbound policy
-///    is flipped to block BEFORE the allow rules exist, so a crash between
-///    steps leaves the machine sealed. Every mutation is idempotent and
-///    reversible by <see cref="TearDownTunnel"/>, which runs both on clean
-///    stop and on process start (repairing after a crash mid-tunnel).
-///  • A /32 route for the server's real IP via the ORIGINAL default gateway
-///    is installed first, before the tunnel claims the default route — the
-///    engine's own dial to the server must survive 0.0.0.0/0 being captured.
-/// </summary>
+/// <summary>Owns the VPN adapter, routing and Windows Filtering Platform session.</summary>
 internal static class Program
 {
     private const string TunnelDevice = "anemia";
-    private const string PipeName = "anemia-helper";
-    private const string FirewallRulePrefix = "Anemia KS";
-    /// <summary>The adapter's own range and the fake-IP pool it sits in: a
-    /// bypass overlapping either would send the tunnel's traffic to the
-    /// physical gateway and cut the link it is trying to bypass.</summary>
-    private static readonly string[] TunnelOwnedRanges = { "198.18.0.0/15" };
+    private const string PipeName = "anemia-vpn-helper";
+    private const string XrayV4 = "198.18.0.1";
+    private const string SinkV6 = "fd41:6e65:6d69:6100::1";
+    private static readonly string[] TunnelOwnedRanges = { "198.18.0.0/15", SinkV6 + "/128" };
+
+    private sealed record Session(string Address, int Port, string Program);
 
     private static readonly object Gate = new();
-    private static Process? _tun2socks;
-    private static bool _firewallArmed;
-    private static (string RuleSuffix, string? ServerIp)? _tunnelState;
+    private static Process? _pump;
+    private static Process? _firewall;
+    private static Session? _session;
+    private static bool _wantsFirewall;
+    private static readonly List<string> _tunnelAddresses = new();
     private static readonly List<string> _addedRoutes = new();
 
     /// <summary>What the bypass owns: the planner keeps the routes it installed
@@ -55,21 +43,21 @@ internal static class Program
 
     private static void Main()
     {
-        // Repair pass: if a previous helper died mid-tunnel (crash, power
-        // loss), its routes/firewall state is still armed — and _firewallArmed
-        // is always false on a fresh boot, so TearDownTunnel alone would NOT
-        // unseal the firewall. Disarm unconditionally: it's idempotent and
-        // restores the Windows-default policy.
-        TearDownTunnel();
-        DisarmFirewall();
+        using var mutex = new Mutex(true, @"Local\AnemiaVpnHelper", out var ownsHelper);
+        if (!ownsHelper) return;
+        using var identity = WindowsIdentity.GetCurrent();
+        var security = new PipeSecurity();
+        security.AddAccessRule(new PipeAccessRule(identity.User!, PipeAccessRights.ReadWrite,
+            AccessControlType.Allow));
 
         while (true)
         {
             NamedPipeServerStream server;
             try
             {
-                server = new NamedPipeServerStream(
-                    PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                server = NamedPipeServerStreamAcl.Create(
+                    PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous,
+                    0, 0, security);
             }
             catch (IOException)
             {
@@ -80,13 +68,17 @@ internal static class Program
             }
             using (server)
             {
-                server.WaitForConnection();
-                using var reader = new StreamReader(server, Encoding.UTF8);
-                using var writer = new StreamWriter(server, new UTF8Encoding(false)) { AutoFlush = true };
-                var line = reader.ReadLine();
-                if (line is null) continue;
-                var reply = Handle(line);
-                writer.Write(reply + "\n");
+                try
+                {
+                    server.WaitForConnection();
+                    using var reader = new StreamReader(server, Encoding.UTF8);
+                    using var writer = new StreamWriter(server, new UTF8Encoding(false)) { AutoFlush = true };
+                    var line = reader.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(5))
+                        .GetAwaiter().GetResult();
+                    if (line is not null) writer.WriteLine(Handle(line));
+                }
+                catch (IOException) { }
+                catch (TimeoutException) { }
             }
         }
     }
@@ -111,16 +103,15 @@ internal static class Program
                 case "ping":
                     return Reply(ok: true);
                 case "status":
-                    lock (Gate)
-                        return Reply(ok: true, detail: _tunnelState is null
-                            ? "idle"
-                            : $"tunnel up (server {_tunnelState.Value.ServerIp ?? "?"}), " +
-                              $"{Bypass.Installed.Count} bypass routes");
+                    lock (Gate) return TunnelReply();
                 case "start-tunnel":
                     return StartTunnel(cmd);
                 case "stop-tunnel":
-                    lock (Gate) TearDownTunnel();
-                    return Reply(ok: true, detail: "tunnel down");
+                    lock (Gate)
+                    {
+                        TearDownTunnel(keepFirewall: cmd["keepFirewall"]?.GetValue<bool>() == true);
+                        return TunnelReply();
+                    }
                 case "apply-bypass":
                     return ApplyBypass(cmd);
                 case "reassert-bypass":
@@ -142,163 +133,194 @@ internal static class Program
         return node.ToJsonString();
     }
 
+    private static string TunnelReply(string? detail = null)
+    {
+        var adapter = TunnelAdapter();
+        var up = _session is not null && _pump is { HasExited: false }
+            && adapter is { OperationalStatus: OperationalStatus.Up };
+        var armed = _firewall is { HasExited: false };
+        var addresses = new JsonArray();
+        if (up)
+        {
+            var actual = adapter!.GetIPProperties().UnicastAddresses;
+            foreach (var address in _tunnelAddresses)
+                if (actual.Any(entry => entry.Address.ToString() == address)) addresses.Add(address);
+            up = addresses.Count > 0 && (!_wantsFirewall || armed);
+        }
+
+        return new JsonObject
+        {
+            ["ok"] = true,
+            ["up"] = up,
+            ["armed"] = armed,
+            ["addresses"] = addresses,
+            ["detail"] = detail,
+        }.ToJsonString();
+    }
+
     private static string StartTunnel(JsonObject cmd)
     {
         var socksPort = cmd["socksPort"]?.GetValue<int>() ?? 0;
-        var serverIp = cmd["serverIp"] is { } ip && ip.GetValue<string>().Length > 0
-            ? ip.GetValue<string>() : null;
+        var serverPort = cmd["serverPort"]?.GetValue<int>() ?? 0;
+        var rawIp = cmd["serverIp"]?.GetValue<string>();
         var killSwitch = cmd["killSwitch"]?.GetValue<bool>() == true;
-        var bypassLines = Strict.TextArray(cmd["bypass"]) ?? new List<string>();
-        if (socksPort is < 1 or > 65535) return Reply(ok: false, "bad socks port");
+        var bypass = Strict.TextArray(cmd["bypass"]) ?? new List<string>();
+        var uapi = cmd["uapi"]?.GetValue<string>();
+        var awg = uapi is not null;
+        if (!IPAddress.TryParse(rawIp, out var ip) || serverPort is < 1 or > 65535 ||
+            (!awg && socksPort is < 1 or > 65535))
+            return Reply(ok: false, "Некорректный адрес подключения");
+        if (uapi?.Length > 65536) return Reply(ok: false, "Слишком большой профиль AmneziaWG");
 
         lock (Gate)
         {
-            if (_tunnelState is not null) TearDownTunnel();
-
+            var retainSeal = killSwitch && _firewall is { HasExited: false };
+            TearDownTunnel(keepFirewall: retainSeal);
             try
             {
-                return StartTunnelInner(socksPort, serverIp, killSwitch, bypassLines);
+                var binaryName = awg ? "anemia-engine.exe" : "xray.exe";
+                var binary = ResolveTool(binaryName) ?? throw MissingTool(binaryName);
+                var addresses = awg ? ReadAddresses(Strict.TextArray(cmd["addresses"]) ?? new())
+                    : new List<(IPAddress Address, int Bits)> { (IPAddress.Parse(XrayV4), 24) };
+                var dns = awg ? (Strict.TextArray(cmd["dns"]) ?? new()).Select(IPAddress.Parse).ToList()
+                    : new List<IPAddress> { IPAddress.Parse("198.18.0.2") };
+                var (gateway, physical) = DefaultGateway();
+                if (!IPAddress.IsLoopback(ip)) PinServer(ip.ToString(), gateway, physical);
+
+                if (awg)
+                {
+                    var mtu = cmd["mtu"]?.GetValue<int>() ?? 1280;
+                    if (mtu is < 576 or > 65535) throw new IOException("Некорректный MTU AmneziaWG");
+                    _pump = EngineChild.Start(binary, "awg", new { Adapter = TunnelDevice, UAPI = uapi, MTU = mtu });
+                }
+                else
+                {
+                    var tun2socks = ResolveTool("tun2socks.exe") ?? throw MissingTool("tun2socks.exe");
+                    _pump = StartXrayPump(tun2socks, socksPort);
+                }
+
+                for (var attempt = 0; attempt < 40 && TunnelAdapter() is null && !_pump.HasExited; attempt++)
+                    Thread.Sleep(125);
+                if (_pump.HasExited || TunnelAdapter() is null)
+                    throw new IOException("Windows не создала адаптер VPN");
+
+                _session = new Session(ip.ToString(), serverPort, binary);
+                _wantsFirewall = killSwitch;
+                // Use more-specific routes than the physical default, independent of its metric.
+                // IPv6 without a peer address is still captured instead of leaving via the uplink.
+                ConfigureAdapter(addresses, dns);
+                var problems = bypass.Count > 0 ? InstallBypass(bypass) : new List<string>();
+                if (killSwitch) RefreshFirewall(BypassEnvironment());
+                foreach (var route in new[] { "0.0.0.0/1", "128.0.0.0/1", "::/1", "8000::/1" })
+                {
+                    var family = route.Contains(':') ? "ipv6" : "ipv4";
+                    Exec($"interface {family} add route prefix={route} interface=\"{TunnelDevice}\" metric=1 store=active");
+                }
+
+                for (var attempt = 0; attempt < 20 && TunnelAdapter()?.OperationalStatus != OperationalStatus.Up; attempt++)
+                    Thread.Sleep(125);
+                if (_pump.HasExited || TunnelAdapter()?.OperationalStatus != OperationalStatus.Up)
+                    throw new IOException("Системный туннель не активен");
+
+                return TunnelReply(problems.Count == 0 ? null : ProblemsText(problems));
             }
-            catch (Exception ex)
+            catch (Exception error)
             {
-                // Any failure mid-sequence (firewall exec, adapter never
-                // appeared, route add) must leave NOTHING armed: a machine
-                // sealed by a half-built tunnel is worse than no tunnel.
-                TearDownTunnel();
-                return Reply(ok: false, ex.Message);
+                TearDownTunnel(keepFirewall: retainSeal);
+                return Reply(ok: false, error.Message);
             }
         }
     }
 
-    private static string StartTunnelInner(int socksPort, string? serverIp, bool killSwitch,
-                                           List<string> bypassLines)
+    private static NetworkInterface? TunnelAdapter() => NetworkInterface.GetAllNetworkInterfaces()
+        .FirstOrDefault(adapter => adapter.Name.Equals(TunnelDevice, StringComparison.OrdinalIgnoreCase));
+
+    private static IOException MissingTool(string name) => new($"В комплекте Anemia отсутствует {name}");
+
+    private static Process StartXrayPump(string executable, int socksPort)
     {
-        var tun2socks = ResolveTool("tun2socks.exe");
-        if (tun2socks is null) return MissingToolReply("tun2socks.exe");
-
-        // 0. Snapshot the ORIGINAL default gateway and interface BEFORE
-        // any route changes; the server bypass hangs off it.
-        var (originalGateway, originalIf) = DefaultGateway();
-        if (originalGateway is null && serverIp is not null)
-            return Reply(ok: false, "no default gateway — cannot install server bypass route");
-
-        // 1. Fail-closed first: seal egress, then open exactly the holes
-        // the tunnel needs. (Only when kill switch is requested.)
-        if (killSwitch)
+        var process = new Process
         {
-            ArmFirewall(serverIp);
-            _firewallArmed = true;
-        }
-
-        // 2. Spawn tun2socks on a free device name. It creates the wintun
-        // adapter and pumps packets between it and our SOCKS inbound.
-        _tun2socks = new Process
-        {
-            StartInfo = new ProcessStartInfo
+            StartInfo = new ProcessStartInfo(executable)
             {
-                FileName = tun2socks,
-                Arguments = $"--device {TunnelDevice} --proxy socks5://127.0.0.1:{socksPort} " +
-                            "--loglevel warn",
+                ArgumentList = { "--device", TunnelDevice, "--proxy", $"socks5://127.0.0.1:{socksPort}", "--loglevel", "warn" },
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             },
         };
-        if (!_tun2socks.Start())
+        try
         {
-            return Reply(ok: false, "tun2socks failed to start");
+            if (!process.Start()) throw new IOException("Не удалось запустить tun2socks");
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+            return process;
         }
-        // Drain both pipes: redirected output nobody reads fills the 4 KB
-        // pipe buffer, and then tun2socks blocks forever on its next log
-        // line — a tunnel that dies the first time it has something to say.
-        _tun2socks.BeginOutputReadLine();
-        _tun2socks.BeginErrorReadLine();
-
-        // 3. Address the adapter. tun2socks needs a moment to create it.
-        var addressed = false;
-        for (var attempt = 0; attempt < 20 && !addressed; attempt++)
+        catch
         {
-            Thread.Sleep(250);
-            addressed = Run($"interface ip set address name=\"{TunnelDevice}\" source=static addr=198.18.0.1 mask=255.255.255.0") is null;
+            EngineChild.Stop(process);
+            throw;
         }
-        if (!addressed)
-        {
-            return Reply(ok: false, $"adapter '{TunnelDevice}' never appeared");
-        }
-
-        // 4. Routes, most-critical first: the server's own host route via the
-        // original gateway, then the default route via the tunnel. The pin is
-        // load-bearing — without it the engine's dial to the server follows the
-        // default route straight back into the tunnel.
-        if (serverIp is not null && originalGateway is { } gw)
-        {
-            PinServer(serverIp, gw, originalIf);
-        }
-        AddRoute("0.0.0.0", "0.0.0.0", "198.18.0.2", TunnelDevice, metric: 1);
-
-        // 5. Point system DNS at the tunnel: the engine hijacks :53
-        // (hijackDns) and resolves via DoH through the proxy, so ISP
-        // poisoning is out of the loop entirely. Best-effort: if it fails,
-        // lookups fall to the physical adapter's resolver — degraded, not
-        // broken.
-        Run($"interface ip set dns name=\"{TunnelDevice}\" source=static addr=198.18.0.2");
-
-        _tunnelState = (TunnelDevice, serverIp);
-
-        // Bypass routes come last: a destination that refuses to be routed must
-        // not take the tunnel down with it, so its problems are reported beside
-        // a successful start rather than thrown.
-        var problems = bypassLines.Count > 0 ? InstallBypass(bypassLines) : new List<string>();
-        return Reply(ok: true, detail: problems.Count == 0
-            ? "tunnel up"
-            : "tunnel up; bypass: " + string.Join("; ", problems.Take(5)));
     }
 
-    private static string MissingToolReply(string tool) =>
-        Reply(ok: false, $"{tool} not found next to the app (see Scripts/fetch-cores.ps1)");
-
-    /// <summary>Full teardown, idempotent. Order matters: kill the pump first
-    /// (its exit removes the wintun adapter and its routes), then the static
-    /// routes we added, then restore the firewall LAST — restoring it first
-    /// would briefly expose traffic on a still-routed tunnel.</summary>
-    private static void TearDownTunnel()
+    private static List<(IPAddress Address, int Bits)> ReadAddresses(List<string> entries)
     {
-        lock (Gate)
+        var result = new List<(IPAddress Address, int Bits)>();
+        foreach (var value in entries)
         {
-            if (_tun2socks is { } proc)
-            {
-                try
-                {
-                    if (!proc.HasExited) proc.Kill(entireProcessTree: true);
-                }
-                catch (InvalidOperationException) { }
-                catch (SystemException) { }
-                proc.Dispose();
-                _tun2socks = null;
-            }
-            foreach (var deleteArgs in _addedRoutes)
-            {
-                RunRoute(deleteArgs); // best-effort
-            }
-            _addedRoutes.Clear();
-            // The bypass routes come down with the session's own ones: they were
-            // added through the physical gateway, so they survive the adapter
-            // going away and would keep sending the user's destinations around a
-            // tunnel that no longer exists.
-            foreach (var op in SplitTunnelPlan.TearDown(Bypass))
-            {
-                RunRoute(op.Arguments);   // best-effort
-            }
-            ServerPinsV4.Clear();
-            ServerPinsV6.Clear();
-            if (_firewallArmed)
-            {
-                DisarmFirewall();
-                _firewallArmed = false;
-            }
-            _tunnelState = null;
+            var parts = value.Split('/', 2);
+            if (!IPAddress.TryParse(parts[0], out var address) || IPAddress.IsLoopback(address))
+                throw new IOException("Некорректный адрес интерфейса AmneziaWG");
+            var maximum = address.AddressFamily == AddressFamily.InterNetwork ? 32 : 128;
+            var bits = parts.Length == 1 ? maximum : int.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture);
+            if (bits < 1 || bits > maximum || address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any))
+                throw new IOException("Некорректный префикс интерфейса AmneziaWG");
+            result.Add((address, bits));
         }
+        if (!result.Any(entry => entry.Address.AddressFamily == AddressFamily.InterNetwork))
+            result.Add((IPAddress.Parse("172.29.0.1"), 32));
+        return result;
+    }
+
+    private static void ConfigureAdapter(List<(IPAddress Address, int Bits)> addresses, List<IPAddress> dns)
+    {
+        if (!addresses.Any(entry => entry.Address.AddressFamily == AddressFamily.InterNetworkV6))
+            addresses.Add((IPAddress.Parse(SinkV6), 128));
+
+        foreach (var (address, bits) in addresses)
+        {
+            var family = address.AddressFamily == AddressFamily.InterNetwork ? "ipv4" : "ipv6";
+            var adapter = family == "ipv4" ? "name" : "interface";
+            Exec($"interface {family} add address {adapter}=\"{TunnelDevice}\" address={address}/{bits} store=active");
+            _tunnelAddresses.Add(address.ToString());
+        }
+        foreach (var family in new[] { AddressFamily.InterNetwork, AddressFamily.InterNetworkV6 })
+        {
+            var label = family == AddressFamily.InterNetwork ? "ipv4" : "ipv6";
+            var servers = dns.Where(address => address.AddressFamily == family).ToList();
+            if (servers.Count == 0) continue;
+            Exec($"interface {label} set dnsservers name=\"{TunnelDevice}\" source=static address={servers[0]} validate=no");
+            for (var index = 1; index < servers.Count; index++)
+                Exec($"interface {label} add dnsservers name=\"{TunnelDevice}\" address={servers[index]} index={index + 1} validate=no");
+        }
+    }
+
+    private static void TearDownTunnel(bool keepFirewall = false)
+    {
+        EngineChild.Stop(_pump);
+        _pump = null;
+        foreach (var delete in _addedRoutes.AsEnumerable().Reverse()) RunRoute(delete);
+        _addedRoutes.Clear();
+        foreach (var op in SplitTunnelPlan.TearDown(Bypass)) RunRoute(op.Arguments);
+        ServerPinsV4.Clear();
+        ServerPinsV6.Clear();
+        _tunnelAddresses.Clear();
+        _session = null;
+        _wantsFirewall = keepFirewall;
+        if (keepFirewall) return;
+        EngineChild.Stop(_firewall);
+        _firewall = null;
     }
 
     // ── Route plumbing ────────────────────────────────────────────────────
@@ -317,7 +339,7 @@ internal static class Program
         // disarmed by the boot-repair pass instead.
         var args = $"{Family(inet6)}add {dest} mask {mask} {gateway} metric {metric}{ifPart}";
         var error = RunRoute(args);
-        if (error is null) _addedRoutes.Add($"{Family(inet6)}delete {dest} mask {mask}");
+        if (error is null) _addedRoutes.Add($"{Family(inet6)}delete {dest} mask {mask} {gateway}{ifPart}");
         // A route that already exists from a crashed previous run is fine.
         else if (!IsAlreadyThere(error)) throw new IOException($"route add failed: {error}");
     }
@@ -352,10 +374,11 @@ internal static class Program
     /// tunnel takes the default route. The address arrives resolved, so its
     /// family chooses the gateway: a v6 server with no v6 gateway cannot be
     /// reached at all, and saying so beats adding a route the table rejects.</summary>
-    private static void PinServer(string serverIp, string gatewayV4, string? interfaceV4)
+    private static void PinServer(string serverIp, string? gatewayV4, string? interfaceV4)
     {
         if (DirectResolver.IsIPv4(serverIp))
         {
+            if (gatewayV4 is null) throw new IOException("Нет IPv4-шлюза для сервера VPN");
             AddRoute(serverIp, "255.255.255.255", gatewayV4, interfaceV4);
             ServerPinsV4.Add(serverIp);
             return;
@@ -409,7 +432,7 @@ internal static class Program
         {
             // The bypass is a property of a running tunnel: without one the
             // routes would sit on the physical gateway pointing at nothing.
-            if (_tunnelState is null) return Reply(ok: false, "no tunnel is up");
+            if (_session is null) return Reply(ok: false, "no tunnel is up");
             var problems = InstallBypass(lines);
             return Reply(ok: problems.Count == 0, detail: ProblemsText(problems));
         }
@@ -419,7 +442,7 @@ internal static class Program
     {
         lock (Gate)
         {
-            if (_tunnelState is null) return Reply(ok: false, "no tunnel is up");
+            if (_session is null) return Reply(ok: false, "no tunnel is up");
             var problems = ReassertBypass();
             return Reply(ok: problems.Count == 0, detail: ProblemsText(problems));
         }
@@ -434,7 +457,7 @@ internal static class Program
         var result = SplitTunnelPlan.Apply(Bypass, env, lines,
                                           DirectResolver.IPv4, DirectResolver.IPv6);
         var problems = result.Problems.Concat(RunOperations(result.Operations)).ToList();
-        if (_firewallArmed) problems.AddRange(RestateBypassRules(env));
+        if (_firewall is not null) TryRefreshFirewall(env, problems);
         return problems;
     }
 
@@ -448,7 +471,7 @@ internal static class Program
         var problems = RunOperations(result.Operations).ToList();
         // Only a list that grew is worth rewriting firewall rules for; the
         // heartbeat would otherwise restate the whole seal every minute.
-        if (_firewallArmed && result.Grew) problems.AddRange(RestateBypassRules(env));
+        if (_firewall is not null && result.Grew) TryRefreshFirewall(env, problems);
         return problems;
     }
 
@@ -519,34 +542,28 @@ internal static class Program
         return prefixes;
     }
 
-    /// <summary>The destinations a sealed machine must still be allowed to
-    /// reach. Without this the bypass is a route to a firewall that drops the
-    /// packet, which is worse than no rule at all: it looks configured.</summary>
-    private static List<string> RestateBypassRules(SplitTunnelPlan.Env env)
+    private static void TryRefreshFirewall(SplitTunnelPlan.Env env, List<string> problems)
     {
-        var problems = new List<string>();
-        var name = $"{FirewallRulePrefix} bypass";
-        // Whole set, one name, deleted then rewritten: a stale address must not
-        // survive the rule that removed it.
-        if (Run($"advfirewall firewall delete rule name=\"{name}\"") is { } removeError)
-            problems.Add("bypass rules: " + removeError);
-        var (v4, v6) = SplitTunnelPlan.AllowList(Bypass, env);
-        var all = v4.Concat(v6).ToList();
-        for (var i = 0; i < all.Count; i += AllowRuleChunk)
-        {
-            var chunk = string.Join(',', all.GetRange(i, Math.Min(AllowRuleChunk, all.Count - i)));
-            // A CDN-backed name can add dozens of addresses a minute; one rule
-            // per chunk keeps a single refused list from losing the rest, and
-            // how long a `remoteip=` list netsh accepts is not something this
-            // machine can read.
-            if (Run($"advfirewall firewall add rule name=\"{name}\" dir=out action=allow remoteip={chunk}")
-                is { } addError)
-                problems.Add($"bypass allow list: {addError}");
-        }
-        return problems;
+        try { RefreshFirewall(env); }
+        catch (Exception error) { problems.Add(error.Message); }
     }
 
-    private const int AllowRuleChunk = 20;
+    private static void RefreshFirewall(SplitTunnelPlan.Env env)
+    {
+        if (!_wantsFirewall || _session is not { } session) return;
+        var binary = ResolveTool("anemia-engine.exe") ?? throw MissingTool("anemia-engine.exe");
+        var (ipv4, ipv6) = SplitTunnelPlan.AllowList(Bypass, env);
+        var previous = _firewall;
+        _firewall = EngineChild.Start(binary, "firewall", new
+        {
+            Adapter = TunnelDevice,
+            session.Program,
+            session.Address,
+            session.Port,
+            Bypass = ipv4.Concat(ipv6).ToArray(),
+        });
+        EngineChild.Stop(previous);
+    }
 
     private static string ProblemsText(List<string> problems) =>
         problems.Count == 0 ? "bypass applied" : string.Join("; ", problems.Take(5));
@@ -562,7 +579,7 @@ internal static class Program
         {
             StartInfo = new ProcessStartInfo
             {
-                FileName = "route",
+                FileName = Path.Combine(Environment.SystemDirectory, "route.exe"),
                 Arguments = "print -4",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
@@ -594,47 +611,6 @@ internal static class Program
         return (gateway, name);
     }
 
-    // ── Firewall kill switch ──────────────────────────────────────────────
-
-    private static void ArmFirewall(string? serverIp)
-    {
-        // Default-deny outbound in ALL profiles, always, even on public ones.
-        Exec("advfirewall set allprofiles firewallpolicy blockinboundalways,blockoutbound");
-        Exec($"advfirewall firewall add rule name=\"{FirewallRulePrefix} loopback\" dir=out action=allow remoteip=127.0.0.0/8");
-        foreach (var exe in new[] { "xray.exe", "tun2socks.exe", "Anemia.exe" })
-        {
-            var path = ResolveTool(exe);
-            if (path is not null)
-                Exec($"advfirewall firewall add rule name=\"{FirewallRulePrefix} {exe}\" dir=out action=allow program=\"{path}\"");
-        }
-        // The server's own IP must stay dialable even before the TUN is up —
-        // that IS the escape hatch that makes fail-closed survivable.
-        if (serverIp is not null)
-            Exec($"advfirewall firewall add rule name=\"{FirewallRulePrefix} server\" dir=out action=allow remoteip={serverIp}");
-        // Loopback DNS hijack target + DHCP renewals need UDP/53 & 67/68 out
-        // the physical net only when they come from Windows itself; keep it
-        // strict: DHCP only.
-        Exec("advfirewall firewall add rule name=\"Anemia KS dhcp\" dir=out action=allow protocol=udp remoteport=67,68");
-    }
-
-    private static void DisarmFirewall()
-    {
-        // Windows defaults: outbound allowed. Delete our rules, then restore
-        // policy — deleting first avoids a window where allow rules are gone
-        // but policy still blocks.
-        foreach (var name in new[]
-                 {
-                     $"{FirewallRulePrefix} loopback", $"{FirewallRulePrefix} server",
-                     $"{FirewallRulePrefix} bypass",
-                     $"{FirewallRulePrefix} dhcp", $"{FirewallRulePrefix} xray.exe",
-                     $"{FirewallRulePrefix} tun2socks.exe", $"{FirewallRulePrefix} Anemia.exe",
-                 })
-        {
-            Exec($"advfirewall firewall delete rule name=\"{name}\"");
-        }
-        Exec("advfirewall set allprofiles firewallpolicy blockinbound,allowoutbound");
-    }
-
     // ── Subprocess + tooling helpers ──────────────────────────────────────
 
     /// <summary>Run route.exe, return null on success or the output text.</summary>
@@ -644,7 +620,7 @@ internal static class Program
         {
             StartInfo = new ProcessStartInfo
             {
-                FileName = "route",
+                FileName = Path.Combine(Environment.SystemDirectory, "route.exe"),
                 Arguments = routeArgs,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
@@ -665,7 +641,7 @@ internal static class Program
         {
             StartInfo = new ProcessStartInfo
             {
-                FileName = "netsh",
+                FileName = Path.Combine(Environment.SystemDirectory, "netsh.exe"),
                 Arguments = netshArgs,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,

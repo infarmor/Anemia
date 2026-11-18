@@ -35,7 +35,7 @@ public sealed class SplitTunnelRules
     public System.Text.Json.Nodes.JsonNode ToJson()
     {
         var arr = new System.Text.Json.Nodes.JsonArray();
-        foreach (var entry in Entries) arr.Add(entry);
+        foreach (var entry in Entries) arr.Add(System.Text.Json.Nodes.JsonValue.Create(entry));
         return new System.Text.Json.Nodes.JsonObject
         {
             ["enabled"] = Enabled,

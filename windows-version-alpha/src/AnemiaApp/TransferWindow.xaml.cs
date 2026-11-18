@@ -1,8 +1,10 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Imaging;
 using AnemiaCore;
 using Microsoft.Win32;
+using QRCoder;
 
 namespace AnemiaApp;
 
@@ -13,12 +15,8 @@ namespace AnemiaApp;
 /// <see cref="TransferModel"/> and is tested there; this class only moves text
 /// between the screen and that model.
 ///
-/// What is deliberately absent: a drawn QR code. The link is offered as text
-/// (copyable, and short enough for a phone camera only after an encoder exists
-/// here to render it), because a grey placeholder box would look like a feature
-/// the port does not have.
 /// </summary>
-public partial class TransferWindow : Window
+public partial class TransferWindow : AnemiaToolWindow
 {
     private readonly AppState _app;
     private SyncBundle? _incoming;
@@ -29,8 +27,7 @@ public partial class TransferWindow : Window
         InitializeComponent();
         _app = app;
         var bundle = _app.ExportBundle();
-        ExportSummary.Text = $"{bundle.Servers.Count} servers · " +
-            $"{bundle.Subscriptions.Count} subscriptions · settings";
+        ExportSummary.Text = $"Серверов: {bundle.Servers.Count} · подписок: {bundle.Subscriptions.Count} · настройки";
     }
 
     // MARK: - Export
@@ -39,15 +36,15 @@ public partial class TransferWindow : Window
     {
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
-            Title = "Export to a file",
-            Filter = $"Anemia bundle (*.{SyncBundle.FileExtension})|*.{SyncBundle.FileExtension}|Any file|*.*",
+            Title = "Экспорт настроек",
+            Filter = $"Файл Anemia (*.{SyncBundle.FileExtension})|*.{SyncBundle.FileExtension}|Все файлы|*.*",
             FileName = $"anemia-{DateTime.Now:yyyyMMdd-HHmm}.{SyncBundle.FileExtension}",
         };
         if (dialog.ShowDialog(this) != true) return;
         Try(() =>
         {
             File.WriteAllText(dialog.FileName, _app.ExportBundle().FileText());
-            LinkText.Text = "Written: " + Path.GetFileName(dialog.FileName);
+            LinkText.Text = "Сохранено в " + Path.GetFileName(dialog.FileName);
         });
     }
 
@@ -57,8 +54,39 @@ public partial class TransferWindow : Window
         {
             var link = _app.ExportBundle().Link();
             System.Windows.Clipboard.SetText(link);
-            LinkText.Text = $"Link copied ({link.Length} characters). On the iPhone: " +
-                            "Servers → + → paste.";
+            LinkText.Text = "Ссылка скопирована. Вставьте её в Anemia на другом устройстве.";
+        });
+    }
+
+    private void OnShowQr(object sender, RoutedEventArgs e)
+    {
+        if (TransferQr.Visibility == Visibility.Visible)
+        {
+            TransferQr.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        Try(() =>
+        {
+            try
+            {
+                using var generator = new QRCodeGenerator();
+                using var data = generator.CreateQrCode(_app.ExportBundle().Link(), QRCodeGenerator.ECCLevel.M);
+                using var qr = new PngByteQRCode(data);
+                using var stream = new MemoryStream(qr.GetGraphic(4));
+                var image = new BitmapImage();
+                image.BeginInit();
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.StreamSource = stream;
+                image.EndInit();
+                TransferQr.Source = image;
+                TransferQr.Visibility = Visibility.Visible;
+                LinkText.Text = "Отсканируйте код на другом устройстве.";
+            }
+            catch (QRCoder.Exceptions.DataTooLongException)
+            {
+                LinkText.Text = "Данные не помещаются в QR-код. Сохраните файл или скопируйте ссылку.";
+            }
         });
     }
 
@@ -68,8 +96,8 @@ public partial class TransferWindow : Window
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "Open an exported bundle",
-            Filter = $"Anemia bundle (*.{SyncBundle.FileExtension})|*.{SyncBundle.FileExtension}|Any file|*.*",
+            Title = "Открыть файл переноса",
+            Filter = $"Файл Anemia (*.{SyncBundle.FileExtension})|*.{SyncBundle.FileExtension}|Все файлы|*.*",
         };
         if (dialog.ShowDialog(this) != true) return;
         try
@@ -78,7 +106,7 @@ public partial class TransferWindow : Window
         }
         catch (IOException io)
         {
-            IncomingSummary.Text = "Could not read that file: " + io.Message;
+            IncomingSummary.Text = "Не удалось прочитать файл. " + io.Message;
         }
     }
 
@@ -110,12 +138,12 @@ public partial class TransferWindow : Window
                 return;
             case { Kind: TransferModel.LoadKind.Unreadable }:
                 PreviewLine.Text = SyncBundle.LooksLikeBundle(text)
-                    ? "Looks like an Anemia bundle, but this build cannot read it."
-                    : "This is not an Anemia bundle.";
+                    ? "Эта версия Anemia не может прочитать файл."
+                    : "Данные не распознаны как файл переноса Anemia.";
                 return;
             case { Kind: TransferModel.LoadKind.NewerVersion } loaded:
                 PreviewLine.Text =
-                    $"Written by a newer Anemia (format version {loaded.Version}) — update this app to open it.";
+                    $"Формат {loaded.Version} требует более новой версии Anemia.";
                 return;
             case { IsBundle: true, Bundle: { } bundle }:
                 _incoming = bundle;
@@ -133,28 +161,45 @@ public partial class TransferWindow : Window
         if (_incoming is not { } bundle) return;
         var preview = TransferModel.Preview(bundle, _app.State, ApplySettingsBox.IsChecked == true);
         PreviewLine.Text =
-            $"From {bundle.Device}. New servers {TransferModel.CountText(preview.AddedServers, preview.KnownServers)}" +
-            $" · new subscriptions {TransferModel.CountText(preview.NewSubscriptions.Count, preview.KnownSubscriptions)}" +
-            (bundle.Settings is null ? " · no settings in this file" : "");
+            $"Устройство {bundle.Device}. Новых серверов: {preview.AddedServers}" +
+            $" · новых подписок: {preview.NewSubscriptions.Count}" +
+            (bundle.Settings is null ? " · без настроек" : "");
         // Adding nothing is not a reason to refuse the file — it is a reason to
         // gray the button out, which is what the macOS sheet does.
         ImportButton.IsEnabled = !preview.AddsNothing || preview.SettingsApplied;
     }
 
-    private void OnImport(object sender, RoutedEventArgs e)
+    private async void OnImport(object sender, RoutedEventArgs e)
     {
         if (_incoming is not { } bundle) return;
-        Try(() =>
+        ImportButton.IsEnabled = false;
+        try
         {
             var summary = _app.ImportBundle(bundle, ApplySettingsBox.IsChecked == true);
-            PreviewLine.Text = $"Imported: +{summary.AddedServers} servers, " +
-                $"+{summary.NewSubscriptions.Count} subscriptions" +
-                (summary.SettingsApplied ? ", settings" : "");
-            ImportButton.IsEnabled = false;
+            var status = $"Добавлено серверов: {summary.AddedServers} · подписок: {summary.NewSubscriptions.Count}" +
+                (summary.SettingsApplied ? " · настройки применены" : "");
+            PreviewLine.Text = status;
             _suppressPreview = true;
             IncomingText.Clear();
             _suppressPreview = false;
-        });
+            _incoming = null;
+            _loadedText = "";
+            ApplySettingsBox.Visibility = Visibility.Collapsed;
+            TransferQr.Visibility = Visibility.Collapsed;
+            IncomingText.IsEnabled = false;
+            foreach (var entry in summary.NewSubscriptions)
+            {
+                var subscription = _app.State.Subscriptions.FirstOrDefault(sub => sub.Url == entry.Url);
+                if (subscription is not null)
+                    await _app.RefreshSubscriptionAsync(subscription, CancellationToken.None);
+            }
+        }
+        catch (Exception error) { IncomingSummary.Text = error.Message; }
+        finally
+        {
+            IncomingText.IsEnabled = true;
+            ShowPreview();
+        }
     }
 
     /// <summary>A file on a disconnected network share or a denied clipboard is

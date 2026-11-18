@@ -76,6 +76,23 @@ public class PersistenceTests : IDisposable
         Assert.Equal(a.Credential, b.Credential);
     }
 
+    [Fact]
+    public void RoundTripPreservesSplitTunnelRules()
+    {
+        var rules = new SplitTunnelRules
+        {
+            Enabled = false,
+            Entries = { "# Work", "example.com", "192.168.1.0/24" },
+        };
+        var persistence = new StatePersistence(_path);
+
+        persistence.Save(new PersistedState { SplitTunnel = rules });
+        var reloaded = persistence.Load().SplitTunnel;
+
+        Assert.False(reloaded.Enabled);
+        Assert.Equal(rules.Entries, reloaded.Entries);
+    }
+
     /// <summary>The learned per-server masking map survives a save/load
     /// round-trip, and a store written before the field existed still decodes
     /// (empty map).</summary>

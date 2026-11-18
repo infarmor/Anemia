@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Text;
@@ -19,7 +21,7 @@ public sealed class HelperClient
 
     public HelperClient(string? pipeName = null)
     {
-        _pipeName = pipeName ?? "anemia-helper";
+        _pipeName = pipeName ?? "anemia-vpn-helper";
     }
 
     /// <summary>True when the helper service answers a ping. Cheap: the pipe
@@ -31,36 +33,42 @@ public sealed class HelperClient
     }
 
     /// <summary>Spawn the helper elevated if it isn't answering yet. The UAC
-    /// prompt is part of the deal (route/firewall work needs admin); the
-    /// helper repairs any crash-orphaned tunnel state on boot, so a duplicate
-    /// launch is harmless. Returns false when the user declines elevation or
-    /// the binary is missing.</summary>
-    public async Task<bool> LaunchIfMissingAsync(CancellationToken ct)
+    /// prompt is part of the deal (route/firewall work needs admin).</summary>
+    public async Task EnsureAvailableAsync(CancellationToken ct)
     {
-        if (await IsAvailableAsync(ct)) return true;
+        if (await IsAvailableAsync(ct)) return;
+        ct.ThrowIfCancellationRequested();
         var helperPath = Path.Combine(AppContext.BaseDirectory, "AnemiaHelper.exe");
-        if (!File.Exists(helperPath)) return false;
+        if (!File.Exists(helperPath)) throw new IOException("В папке Anemia отсутствует AnemiaHelper.exe");
         try
         {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            using var process = await Task.Run(() => Process.Start(new ProcessStartInfo
             {
                 FileName = helperPath,
                 UseShellExecute = true,
                 Verb = "runas", // triggers UAC
-            });
+            }), ct);
+            if (process is null) throw new IOException("Windows не запустила помощник Anemia");
         }
-        catch (System.ComponentModel.Win32Exception)
+        catch (Win32Exception error) when (error.NativeErrorCode == 1223)
         {
-            return false; // user declined the prompt
+            throw new IOException("Запрос прав администратора отменён. Включите VPN ещё раз.", error);
         }
-        // Wait for the pipe to come up; the helper also spends its first
-        // moments repairing any orphaned tunnel state.
-        for (var attempt = 0; attempt < 20; attempt++)
+        catch (Win32Exception error)
         {
-            await Task.Delay(250, ct);
-            if (await IsAvailableAsync(ct)) return true;
+            throw new IOException("Windows не запустила помощник Anemia. " + error.Message, error);
         }
-        return false;
+
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(TimeSpan.FromSeconds(10));
+        while (!deadline.IsCancellationRequested)
+        {
+            try { await Task.Delay(250, deadline.Token); }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested) { break; }
+            if (await IsAvailableAsync(deadline.Token)) return;
+        }
+        ct.ThrowIfCancellationRequested();
+        throw new IOException("Помощник Anemia запустился, но не ответил. Повторите подключение.");
     }
 
     /// <summary>Bring the tunnel up: create the wintun adapter, spawn tun2socks
@@ -71,16 +79,39 @@ public sealed class HelperClient
     /// those lines again itself: this process is not the authority on what may
     /// be routed around the VPN.</summary>
     public Task<JsonObject?> StartTunnelAsync(
-        int socksPort, string? serverIp, bool killSwitch, IReadOnlyList<string> bypass,
+        int socksPort, string serverIp, int serverPort, bool killSwitch, IReadOnlyList<string> bypass,
         CancellationToken ct) =>
         SendAsync(new JsonObject
         {
             ["cmd"] = "start-tunnel",
             ["socksPort"] = socksPort,
             ["serverIp"] = serverIp,
+            ["serverPort"] = serverPort,
             ["killSwitch"] = killSwitch,
             ["bypass"] = Lines(bypass),
         }, ct);
+
+    public Task<JsonObject?> StartAwgAsync(
+        AnemiaCore.ProxyServer server, string serverIp, bool killSwitch, bool adBlock, IReadOnlyList<string> bypass,
+        CancellationToken ct)
+    {
+        var profile = server.WgProfile ?? throw new IOException("В профиле AmneziaWG нет настроек пира");
+        var problems = AnemiaCore.AmneziaWgConfigBuilder.Validate(server, profile.Mtu ?? 1280);
+        if (problems.Count != 0) throw new IOException($"Профиль AmneziaWG: {problems[0]}");
+        return SendAsync(new JsonObject
+        {
+            ["cmd"] = "start-tunnel",
+            ["serverIp"] = serverIp,
+            ["serverPort"] = server.Port,
+            ["killSwitch"] = killSwitch,
+            ["bypass"] = Lines(bypass),
+            ["uapi"] = AnemiaCore.AmneziaWgConfigBuilder.MakeUapiSetScript(server, serverIp),
+            ["addresses"] = Lines(AnemiaCore.AmneziaWgConfigBuilder.TunnelAddresses(server)),
+            ["dns"] = Lines(adBlock ? new[] { "94.140.14.14", "94.140.15.15" } :
+                profile.ResolverAddresses.Count > 0 ? profile.ResolverAddresses : new[] { "1.1.1.1" }),
+            ["mtu"] = profile.Mtu ?? 1280,
+        }, ct);
+    }
 
     /// <summary>Replace the bypass routes of a running tunnel.</summary>
     public Task<JsonObject?> ApplyBypassAsync(IReadOnlyList<string> bypass, CancellationToken ct) =>
@@ -102,23 +133,22 @@ public sealed class HelperClient
         return array;
     }
 
-    public Task<JsonObject?> StopTunnelAsync(CancellationToken ct) =>
-        SendAsync(new JsonObject { ["cmd"] = "stop-tunnel" }, ct);
+    public Task<JsonObject?> StopTunnelAsync(CancellationToken ct, bool keepFirewall = false) =>
+        SendAsync(new JsonObject { ["cmd"] = "stop-tunnel", ["keepFirewall"] = keepFirewall }, ct);
 
     public Task<JsonObject?> StatusAsync(CancellationToken ct) =>
         SendAsync(new JsonObject { ["cmd"] = "status" }, ct);
 
     /// <summary>Send one JSON command and read one JSON-line reply, with a
     /// bounded wait: a hung elevated process must not freeze the connect flow.
-    /// Any transport failure folds into a null reply — callers treat that as
-    /// "helper unavailable" and fall back to proxy-only mode.</summary>
+    /// Any transport failure folds into a null reply for the caller to handle.</summary>
     public async Task<JsonObject?> SendAsync(JsonObject command, CancellationToken ct)
     {
         command["v"] = 1;
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(TimeSpan.FromSeconds(10));
+            timeout.CancelAfter(TimeSpan.FromSeconds(command["cmd"]?.GetValue<string>() == "start-tunnel" ? 55 : 10));
             await using var pipe = new NamedPipeClientStream(
                 ".", _pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
             await pipe.ConnectAsync(3000, timeout.Token);
@@ -151,6 +181,10 @@ public sealed class HelperClient
         {
             return null;
         }
+        catch (TimeoutException)
+        {
+            return null;
+        }
         catch (ObjectDisposedException)
         {
             return null;
@@ -159,65 +193,5 @@ public sealed class HelperClient
         {
             return null;
         }
-    }
-}
-
-/// <summary>
-/// User-level system proxy (WinINet), mirroring what the macOS app did with
-/// SCNetworkConfiguration. Setting <c>ProxyEnable/ProxyServer</c> under
-/// HKCU\...\Internet Settings needs no elevation. A full kill of the
-/// proxy state is mandatory on every disconnect: a stale proxy pointing at
-/// a dead local port blackholes the user's browsing.
-/// </summary>
-public static class SystemProxyManager
-{
-    private const string KeyPath = @"Software\Microsoft\Windows\CurrentVersion\Internet Settings";
-
-    public static bool Set(int socksPort)
-    {
-        try
-        {
-            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(KeyPath, writable: true);
-            if (key is null) return false;
-            key.SetValue("ProxyEnable", 1, Microsoft.Win32.RegistryValueKind.DWord);
-            key.SetValue("ProxyServer", $"socks=127.0.0.1:{socksPort}", Microsoft.Win32.RegistryValueKind.String);
-            // Override list: loopback is where the proxy itself lives; leave
-            // every other host to the proxy.
-            key.SetValue("ProxyOverride", "localhost;127.*;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*;192.168.*;<local>",
-                Microsoft.Win32.RegistryValueKind.String);
-            Refresh();
-            return true;
-        }
-        catch (System.Security.SecurityException) { return false; }
-        catch (IOException) { return false; }
-        catch (UnauthorizedAccessException) { return false; }
-    }
-
-    public static bool Clear()
-    {
-        try
-        {
-            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(KeyPath, writable: true);
-            if (key is null) return false;
-            key.SetValue("ProxyEnable", 0, Microsoft.Win32.RegistryValueKind.DWord);
-            Refresh();
-            return true;
-        }
-        catch (System.Security.SecurityException) { return false; }
-        catch (IOException) { return false; }
-        catch (UnauthorizedAccessException) { return false; }
-    }
-
-    [System.Runtime.InteropServices.DllImport("wininet.dll", SetLastError = true)]
-    private static extern bool InternetSetOption(IntPtr hInternet, int dwOption, IntPtr lpBuffer, int dwBufferLength);
-
-    /// <summary>Broadcast the change so running processes pick it up without a
-    /// re-login (WinINet caches the settings until told otherwise).</summary>
-    private static void Refresh()
-    {
-        const int internetOptionSettingsChanged = 39;
-        const int internetOptionRefresh = 37;
-        _ = InternetSetOption(IntPtr.Zero, internetOptionSettingsChanged, IntPtr.Zero, 0);
-        _ = InternetSetOption(IntPtr.Zero, internetOptionRefresh, IntPtr.Zero, 0);
     }
 }

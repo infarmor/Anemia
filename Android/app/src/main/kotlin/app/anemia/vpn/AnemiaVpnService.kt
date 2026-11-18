@@ -21,6 +21,7 @@ import app.anemia.core.TunnelHealth
 import app.anemia.data.ServerStore
 import app.anemia.data.TrafficStore
 import app.anemia.data.TunnelSetup
+import app.anemia.data.SessionStarter
 import java.io.File
 import java.net.InetAddress
 import java.net.NetworkInterface
@@ -219,6 +220,9 @@ class AnemiaVpnService : VpnService() {
             tunnelUp = tunnel != null, sessionId = setup?.server?.id?.toString(),
             healthFailures = if (fresh && tunnel != null) healthFailures else null,
             sessionStart = if (tunnel != null) sessionStart else null,
+            upBytes = status?.up,
+            downBytes = status?.down,
+            lockdown = if (android.os.Build.VERSION.SDK_INT >= 29) isLockdownEnabled else null,
         )
         countTraffic(status, setup)
         if (setup != null && now - listingCheckedAt >= LISTING_CHECK_MS) {
@@ -334,8 +338,11 @@ class AnemiaVpnService : VpnService() {
             }
             return START_NOT_STICKY
         }
-        val setup = TunnelSetup.fromJson(command?.getStringExtra(EXTRA_SETUP))
-        if (setup == null) {
+        val rawSetup = command?.getStringExtra(EXTRA_SETUP)
+        val systemStart = rawSetup == null && (command?.action == SERVICE_INTERFACE ||
+            (android.os.Build.VERSION.SDK_INT >= 29 && isAlwaysOn))
+        val setup = TunnelSetup.fromJson(rawSetup)
+        if (setup == null && !systemStart) {
             // Нас подняли как foreground-сервис: если выйти до
             // `startForeground()`, через 5 с система убьёт процесс
             // RemoteServiceException без единой строчки для пользователя.
@@ -351,14 +358,17 @@ class AnemiaVpnService : VpnService() {
         // подключаться к нему нельзя — но проверяет это рабочий поток, а не
         // главный: перечитать и разобрать `state.json` на главном — это ANR
         // ровно на том месте, где у сервиса ещё нет foreground-обещания.
-        session = setup.server.name.ifEmpty { "Anemia" }
+        session = setup?.server?.name?.ifBlank { "Anemia" } ?: "Anemia"
         lastStartId = startId
         StatusChannel.start(this, session)
         worker.post {
-            openTunnel(command, startId)?.let { reason ->
+            val target = setup ?: runCatching { SessionStarter.restoreSetup(this) }.getOrNull()
+            if (target != null) session = target.server.name.ifBlank { "Anemia" }
+            val reason = if (target != null) openTunnel(target) else "Выберите сервер для постоянного VPN"
+            if (reason != null) {
                 // id умершего сервера читается ДО обнуления: без него лестница
                 // не знает, кто именно отказал, и вынуждена гадать по выбору.
-                val lost = sessionSetup?.server?.id?.toString()
+                val lost = (sessionSetup ?: target)?.server?.id?.toString()
                 sessionSetup = null
                 Engine.stop()
                 closeTunnel()
@@ -377,9 +387,7 @@ class AnemiaVpnService : VpnService() {
     }
 
     /** null — туннель поднялся; иначе причина, которую надо показать. */
-    private fun openTunnel(command: Intent?, startId: Int): String? {
-        val setup = TunnelSetup.fromJson(command?.getStringExtra(EXTRA_SETUP))
-            ?: return "Сообщение туннеля потерялось"
+    private fun openTunnel(setup: TunnelSetup): String? {
         sessionSetup = setup
         listingCheckedAt = android.os.SystemClock.elapsedRealtime()
         tunnelWasUp = false
@@ -427,15 +435,8 @@ class AnemiaVpnService : VpnService() {
             Engine.setMemoryLimit(MEMORY_LIMIT_BYTES)
             waitUntil(TUNNEL_GONE_MS) { tunnelNames().isEmpty() }
             val builder = Builder().apply {
-                // `setBlocking(true)` — это и есть kill switch Android: пока
-                // туннель жив, вне него не едет ничего, кроме UID приложения.
-                // Отдельный флаг `killSwitchEnabled` из состояния здесь не
-                // читается намеренно: на macOS он включает правила pf в
-                // привилегированном помощнике (когда туннеля нет вовсе), а
-                // аналога «нет туннеля — нет сети» у обычного приложения на
-                // Android нет. `autoConnectOnLaunch` тоже не реализован:
-                // переподключение после убийства делает START_REDELIVER_INTENT,
-                // а «подключаться при запуске интерфейса» — очередь UI.
+                // Блокирующий дескриптор нужен нативному движку для чтения пакетов.
+                // Блокировка трафика вне VPN задаётся отдельно в системе Android.
                 ConfigApplier.apply(this, plan, packageName).setBlocking(true)
             }
             val fd = builder.establish() ?: return "Система не дала туннель"

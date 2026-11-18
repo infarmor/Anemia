@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -24,15 +25,13 @@ public sealed class StatsSnapshot
     /// <summary>Bytes/sec, computed from consecutive cumulative counters.</summary>
     public long UpRate { get; init; }
     public long DownRate { get; init; }
-    /// <summary>Latest end-to-end RTT (ms) through the tunnel, null while unknown.</summary>
-    public int? RttMs { get; init; }
 }
 
 /// <summary>
 /// The connection state machine — Windows port of the macOS AppState. Owns
 /// the server list, subscriptions, the selected profile, and one connection
 /// attempt at a time. Layering:
-///   unprivileged app: engine supervision, system proxy, helper IPC
+///   unprivileged app: Xray supervision, tunnel health and helper IPC
 ///   privileged helper: wintun adapter, routes, firewall kill switch
 /// </summary>
 public sealed class AppState : IDisposable
@@ -41,6 +40,7 @@ public sealed class AppState : IDisposable
     private readonly HelperClient _helper = new();
     private readonly StatePersistence _persistence;
     private readonly SubscriptionInfoStore _panels = new();
+    private readonly HashSet<Guid> _refreshingSubscriptions = new();
     /// <summary>The shared tunnel-health rules — the same numbers macOS, iOS and
     /// Android run, so this client does not act on a different amount of evidence
     /// than the phone on the same network.</summary>
@@ -56,6 +56,8 @@ public sealed class AppState : IDisposable
     private DateTimeOffset? _lastHealthCheck;
     private readonly HistoryStore _history;
     private readonly object _gate = new();
+    private readonly SemaphoreSlim _connectionGate = new(1);
+    private readonly Dictionary<string, string> _serverAddresses = new(StringComparer.OrdinalIgnoreCase);
     private readonly SynchronizationContext? _ui = SynchronizationContext.Current;
 
     private PersistedState _state;
@@ -63,6 +65,12 @@ public sealed class AppState : IDisposable
     private string? _lastError;
     private CancellationTokenSource? _connectCts;
     private CancellationTokenSource? _loopsCts;
+    private CancellationTokenSource? _recoveryCts;
+    private ProxyServer? _activeServer;
+    private bool _adapterReady;
+    private bool _killSwitchActive;
+    private bool _helperStarted;
+    private bool _disconnecting;
     private long _connectGeneration;
     private bool _attemptInProgress;
     private int _reconnectAttempt;
@@ -110,8 +118,27 @@ public sealed class AppState : IDisposable
     public string? LastError => _lastError;
     public ProxyServer? SelectedServer =>
         _state.SelectedServerId is { } id ? _state.ServerWithId(id) : null;
-    public int SocksPort => _xray.SocksPort;
-    public int HttpPort => _xray.HttpPort;
+    public ProxyServer? ActiveServer => _activeServer;
+    public bool KillSwitchActive => _killSwitchActive;
+    public bool HasHealthReading => _lastHealthCheck is not null;
+    private const string Preferences = @"HKEY_CURRENT_USER\Software\Anemia";
+    public bool AdBlockEnabled { get; private set; } =
+        Microsoft.Win32.Registry.GetValue(Preferences, "AdBlock", 0) is 1;
+    public string? MapHomeCountry { get; private set; }
+
+    public void UpdateMapOrigin(string? country)
+    {
+        if (country is null || country == MapHomeCountry) return;
+        MapHomeCountry = country;
+        RaiseStateChanged();
+    }
+
+    public void SetAdBlock(bool enabled)
+    {
+        Microsoft.Win32.Registry.SetValue(Preferences, "AdBlock", enabled ? 1 : 0);
+        AdBlockEnabled = enabled;
+        RaiseStateChanged();
+    }
 
     /// <summary>When the current connected spell began (null otherwise) —
     /// drives the UI's session timer.</summary>
@@ -119,22 +146,7 @@ public sealed class AppState : IDisposable
     /// <summary>Latest health-probe latency through the tunnel, ms. Null while
     /// unknown (before the first successful probe of the spell).</summary>
     public int? ProxyLatency => _lastRtt;
-    /// <summary>The SOCKS inbound answers and passes traffic. Optimistically
-    /// true the moment the engine reports Connected; the health loop and the
-    /// watchdog are what turn it off.</summary>
-    public bool ProxyReachable => _proxyReachable && _tunnelState == TunnelState.Connected;
-    /// <summary>True when the tunnel is up AND demonstrably carrying traffic.
-    /// The UI's status truth table branches on this ("Protected" vs plain
-    /// "Connected").</summary>
-    public bool TunnelActive => _tunnelState == TunnelState.Connected && _proxyReachable;
-    /// <summary>How long the tunnel has been failing its health checks —
-    /// the watchdog force-restarts the engine past 25 s of this.</summary>
-    public TimeSpan? UnreachableFor =>
-        _tunnelUnreachableSince is { } since ? DateTimeOffset.UtcNow - since : null;
-
-    /// <summary>True when the user asked for the full-TUN path (kill switch).
-    /// Exposed for the status truth table ("Protected" vs "SOCKS only").</summary>
-    public bool UsesTunnelPublic => UsesTunnel();
+    public bool TunnelActive => _tunnelState == TunnelState.Connected && _adapterReady && _proxyReachable;
 
     // ── Persistence ────────────────────────────────────────────────────────
 
@@ -154,51 +166,49 @@ public sealed class AppState : IDisposable
     /// or a whole base64 subscription body). Returns (added, failed) counts.</summary>
     public (int Added, int Failed) AddFromText(string text)
     {
-        var (added, failed) = (0, 0);
-        var existing = _state.AllServers.Select(s => s.IdentityKey).ToHashSet();
-        foreach (var rawLine in text.Split('\n'))
+        List<ProxyServer> servers;
+        int failed;
+        if (text.Split('\n').Any(line => line.Trim().Equals("[Interface]", StringComparison.OrdinalIgnoreCase)))
         {
-            var line = rawLine.Trim();
-            if (line.Length == 0) continue;
             try
             {
-                var server = ShareLinkParser.Parse(line);
-                if (!existing.Add(server.IdentityKey))
-                {
-                    // Duplicate of something already configured — refresh its
-                    // name but don't grow the list. Pick the newest entry with
-                    // this identity and update it in place.
-                    var twin = _state.AllServers.FirstOrDefault(s => s.IdentityKey == server.IdentityKey);
-                    if (twin is not null && server.Name.Length > 0) twin.Name = server.Name;
-                    continue;
-                }
-                _state.Servers.Add(server);
-                added++;
+                servers = [WireGuardLink.ParseConfigText(text)];
+                failed = 0;
             }
-            catch (ParseErrorException)
-            {
-                failed++;
-            }
+            catch (ParseErrorException) { return (0, 1); }
         }
-        if (added > 0) Save();
+        else
+        {
+            var parsed = SubscriptionParser.Parse(text);
+            servers = parsed.Servers;
+            failed = parsed.Failures.Count;
+            if (servers.Count == 0) return (0, Math.Max(1, failed));
+        }
+
+        var existing = _state.AllServers.GroupBy(server => server.IdentityKey)
+            .ToDictionary(group => group.Key, group => group.First());
+        var added = 0;
+        foreach (var server in servers)
+        {
+            if (!existing.TryAdd(server.IdentityKey, server))
+            {
+                if (server.Name.Length > 0) existing[server.IdentityKey].Name = server.Name;
+                continue;
+            }
+            _state.Servers.Add(server);
+            if (!server.IsHysteriaFamily) _state.SelectedServerId ??= server.Id;
+            added++;
+        }
+        Save();
         RaiseServersChanged();
         return (added, failed);
     }
 
     public void RemoveServer(Guid id)
     {
-        var wasSelected = _state.SelectedServerId == id;
         _state.Servers.RemoveAll(s => s.Id == id);
         foreach (var sub in _state.Subscriptions) sub.Servers.RemoveAll(s => s.Id == id);
-        if (wasSelected)
-        {
-            _state.SelectedServerId = null;
-            // Tearing down the server we're connected to is a user intent to
-            // disconnect, not an invitation to reconnect to a random one.
-            if (_tunnelState != TunnelState.Disconnected) _ = DisconnectAsync();
-        }
-        Save();
-        RaiseServersChanged();
+        SaveServerChanges();
     }
 
     public void SelectServer(Guid id)
@@ -211,12 +221,25 @@ public sealed class AppState : IDisposable
             _ = ConnectAsync();
     }
 
+    public async Task ConnectServerAsync(Guid id)
+    {
+        if (_state.ServerWithId(id) is not { IsHysteriaFamily: false }) return;
+        _state.SelectedServerId = id;
+        Save();
+        RaiseServersChanged();
+        if (ActiveServer?.Id != id || _tunnelState != TunnelState.Connected) await ConnectAsync();
+    }
+
     /// <summary>The bundle this machine would hand another: hand-added servers,
     /// the panels' addresses (each device fetches its own lists) and the shared
     /// settings. The selection stays home — every device picks its own exit.</summary>
-    public SyncBundle ExportBundle() =>
-        SyncBundle.FromState(_state, Environment.MachineName,
+    public SyncBundle ExportBundle()
+    {
+        var bundle = SyncBundle.FromState(_state, Environment.MachineName,
             DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        if (bundle.Settings is { } settings) settings.AdBlock = AdBlockEnabled;
+        return bundle;
+    }
 
     /// <summary>Takes a bundle the user opened or pasted. The merge itself is
     /// <see cref="TransferModel.Apply"/>; what happens here is only what the
@@ -232,6 +255,8 @@ public sealed class AppState : IDisposable
         {
             if (before is not null && before != _state.MaskingProfile) SetMaskingProfile(_state.MaskingProfile);
             SetKillSwitch(_state.KillSwitchEnabled);
+            if (bundle.Settings?.AdBlock is { } adBlock) SetAdBlock(adBlock);
+            if (_tunnelState == TunnelState.Connected) _ = ApplyBypassAsync();
         }
         else
         {
@@ -255,14 +280,25 @@ public sealed class AppState : IDisposable
     /// http: whoever controls that path answers, and tomorrow's *encrypted*
     /// traffic would then run through an exit chosen by them.</summary>
     public async Task<string> RefreshSubscriptionAsync(Subscription sub, CancellationToken ct,
-                                                       bool allowInsecure = false)
+                                                       bool allowInsecure = false) =>
+        await FetchSubscriptionAsync(sub, ct, allowInsecure);
+
+    private async Task<string> FetchSubscriptionAsync(Subscription sub, CancellationToken ct,
+                                                       bool allowInsecure, bool isNew = false)
     {
+        if (!isNew && !_state.Subscriptions.Contains(sub)) return "Подписка удалена";
+        if (!allowInsecure && !sub.TlsProtected) return $"{sub.Name}: обновите вручную, ссылка без HTTPS";
+        lock (_gate)
+        {
+            if (!_refreshingSubscriptions.Add(sub.Id)) return $"{sub.Name}: обновление уже идёт";
+        }
         try
         {
             if (!Uri.TryCreate(sub.Url, UriKind.Absolute, out var uri) ||
                 uri is not { Scheme: "http" or "https" })
-                return $"{sub.Name}: bad subscription URL";
+                return $"{sub.Name}: неверный адрес подписки";
 
+            if (!isNew) _panels.RecordAttempt(sub.Id);
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
             // Panels gate on User-Agent and answer an HTML error page to unknown
             // clients; v2rayN is the most widely allow-listed header.
@@ -270,12 +306,14 @@ public sealed class AppState : IDisposable
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!response.IsSuccessStatusCode)
-                return $"{sub.Name}: fetch failed — HTTP {(int)response.StatusCode}";
+                return $"{sub.Name}: ошибка загрузки HTTP {(int)response.StatusCode}";
 
-            _panels.RecordAttempt(sub.Id);
             var body = await PanelClient.ReadBodyCappedAsync(response, ct);
             if (body is null)
-                return $"{sub.Name}: fetch failed — body over {PanelClient.MaxBodyBytes / 1024 / 1024} MB";
+                return $"{sub.Name}: размер подписки превышает {PanelClient.MaxBodyBytes / 1024 / 1024} МБ";
+
+            ct.ThrowIfCancellationRequested();
+            if (!isNew && !_state.Subscriptions.Contains(sub)) return "Подписка удалена";
 
             // Traffic, expiry, the panel's own name and interval: all in headers.
             var info = SubscriptionInfo.Parse(PanelClient.Headers(response));
@@ -286,30 +324,37 @@ public sealed class AppState : IDisposable
             {
                 // An expired subscription usually answers with an empty list; its
                 // headers are the only thing that says so.
-                if (verdict == RefreshVerdict.Expired) _panels.Remember(sub.Id, info);
+                if (verdict == RefreshVerdict.Expired && !isNew)
+                {
+                    _panels.Remember(sub.Id, info);
+                    RaiseServersChanged();
+                }
                 return verdict == RefreshVerdict.Expired
-                    ? $"{sub.Name}: subscription expired — the list is kept"
-                    : $"{sub.Name}: no usable servers — the list is kept";
+                    ? $"{sub.Name}: срок истёк, список сохранён"
+                    : $"{sub.Name}: нет подходящих серверов, список сохранён";
             }
 
             _panels.Remember(sub.Id, info);
             sub.Servers = servers;
             sub.LastUpdated = DateTimeOffset.UtcNow;
-            Save();
-            RaiseServersChanged();
+            if (!isNew) SaveServerChanges();
             var skipped = result.Failures.Count;
             return skipped > 0
-                ? $"{sub.Name}: {sub.Servers.Count} servers ({skipped} bad links skipped)"
-                : $"{sub.Name}: {sub.Servers.Count} servers";
+                ? $"{sub.Name}: серверов {sub.Servers.Count}, ошибок в ссылках {skipped}"
+                : $"{sub.Name}: серверов {sub.Servers.Count}";
         }
         catch (OperationCanceledException)
         {
-            return $"{sub.Name}: refresh cancelled";
+            return $"{sub.Name}: загрузка отменена";
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or TaskCanceledException
                                        or InvalidOperationException or UriFormatException)
         {
-            return $"{sub.Name}: fetch failed — {ex.Message}";
+            return $"{sub.Name}: не удалось загрузить подписку. {ex.Message}";
+        }
+        finally
+        {
+            lock (_gate) _refreshingSubscriptions.Remove(sub.Id);
         }
     }
 
@@ -321,13 +366,46 @@ public sealed class AppState : IDisposable
                                                                                      CancellationToken ct,
                                                                                      string? name = null)
     {
-        var candidate = new Subscription(name?.Length > 0 ? name : "Subscription", url);
-        var status = await RefreshSubscriptionAsync(candidate, ct, allowInsecure: true);
-        if (candidate.Servers.Count == 0) return (null, $"{url}: not added — {status}");
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri is not { Scheme: "http" or "https" })
+            return (null, "Вставьте ссылку на подписку HTTP или HTTPS");
+        if (_state.Subscriptions.Any(existing => SameSubscriptionUrl(existing.Url, url)))
+            return (null, "Эта подписка уже добавлена");
+        var candidate = new Subscription(name?.Length > 0 ? name : uri.Host, url);
+        var status = await FetchSubscriptionAsync(candidate, ct, allowInsecure: true, isNew: true);
+        if (candidate.Servers.Count == 0) return (null, status);
+        if (_state.Subscriptions.Any(existing => SameSubscriptionUrl(existing.Url, url)))
+        {
+            _panels.Forget(candidate.Id);
+            return (null, "Эта подписка уже добавлена");
+        }
         _state.Subscriptions.Add(candidate);
+        _state.SelectedServerId ??= candidate.Servers.FirstOrDefault(server => !server.IsHysteriaFamily)?.Id;
         Save();
         RaiseServersChanged();
         return (candidate, status);
+    }
+
+    private static bool SameSubscriptionUrl(string left, string right) =>
+        string.Equals(left.Trim().TrimEnd('/'), right.Trim().TrimEnd('/'), StringComparison.Ordinal);
+
+    public void RemoveSubscription(Guid id)
+    {
+        if (_state.Subscriptions.RemoveAll(sub => sub.Id == id) == 0) return;
+        _panels.Forget(id);
+        SaveServerChanges();
+    }
+
+    private void SaveServerChanges()
+    {
+        // Capture the selected server while an initial connection is still
+        // establishing and has not assigned ActiveServer yet.
+        var connectedId = ActiveServer?.Id ??
+            (_tunnelState == TunnelState.Connecting ? _state.SelectedServerId : null);
+        if (_state.SelectedServerId is { } selected && _state.ServerWithId(selected) is null)
+            _state.SelectedServerId = _state.AllServers.FirstOrDefault(server => !server.IsHysteriaFamily)?.Id;
+        Save();
+        RaiseServersChanged();
+        if (connectedId is { } active && _state.ServerWithId(active) is null) _ = DisconnectAsync();
     }
 
     public Subscription AddSubscription(string url, string? name = null)
@@ -398,15 +476,6 @@ public sealed class AppState : IDisposable
     private static string ReplyText(JsonNode? reply) =>
         reply?["detail"]?.GetValue<string>() ?? "no detail";
 
-    public void SetSystemProxyEnabled(bool enabled)
-    {
-        _state.SystemProxyEnabled = enabled;
-        Save();
-        RaiseStateChanged();
-        if (!enabled && _tunnelState == TunnelState.Disconnected)
-            SystemProxyManager.Clear();
-    }
-
     public void SetAutoConnect(bool enabled)
     {
         _state.AutoConnectOnLaunch = enabled;
@@ -414,34 +483,44 @@ public sealed class AppState : IDisposable
         RaiseStateChanged();
     }
 
+    public void SetSubscriptionAutoRefresh(bool enabled)
+    {
+        _state.SubscriptionAutoRefresh = enabled;
+        Save();
+        RaiseStateChanged();
+    }
+
+    internal string? InstalledXrayPath => _xray.ResolveBinary();
+
+    internal Task<bool> IsVpnHelperAvailableAsync(CancellationToken token) =>
+        _helper.IsAvailableAsync(token);
+
     // ── Connect / disconnect ──────────────────────────────────────────────
 
-    public Task ConnectAsync() => RunConnectAsync(userInitiated: true);
+    public Task ConnectAsync()
+    {
+        _recoveryCts?.Cancel();
+        return RunConnectAsync(userInitiated: true);
+    }
 
     public async Task ToggleAsync()
     {
-        if (_tunnelState == TunnelState.Disconnected) await ConnectAsync();
+        if (_tunnelState == TunnelState.Disconnected && !_killSwitchActive) await ConnectAsync();
         else await DisconnectAsync();
     }
 
     private async Task RunConnectAsync(bool userInitiated, bool inReconnect = false)
     {
-        // Single-attempt guard, stronger than a state check: the reconnect
-        // loop runs while the state reads Reconnecting, so a user clicking
-        // Connect at that moment must not stack a second attempt on top —
-        // the loser's failure handler would tear down the winner's engine.
-        lock (_gate)
-        {
-            if (_attemptInProgress) return;
-            _attemptInProgress = true;
-        }
+        if (_disconnecting || !await _connectionGate.WaitAsync(0)) return;
+        _attemptInProgress = true;
         try
         {
-            await RunConnectInnerAsync(userInitiated, inReconnect);
+            if (!_disconnecting) await RunConnectInnerAsync(userInitiated, inReconnect);
         }
         finally
         {
-            lock (_gate) _attemptInProgress = false;
+            _attemptInProgress = false;
+            _connectionGate.Release();
         }
     }
 
@@ -450,7 +529,7 @@ public sealed class AppState : IDisposable
         var server = SelectedServer;
         if (server is null)
         {
-            _lastError = "no server selected";
+            _lastError = "Сначала выберите сервер";
             RaiseLog("connect: no server selected");
             RaiseStateChanged();
             return;
@@ -460,7 +539,15 @@ public sealed class AppState : IDisposable
         // (loops, reconnect continuations) compare tokens before touching
         // global state, so a superseded attempt can't act on a newer one.
         var generation = ++_connectGeneration;
+        _connectCts?.Cancel();
+        _loopsCts?.Cancel();
         _connectCts = new CancellationTokenSource();
+        _lastCounters = null;
+        _lastRtt = null;
+        _lastHealthCheck = null;
+        _healthState = default;
+        _proxyReachable = false;
+        _adapterReady = false;
         _loopsCts = new CancellationTokenSource();
         var ct = _connectCts.Token;
 
@@ -488,68 +575,50 @@ public sealed class AppState : IDisposable
             RaiseLog($"connect: using learned masking profile {learnedProfile.Title()}");
         }
 
-        // Pin the engine's dial to the physical uplink when we can see one.
-        _xray.DialerInterface = PhysicalInterface.Detect();
-
-        // A re-dial (server switch mid-session, profile change, reconnect)
-        // supersedes the current engine: stop it here so StartAsync sees a
-        // clean slate. Without this the new attempt would fail with
-        // AlreadyRunning and wrongly walk the masking-escalation ladder.
-        if (_xray.IsRunning) _xray.Stop();
-
         Exception? failure = null;
         try
         {
-            await _xray.StartAsync(server, anti);
-            // Engine is up and its SOCKS port answers. If we're routing the
-            // whole system through a TUN, hand off to the privileged helper.
-            if (_state.KillSwitchEnabled || UsesTunnel())
-            {
-                // First TUN use this session pops UAC; a declined prompt just
-                // degrades to proxy-only mode below.
-                if (!await _helper.LaunchIfMissingAsync(ct))
-                    RaiseLog("helper could not be launched (UAC declined or missing) — proxy-only mode");
-                var serverIp = await ResolveServerIpAsync(server, ct);
-                var reply = await _helper.StartTunnelAsync(
-                    _xray.SocksPort, serverIp, _state.KillSwitchEnabled, BypassLines(), ct);
-                if (reply is null || reply["ok"]?.GetValue<bool>() != true)
-                {
-                    // Without the helper there are no TUN routes — but the
-                    // engine is fine, so degrade to proxy-only rather than
-                    // fail the whole connect.
-                    RaiseLog("helper unavailable or refused — falling back to proxy-only mode");
-                }
-                else if (reply["detail"]?.GetValue<string>() is { } detail &&
-                         detail.Contains("bypass:"))
-                {
-                    // The tunnel came up and a destination the user asked to
-                    // keep local did not: say so, or it looks configured.
-                    RaiseLog(detail);
-                }
-            }
-            if (_state.SystemProxyEnabled)
-            {
-                if (!SystemProxyManager.Set(_xray.SocksPort))
-                    RaiseLog("system proxy could not be set (registry write refused)");
-            }
+            if (server.IsHysteriaFamily) throw new IOException("Подключение Hysteria пока недоступно на Windows");
+            var serverIp = await ResolveServerIpAsync(server, ct);
+            await _helper.EnsureAvailableAsync(ct);
+            _helperStarted = true;
+            ct.ThrowIfCancellationRequested();
 
-            // The engine can die between StartAsync's readiness gate and this
-            // line (its exit event was swallowed while the state read
-            // Connecting). Never report Connected on top of a corpse.
-            if (!_xray.IsRunning)
-                throw new XrayException(XrayErrorKind.FailedToStart,
-                    "engine exited right after start");
+            _xray.Stop();
+            var killSwitch = _state.KillSwitchEnabled;
+            JsonObject? reply;
+            if (server.IsWireGuardFamily)
+            {
+                reply = await _helper.StartAwgAsync(server, serverIp, killSwitch, AdBlockEnabled,
+                    BypassLines(), CancellationToken.None);
+            }
+            else
+            {
+                _xray.DialerInterface = PhysicalInterface.Detect();
+                await _xray.StartAsync(server, anti, serverIp, AdBlockEnabled);
+                ct.ThrowIfCancellationRequested();
+                reply = await _helper.StartTunnelAsync(
+                    _xray.SocksPort, serverIp, server.Port, killSwitch, BypassLines(), CancellationToken.None);
+            }
+            ct.ThrowIfCancellationRequested();
+            if (!IsTunnelUp(reply))
+                throw new IOException(reply?["detail"]?.GetValue<string>() ?? "Помощник Windows не подтвердил запуск VPN");
 
-            SetTunnelState(TunnelState.Connected);
-            // Backoff ladder is per-downspell, not per-session: after a
-            // successful (re)connect the next outage starts at 1 s again.
+            if (!server.IsWireGuardFamily && !_xray.IsRunning)
+                throw new XrayException(XrayErrorKind.FailedToStart, "Движок Xray остановился");
+            if (reply?["detail"]?.GetValue<string>() is { Length: > 0 } detail) RaiseLog(detail);
+
+            _activeServer = server;
+            _adapterReady = true;
+            _killSwitchActive = reply?["armed"]?.GetValue<bool>() == true;
             _reconnectAttempt = 0;
-            RaiseLog($"connected via {server.Name} — SOCKS 127.0.0.1:{_xray.SocksPort}, HTTP 127.0.0.1:{_xray.HttpPort}");
+            SetTunnelState(TunnelState.Connected);
+            RaiseLog($"Системный VPN запущен через {server.Name}");
             StartLoops(generation, server, _loopsCts.Token);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // User-driven disconnect won the race; cleanup already ran.
+            // Disconnect waits for this attempt before stopping the helper.
             return;
         }
         catch (XrayException ex)
@@ -573,7 +642,9 @@ public sealed class AppState : IDisposable
 
         if (failure is not null)
         {
-            await CleanupAfterFailureAsync(ct);
+            if (ct.IsCancellationRequested) return;
+            await CleanupConnectionAsync(keepFirewall: _killSwitchActive);
+            _xray.Stop();
             RaiseLog($"connect failed: {failure.Message}");
 
             // Escalate masking and retry — but only for engine-start failures
@@ -602,106 +673,106 @@ public sealed class AppState : IDisposable
             }
 
             _lastError = failure.Message;
-            SetTunnelState(TunnelState.Disconnected);
+            SetTunnelState(inReconnect ? TunnelState.Reconnecting : TunnelState.Disconnected);
         }
     }
 
-    private async Task<string?> ResolveServerIpAsync(ProxyServer server, CancellationToken ct)
+    private async Task<string> ResolveServerIpAsync(ProxyServer server, CancellationToken ct)
     {
-        if (DirectResolver.IsIPv4(server.Address)) return server.Address;
+        if (IPAddress.TryParse(server.Address.Trim('[', ']'), out var literal)) return literal.ToString();
         try
         {
-            var resolve = Task.Run(() => DirectResolver.IPv4(server.Address), ct);
-            var done = await Task.WhenAny(resolve, Task.Delay(TimeSpan.FromSeconds(3), ct));
-            if (done == resolve)
-            {
-                var ips = await resolve;
-                return ips.FirstOrDefault();
-            }
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            deadline.CancelAfter(TimeSpan.FromSeconds(3));
+            var ips = await Dns.GetHostAddressesAsync(server.Address, deadline.Token);
+            var endpoint = ips.FirstOrDefault(ip => ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                ?? ips.FirstOrDefault();
+            if (endpoint is not null) return _serverAddresses[server.Address] = endpoint.ToString();
         }
-        catch (OperationCanceledException) { }
-        return null;
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { }
+        catch (System.Net.Sockets.SocketException) { }
+
+        ct.ThrowIfCancellationRequested();
+        if (_serverAddresses.TryGetValue(server.Address, out var saved)) return saved;
+        throw new IOException("Не удалось определить адрес сервера");
     }
+
+    private static bool IsTunnelUp(JsonObject? reply) =>
+        reply?["ok"]?.GetValue<bool>() == true && reply["up"]?.GetValue<bool>() == true;
 
     public async Task DisconnectAsync()
     {
-        _connectGeneration++;
-        // Cancel whatever connect attempt is in flight first: its awaits
-        // re-check the token and clean up their own half-built state.
+        _disconnecting = true;
+        _recoveryCts?.Cancel();
         _connectCts?.Cancel();
-        SetTunnelState(TunnelState.Disconnected);
-        _lastError = null;
-        RaiseLog("disconnecting");
-
-        await CleanupConnectionAsync();
-        // Kill the engine LAST: its exit callback ignores the exit event
-        // once the state reads Disconnected, so no reconnect loop starts.
-        try { _xray.Stop(); } catch { /* already gone */ }
-        FlushHistory(force: true);
-        RaiseStateChanged();
+        _loopsCts?.Cancel();
+        await _connectionGate.WaitAsync();
+        try
+        {
+            _connectGeneration++;
+            _lastError = null;
+            SetTunnelState(TunnelState.Disconnected);
+            _xray.Stop();
+            await CleanupConnectionAsync();
+            FlushHistory(force: true);
+            RaiseStateChanged();
+        }
+        finally
+        {
+            _disconnecting = false;
+            _connectionGate.Release();
+        }
     }
 
-    /// <summary>Tear down helper-side state (tunnel + routes + kill switch)
-    /// and the system proxy. Errors are logged, never thrown: a disconnect
-    /// must always finish as far as it can.</summary>
-    private async Task CleanupConnectionAsync()
+    private async Task CleanupConnectionAsync(bool keepFirewall = false)
     {
         _loopsCts?.Cancel();
         _lastCounters = null;
-
-        var helperStop = _helper.StopTunnelAsync(CancellationToken.None);
-        try { await helperStop; } catch { /* helper already gone */ }
-
-        // Unconditional: a stale proxy pointing at a dead local port
-        // blackholes the user's browsing, so disconnect never leaves one.
-        SystemProxyManager.Clear();
-    }
-
-    private async Task CleanupAfterFailureAsync(CancellationToken ct)
-    {
-        try { await CleanupConnectionAsync(); }
-        catch { /* best effort during failure handling */ }
-        try
+        _adapterReady = false;
+        _activeServer = null;
+        if (!_helperStarted) return;
+        var reply = await _helper.StopTunnelAsync(CancellationToken.None, keepFirewall);
+        if (reply?["ok"]?.GetValue<bool>() == true)
         {
-            _xray.Stop();
+            _killSwitchActive = reply["armed"]?.GetValue<bool>() == true;
         }
-        catch { /* engine already gone */ }
+        else
+        {
+            _lastError ??= "Помощник Windows не подтвердил остановку VPN";
+            RaiseLog(_lastError);
+        }
     }
 
-    // ── Reconnect loop ────────────────────────────────────────────────────
-
-    /// <summary>Engine process exit. If we believe we were connected (and this
-    /// exit belongs to the current generation), start the reconnect ladder:
-    /// 1 s, 2 s, 4 s … capped at 30 s, forever until it connects or the user
-    /// disconnects. A crash-looping engine therefore self-heals instead of
-    /// silently leaving the user offline.</summary>
     private void OnEngineExit(int exitCode)
     {
-        RaiseLog($"xray exited (code {exitCode})");
-        if (_tunnelState != TunnelState.Connected) return;
-        var generation = _connectGeneration;
-        SetTunnelState(TunnelState.Reconnecting);
+        RaiseLog($"Xray остановился (код {exitCode})");
+        BeginRecovery();
+    }
+
+    private void BeginRecovery()
+    {
+        CancellationToken ct;
+        lock (_gate)
+        {
+            if (_disconnecting || _tunnelState != TunnelState.Connected) return;
+            _recoveryCts?.Cancel();
+            _recoveryCts = new CancellationTokenSource();
+            ct = _recoveryCts.Token;
+            _loopsCts?.Cancel();
+            SetTunnelState(TunnelState.Reconnecting);
+        }
+
         _ = Task.Run(async () =>
         {
-            while (generation == _connectGeneration
-                   && _tunnelState == TunnelState.Reconnecting)
+            while (!ct.IsCancellationRequested && _tunnelState == TunnelState.Reconnecting)
             {
                 var delay = TimeSpan.FromSeconds(Math.Min(30, Math.Pow(2, _reconnectAttempt)));
                 _reconnectAttempt++;
-                RaiseLog($"reconnect attempt {_reconnectAttempt} in {delay.TotalSeconds:0}s");
-                try { await Task.Delay(delay); }
-                catch (TaskCanceledException) { return; }
-                if (generation != _connectGeneration) return;
-                var wasConnecting = _tunnelState;
-                // RunConnectAsync guards against concurrent Connecting, and
-                // inReconnect keeps the attempt counter intact across retries.
-                if (wasConnecting == TunnelState.Reconnecting)
-                {
-                    await RunConnectAsync(userInitiated: false, inReconnect: true);
-                    if (_tunnelState == TunnelState.Connected) return;
-                }
+                try { await Task.Delay(delay, ct); }
+                catch (OperationCanceledException) { return; }
+                await RunConnectAsync(userInitiated: false, inReconnect: true);
             }
-        });
+        }, ct);
     }
 
     // ── Background loops (stats, health, history) ─────────────────────────
@@ -740,7 +811,7 @@ public sealed class AppState : IDisposable
             case SwitchVerdict.Go:
                 _switchBudget.Note(now.ToUnixTimeSeconds());
                 RaiseLog($"failover: {reason} — forcing reconnect");
-                try { _xray.Stop(); } catch { /* already gone */ }
+                BeginRecovery();
                 return true;
             case SwitchVerdict.Throttled:
                 RaiseLog("failover: held off — the budget for the last 15 minutes is spent");
@@ -760,18 +831,9 @@ public sealed class AppState : IDisposable
         {
             try
             {
-                var binary = _xray.ResolveBinary();
-                // The stamp is read around the query on purpose: if the engine
-                // was replaced while the API call was in flight, the bytes
-                // belong to the old run and the new stamp would book them as
-                // that run's baseline — the whole cumulative counter landing on
-                // today a second time. A torn reading is skipped, the next one
-                // in 2 s is clean.
-                var startedBefore = _xray.RunStartedAt;
-                var counters = _xray.ApiPort is { } api
-                    ? XrayController.QueryXrayTraffic(binary, api)
-                    : null;
-                var startedAfter = _xray.RunStartedAt;
+                var run = _connectedSince;
+                var counters = TunnelProbe.Traffic();
+                if (generation != _connectGeneration || ct.IsCancellationRequested) return;
                 if (counters is { } c)
                 {
                     var (upRate, downRate) = (0L, 0L);
@@ -792,14 +854,14 @@ public sealed class AppState : IDisposable
                         DownRate = downRate / 2,
                     });
 
-                    if (startedAfter is { } run && startedBefore == run)
+                    if (run is { } started && run == _connectedSince)
                     {
-                        if (_usageRun is { } seen && seen != run) _usage.Stopped();
-                        _usageRun = run;
-                        _usage.Record(run, c.Down, c.Up, (server.Id, server.Name));
+                        if (_usageRun is { } seen && seen != started) _usage.Stopped();
+                        _usageRun = started;
+                        _usage.Record(started, c.Down, c.Up, (server.Id, server.Name));
                     }
                 }
-                else if (startedAfter is null && _usageRun is not null)
+                else if (run is null && _usageRun is not null)
                 {
                     // The engine is gone and nothing will report counters until
                     // the ladder brings one back: the downtime is not connected
@@ -818,10 +880,22 @@ public sealed class AppState : IDisposable
     {
         while (generation == _connectGeneration && !ct.IsCancellationRequested)
         {
+            var reply = await _helper.StatusAsync(ct);
+            if (generation != _connectGeneration || ct.IsCancellationRequested) return;
+            if (reply?["ok"]?.GetValue<bool>() == true)
+                _killSwitchActive = reply["armed"]?.GetValue<bool>() == true;
+            _adapterReady = IsTunnelUp(reply);
+            if (!_adapterReady)
+            {
+                _lastError = "Системный туннель остановился";
+                BeginRecovery();
+                return;
+            }
+
             int? rtt = null;
             try
             {
-                rtt = await ProxyHealth.CheckAsync(_xray.SocksPort, ct: ct);
+                rtt = await TunnelProbe.CheckAsync(ct);
             }
             catch { /* health is best-effort */ }
             if (generation != _connectGeneration || ct.IsCancellationRequested) return;
@@ -834,7 +908,7 @@ public sealed class AppState : IDisposable
                 try { await Task.Delay(TimeSpan.FromSeconds(5), ct); }
                 catch (TaskCanceledException) { return; }
                 if (generation != _connectGeneration) return;
-                try { rtt = await ProxyHealth.CheckAsync(_xray.SocksPort, ct: ct); }
+                try { rtt = await TunnelProbe.CheckAsync(ct); }
                 catch { }
                 if (generation != _connectGeneration || ct.IsCancellationRequested) return;
             }
@@ -855,7 +929,6 @@ public sealed class AppState : IDisposable
             if (rtt is { } measured)
             {
                 _lastRtt = measured;
-                StatsUpdated?.Invoke(new StatsSnapshot { RttMs = measured });
             }
 
             if (outcome.Failed)
@@ -870,6 +943,7 @@ public sealed class AppState : IDisposable
                 _proxyReachable = true;
                 _tunnelUnreachableSince = null;
             }
+            RaiseStateChanged();
             FlushHistory(force: false);
             try { await Task.Delay(TimeSpan.FromSeconds(10), ct); }
             catch (TaskCanceledException) { return; }
@@ -904,7 +978,7 @@ public sealed class AppState : IDisposable
     /// addresses it rotated to.</summary>
     private void RePinBypassIfStale()
     {
-        if (_tunnelState != TunnelState.Connected || !UsesTunnel()) return;
+        if (_tunnelState != TunnelState.Connected || !_adapterReady) return;
         if (_state.SplitTunnel.ActiveEntries.Count == 0) return;
         var now = DateTimeOffset.UtcNow;
         if (now - _lastBypassRePin < BypassRePinEvery) return;
@@ -998,10 +1072,10 @@ public sealed class AppState : IDisposable
     /// good server here: median of recent handshake history (2/3 weight) and
     /// one fresh probe (1/3). Servers with no data rank below any measured
     /// one; probes run sequentially so timings don't skew each other.
-    /// Returns the chosen server (also selected), or null when no servers.</summary>
+    /// Returns the chosen server (also selected), or null when none responds.</summary>
     public async Task<ProxyServer?> PickBestAsync(CancellationToken ct)
     {
-        var servers = _state.AllServers.ToList();
+        var servers = _state.AllServers.Where(server => !server.IsHysteriaFamily).ToList();
         if (servers.Count == 0) return null;
 
         var history = HistorySnapshot();
@@ -1023,13 +1097,11 @@ public sealed class AppState : IDisposable
                 }
                 ranked.Add((server, score));
             }
-            else
-            {
-                ranked.Add((server, double.MaxValue));
-            }
         }
 
+        ct.ThrowIfCancellationRequested();
         var best = ranked
+            .Where(result => _state.ServerWithId(result.Server.Id) is not null)
             .OrderBy(r => r.Score)
             .ThenBy(r => r.Server.Name) // stable pick among equally-scored
             .FirstOrDefault();
@@ -1037,8 +1109,15 @@ public sealed class AppState : IDisposable
         _state.SelectedServerId = best.Server.Id;
         Save();
         RaiseServersChanged();
-        RaiseLog($"best server: {best.Server.Name} ({(best.Score == double.MaxValue ? "all unreachable" : $"{best.Score:0} ms")})");
+        RaiseLog($"Лучший сервер: {best.Server.Name} ({best.Score:0} мс)");
         return best.Server;
+    }
+
+    public async Task<ProxyServer?> ConnectBestAsync(CancellationToken ct)
+    {
+        var best = await PickBestAsync(ct);
+        if (best is not null && ActiveServer?.Id != best.Id) await ConnectAsync();
+        return best;
     }
 
     /// <summary>Persist a handshake-probe result for a server (used by both
@@ -1130,7 +1209,7 @@ public sealed class AppState : IDisposable
         }
         if (_state.AutoConnectOnLaunch)
         {
-            if (SelectedServer is null)
+            if (SelectedServer is null or { IsHysteriaFamily: true })
             {
                 var best = await PickBestAsync(CancellationToken.None);
                 if (best is null)
@@ -1145,9 +1224,6 @@ public sealed class AppState : IDisposable
 
     // ── Plumbing ──────────────────────────────────────────────────────────
 
-    private bool UsesTunnel() =>
-        _state.KillSwitchEnabled; // TUN mode ships with the kill switch; refine when helper exposes a mode flag
-
     private void SetTunnelState(TunnelState state)
     {
         _tunnelState = state;
@@ -1156,7 +1232,7 @@ public sealed class AppState : IDisposable
         if (state == TunnelState.Connected)
         {
             _connectedSince = DateTimeOffset.UtcNow;
-            _proxyReachable = true; // optimistic; the health loop confirms
+            _proxyReachable = false;
             _tunnelUnreachableSince = null;
         }
         else if (state is TunnelState.Disconnected or TunnelState.Reconnecting)
@@ -1197,6 +1273,7 @@ public sealed class AppState : IDisposable
     public void Dispose()
     {
         _connectGeneration++;
+        _recoveryCts?.Cancel();
         _loopsCts?.Cancel();
         _connectCts?.Cancel();
         FlushHistory(force: true); // last in-memory samples must not evaporate
@@ -1205,7 +1282,7 @@ public sealed class AppState : IDisposable
         // that is about to end.
         try { _usage.Stopped(); } catch { /* disk trouble is already logged */ }
         try { _xray.Stop(); } catch { }
-        SystemProxyManager.Clear();
-        _ = _helper.StopTunnelAsync(CancellationToken.None);
+        if (_helperStarted)
+            Task.Run(() => _helper.StopTunnelAsync(CancellationToken.None)).GetAwaiter().GetResult();
     }
 }

@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Text;
 using System.Text.Json.Nodes;
 using AnemiaCore;
@@ -12,9 +13,9 @@ namespace AnemiaCoreTests;
 ///
 /// The file form is compared by its <b>base64 bytes</b>: a bundle carries no
 /// floating point, so there is no "close enough" — either Windows writes the
-/// same file a Mac reads as its own, or it does not. The link row is compared as
-/// text, which only holds if the compact JSON *and* the DEFLATE agree with
-/// Apple's byte for byte; the read rows prove the refusals (a stamp in the wrong
+/// same file a Mac reads as its own, or it does not. The decompressed link
+/// payload is compared byte for byte because raw DEFLATE permits multiple
+/// encodings of identical data. The read rows prove the refusals (a stamp in the wrong
 /// shape, a bundle from a newer app) refuse the same way for the same reason.
 /// </summary>
 public class ParitySyncCases
@@ -36,9 +37,14 @@ public class ParitySyncCases
         // through this port's canonical form before being compared, and the order
         // rule cancels out instead of becoming a fake divergence.
         var goldenCanonical = string.Join(Parity.LineFeed.ToString(), golden
-            .Select(line => line.StartsWith("file" + Parity.Tab, StringComparison.Ordinal)
-                ? "file" + Parity.Tab + Parity.Canonical(line[(4 + 1)..])
-                : line)) + Parity.LineFeed;
+            .Select(line => line switch
+            {
+                _ when line.StartsWith("file" + Parity.Tab, StringComparison.Ordinal) =>
+                    "file" + Parity.Tab + Parity.Canonical(line[5..]),
+                _ when line.StartsWith("link" + Parity.Tab, StringComparison.Ordinal) =>
+                    "link" + Parity.Tab + LinkPayload(line[5..]),
+                _ => line,
+            })) + Parity.LineFeed;
         var produced = new StringBuilder();
         var counts = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var file in files)
@@ -56,6 +62,18 @@ public class ParitySyncCases
         // dispatches would leave its rows un-compared and the run still green.
         Assert.Equal(new Dictionary<string, int> { ["read"] = 22, ["file"] = 2, ["link"] = 3, ["merge"] = 8 }, counts);
         Assert.Equal(35, files.Count);
+    }
+
+    private static string LinkPayload(string link)
+    {
+        Assert.StartsWith(SyncBundle.LinkPrefix, link);
+        var token = link[SyncBundle.LinkPrefix.Length..].Replace('-', '+').Replace('_', '/');
+        token = token.PadRight((token.Length + 3) / 4 * 4, '=');
+        using var compressed = new MemoryStream(Convert.FromBase64String(token));
+        using var inflater = new DeflateStream(compressed, CompressionMode.Decompress);
+        using var json = new MemoryStream();
+        inflater.CopyTo(json);
+        return Convert.ToBase64String(json.ToArray());
     }
 
     /// <summary>The golden cut into «case → row → value», so a check reads the row
@@ -125,7 +143,7 @@ public class ParitySyncCases
             case "link":
             {
                 var bundle = CaseBundle(root);
-                into.Append("link").Append(Parity.Tab).Append(bundle.Link()).Append(Parity.LineFeed);
+                into.Append("link").Append(Parity.Tab).Append(LinkPayload(bundle.Link())).Append(Parity.LineFeed);
                 // The link *Swift* wrote, read by this port: a decoder that only
                 // understands its own deflater would pass the row above and lose
                 // every QR code an iPhone generated.

@@ -23,6 +23,7 @@ typedef void (*stop_fn)(void);
 typedef void (*limit_fn)(long long);
 typedef long long (*active_fn)(const char *, int);
 typedef char *(*fetch_fn)(const char *, int, int);
+typedef char *(*probe_fn)(const char *, const char *, int, int);
 
 static void *lib;
 static start_fn c_start_xray;
@@ -36,6 +37,7 @@ static str_fn c_set_log_directory;
 static free_fn c_free;
 static active_fn c_check_active;
 static fetch_fn c_fetch;
+static probe_fn c_probe;
 
 /**
  * Поднято ли всё: и библиотека, и каждый нужный символ. Отдельного флага тут
@@ -68,6 +70,7 @@ static int resolve_symbols(void) {
     // Тоже вне `resolved`: без `AnemiaFetch` живёт туннель и проверка
     // скорости, а утечки просто скажут «адрес выхода не измерен».
     c_fetch = (fetch_fn)dlsym(lib, "AnemiaFetch");
+    c_probe = (probe_fn)dlsym(lib, "AnemiaProbe");
     resolved = c_start_xray && c_start_awg && c_stop && c_network_changed && c_status &&
                c_version && c_set_memory_limit && c_set_log_directory && c_free;
     return resolved;
@@ -230,4 +233,16 @@ Java_app_anemia_vpn_Engine_nativeCheckActive(JNIEnv *env, jclass klass, jstring 
     long long ms = c_check_active(chars, (int)timeoutMs);
     unpin(env, target, chars);
     return (jlong)ms;
+}
+
+JNIEXPORT jstring JNICALL
+Java_app_anemia_vpn_Engine_nativeProbe(JNIEnv *env, jclass klass, jstring requests) {
+    (void)klass;
+    if (!resolve_symbols() || c_probe == NULL) return NULL;
+    jboolean copy = JNI_FALSE;
+    const char *chars = pin(env, requests, &copy);
+    if (chars == NULL) return NULL;
+    char *raw = c_probe(chars, "https://www.gstatic.com/generate_204", 6000, 2);
+    unpin(env, requests, chars);
+    return take(env, raw);
 }

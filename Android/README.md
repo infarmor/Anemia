@@ -1,5 +1,19 @@
 # Anemia для Android
 
+## Сборка ARM64 на Windows
+
+Нужны JDK 21, Go 1.26 или новее, Android SDK Platform 36, Build Tools 36.0.0
+и NDK 28.2.13676358. Укажите каталог SDK в переменной `ANDROID_HOME`.
+Из корня проекта:
+
+```powershell
+pwsh -File Android/Scripts/build-engine.ps1 -Abi arm64-v8a
+Android/gradlew.bat -p Android -PanemiaAbi=arm64-v8a :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
+```
+
+Путь к APK: `Android/app/build/outputs/apk/debug/app-debug.apk`.
+
+
 Папка — **порт, который собирается, подписывается и работает**; экранов уже
 больше одного, но до паритета с iOS по UI ещё есть куда идти. Что уже реально:
 

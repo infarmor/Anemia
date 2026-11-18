@@ -101,6 +101,17 @@ object Engine {
 
     private external fun nativeCheckActive(target: String, timeoutMs: Int): Long
     private external fun nativeFetch(url: String, timeoutMs: Int, maxBytes: Int): String?
+    private external fun nativeProbe(requests: String): String?
+
+    /** Outbound-only instances in the application process, independent of the active VPN. */
+    fun probe(requests: String): String? {
+        if (!available) return null
+        return try {
+            nativeProbe(requests)
+        } catch (_: UnsatisfiedLinkError) {
+            null
+        }
+    }
 
     /**
      * Один настоящий GET через живое соединение, тот же `AnemiaCheckActive`,

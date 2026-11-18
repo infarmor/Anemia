@@ -79,21 +79,31 @@ public partial class App : System.Windows.Application
         var r = Resources;
         r["BgGradient"] = new LinearGradientBrush(
             Color(dark ? 0x262624u : 0xFAF9F5u), Color(dark ? 0x1F1E1Du : 0xF0EEE6u), 90);
-        r["Card"] = Brush(dark, 0x0EFFFFFF, 0xE0FFFFFF);
-        r["CardHi"] = Brush(dark, 0x16FFFFFF, 0xF7FFFFFF);
+        r["Ground"] = Solid(dark ? 0x262624u : 0xFAF9F5u);
+        r["MapLand"] = Brush(dark, 0x33FAF9F5, 0x29141413);
+        r["Card"] = Solid(dark ? 0x30302Eu : 0xF0EEE6u);
+        r["CardHi"] = Solid(dark ? 0x3A3936u : 0xE8E6DCu);
+        r["PillSurface"] = new LinearGradientBrush(
+            Color(dark ? 0x3A3A38u : 0xFFFEFAu), Color(dark ? 0x323231u : 0xF5F2EBu), 90);
+        r["PillRim"] = new LinearGradientBrush(
+            Color(dark ? 0x595956u : 0xD8D4CAu), Color(dark ? 0x393938u : 0xE5E1D7u), 90);
+        r["ProtectionAccentTile"] = new LinearGradientBrush(
+            Color(dark ? 0xEC967Cu : 0xDE896Eu), Color(dark ? 0xD97757u : 0xBB6043u), 90);
         r["Stroke"] = Brush(dark, 0x12FFFFFF, 0x1A141413);
-        r["EdgeHi"] = Brush(dark, 0x12FFFFFF, 0xD9FFFFFF);
+        r["EdgeHi"] = Brush(dark, 0x1CFFFFFF, 0x1A141413);
         r["EdgeLo"] = Brush(dark, 0x03FFFFFF, 0x1AFFFFFF);
-        r["Text"] = Brush(dark, 0xEBFFFFFF, 0xFF141413);
-        r["TextDim"] = Brush(dark, 0x80FFFFFF, 0xFF6E6D68);
-        r["Accent"] = Solid(dark ? 0xDF8A67u : 0xD97757u);
-        r["AccentDim"] = Solid(dark ? 0xD97757u : 0xC96442u);
-        r["Good"] = Solid(dark ? 0xDF8A67u : 0xD97757u);
+        r["Text"] = Solid(dark ? 0xFAF9F5u : 0x141413u);
+        r["TextDim"] = Solid(dark ? 0xA6A39Bu : 0x6B6A64u);
+        r["Accent"] = Solid(dark ? 0xD97757u : 0xC6613Fu);
+        r["AccentDim"] = Solid(dark ? 0xB84F2Fu : 0xA8442Au);
+        r["Good"] = r["Accent"];
         r["Idle"] = Brush(dark, 0x1AFFFFFF, 0x0F141413);
-        r["Danger"] = Solid(dark ? 0xF0705Eu : 0xB8442Fu);
-        r["Warn"] = Solid(dark ? 0xE0A82Eu : 0xB7791Fu);
-        if (r["CardShadow"] is System.Windows.Media.Effects.DropShadowEffect sh)
-            sh.Opacity = dark ? 0.28 : 0.10;
+        r["SwitchTrack"] = Solid(dark ? 0x66645Eu : 0xD6D2C9u);
+        r["ToolbarSwitchTrack"] = Solid(dark ? 0x414140u : 0xE1DED5u);
+        r["ToolbarSwitchEdge"] = Solid(dark ? 0x5B5B59u : 0xB7B3AAu);
+        r["ToolbarSwitchKnob"] = Solid(dark ? 0xD0D0CDu : 0xFCFBF8u);
+        r["Danger"] = r["Accent"];
+        r["Warn"] = r["Accent"];
     }
 
     private static System.Windows.Media.Color Color(uint hex) =>
@@ -106,7 +116,12 @@ public partial class App : System.Windows.Application
 
     private static SolidColorBrush Brush(bool dark, uint darkHex, uint lightHex)
     {
-        var b = new SolidColorBrush(Color(dark ? darkHex : lightHex)); b.Freeze(); return b;
+        var hex = dark ? darkHex : lightHex;
+        var color = System.Windows.Media.Color.FromArgb(
+            (byte)(hex >> 24), (byte)(hex >> 16), (byte)(hex >> 8), (byte)hex);
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
     }
 
     private void BuildTray()
@@ -177,9 +192,8 @@ public partial class App : System.Windows.Application
     {
         if (Current.MainWindow is { } w)
         {
-            w.Show();
-            w.WindowState = WindowState.Normal;
-            w.Activate();
+            if (!w.IsVisible) w.Show();
+            AnemiaApp.MainWindow.RestoreAndActivate(w);
         }
     }
 

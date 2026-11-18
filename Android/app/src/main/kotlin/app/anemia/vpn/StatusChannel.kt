@@ -25,6 +25,9 @@ object StatusChannel {
      * видно, а от обоих зависит, куда девать замеры задержки. */
     const val EXTRA_TUNNEL_UP = "app.anemia.extra.UP"
     const val EXTRA_SESSION_ID = "app.anemia.extra.SESSION"
+    const val EXTRA_UP_BYTES = "app.anemia.extra.UP_BYTES"
+    const val EXTRA_DOWN_BYTES = "app.anemia.extra.DOWN_BYTES"
+    const val EXTRA_LOCKDOWN = "app.anemia.extra.LOCKDOWN"
     /** false — обычный тик, true — сессия умерла: лестница восстановления
      * заводится только на второе. */
     const val EXTRA_FAILED = "app.anemia.extra.FAILED"
@@ -90,6 +93,9 @@ object StatusChannel {
         sessionId: String?,
         healthFailures: Int? = null,
         sessionStart: Long? = null,
+        upBytes: Long? = null,
+        downBytes: Long? = null,
+        lockdown: Boolean? = null,
     ) {
         context.getSystemService(NotificationManager::class.java)
             .notify(NOTIFICATION_ID, build(context, session, text))
@@ -101,6 +107,9 @@ object StatusChannel {
             putExtra(EXTRA_FAILED, false)
             healthFailures?.let { putExtra(EXTRA_HEALTH_FAILURES, it) }
             sessionStart?.let { putExtra(EXTRA_SESSION_START, it) }
+            upBytes?.let { putExtra(EXTRA_UP_BYTES, it) }
+            downBytes?.let { putExtra(EXTRA_DOWN_BYTES, it) }
+            lockdown?.let { putExtra(EXTRA_LOCKDOWN, it) }
         })
     }
 

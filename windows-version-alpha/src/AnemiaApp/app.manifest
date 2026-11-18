@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<assembly manifestType="custom" xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity name="Anemia.Windows" type="win32" version="1.0.0.0" />
   <!--
     The app itself runs unprivileged (like the macOS menu-bar app): the
     privileged tunnel work happens in AnemiaHelper, launched elevated on

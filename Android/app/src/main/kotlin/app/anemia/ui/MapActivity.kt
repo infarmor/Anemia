@@ -24,10 +24,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Column
 import kotlin.math.PI
 import kotlin.math.cos
@@ -48,9 +58,7 @@ import kotlinx.coroutines.withContext
  * нажатию.
  *
  * Чего здесь нет и почему сказано вслух:
- *  - «вы здесь» и дуга маршрута — на iOS домашняя страна приходит из проверки
- *    утечек (адрес провайдера), а она сейчас дописывается в другом проходе;
- *    без неё рисовать не от чего;
+ *  - отметка «Вы» и дуга строятся по адресу провайдера из проверки утечек;
  *  - бегущие по маршруту пакеты и 30 fps-анимация — на iOS это отдельный
  *    `TimelineView`, и ровно тот же экран без него выглядит как режим
  *    «уменьшить движение»;
@@ -65,13 +73,118 @@ class MapActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
+            AnemiaTheme {
                 Surface(Modifier.fillMaxSize()) {
                     MapScreen(onBack = { finish() })
                 }
             }
         }
     }
+}
+
+@Composable
+internal fun ConnectionMap(
+    country: String?, active: Boolean, modifier: Modifier = Modifier, label: String? = null,
+    countries: List<String> = emptyList(),
+    homeCountry: String? = null,
+) {
+    val map = rememberMap()
+    val dark = androidx.compose.foundation.isSystemInDarkTheme()
+    val land = MaterialTheme.colorScheme.onSurface.copy(alpha = if (dark) 0.20f else 0.16f)
+    val accent = MaterialTheme.colorScheme.primary
+    val ground = MaterialTheme.colorScheme.surface
+    val ink = MaterialTheme.colorScheme.onSurface
+    val paint = remember { android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG) }
+    Canvas(modifier) {
+        val geo = map ?: return@Canvas
+        val rect = fit(size.width, size.height, geo.aspect)
+        val step = rect.width / 180f
+        fun plot(center: DoubleArray) = Offset(rect.left + geo.projectX(center[1]).toFloat() * rect.width,
+            rect.top + geo.projectY(center[0]).toFloat() * rect.height)
+        val parks = countries.mapNotNull { geo.centers[it.uppercase()] }.map(::plot)
+        val range = step * 3.5f
+        for (cell in geo.landCells) {
+            val fade = (1f - (cell.y.toFloat() - 0.48f).coerceAtLeast(0f) * 1.8f).coerceAtLeast(0.05f)
+            val point = Offset(
+                rect.left + cell.x.toFloat() * rect.width,
+                rect.top + cell.y.toFloat() * rect.height,
+            )
+            val nearest = parks.minOfOrNull { (it - point).getDistanceSquared() } ?: Float.MAX_VALUE
+            val warmth = (1f - kotlin.math.sqrt(nearest) / range).coerceAtLeast(0f)
+            val color = if (warmth > 0) accent.copy(alpha = (0.32f + 0.44f * warmth) * fade)
+                else land.copy(alpha = land.alpha * fade)
+            drawCircle(color, step * 0.36f, point)
+        }
+        for (park in parks) drawCircle(accent.copy(alpha = 0.60f), step * 1.48f, park, style = Stroke(0.8.dp.toPx()))
+        val home = geo.centers[homeCountry?.uppercase()]?.let(::plot)
+        val exit = geo.centers[country?.uppercase()]?.let(::plot)
+        drawHomeRoute(home, exit, active, ground, ink, accent, paint)
+        geo.centers[country?.uppercase()]?.let { center ->
+            val pin = plot(center)
+            if (active) drawCircle(accent.copy(alpha = 0.22f), step * 3.2f, pin)
+            drawCircle(accent, step * 1.65f, pin)
+            if (!label.isNullOrBlank()) {
+                paint.color = (if (active) accent else ink).toArgb()
+                paint.textSize = 11.sp.toPx()
+                val caption = android.text.TextUtils.ellipsize(label, paint, 112.dp.toPx(),
+                    android.text.TextUtils.TruncateAt.END).toString()
+                val gap = 6.dp.toPx()
+                val width = paint.measureText(caption) + gap * 2
+                val height = paint.descent() - paint.ascent() + gap
+                val start = if (pin.x > size.width / 2) pin.x - width - gap else pin.x + gap
+                val left = start.coerceIn(0f, (size.width - width).coerceAtLeast(0f))
+                val top = (pin.y - height / 2).coerceAtLeast(0f)
+                val corner = CornerRadius(height / 2)
+                drawRoundRect(ground, Offset(left, top), Size(width, height), corner)
+                drawRoundRect(accent.copy(alpha = 0.65f), Offset(left, top), Size(width, height), corner,
+                    style = Stroke(0.8.dp.toPx()))
+                drawIntoCanvas { canvas ->
+                    canvas.nativeCanvas.drawText(caption, left + gap, top + gap / 2 - paint.ascent(), paint)
+                }
+            }
+        }
+    }
+}
+
+private fun DrawScope.drawHomeRoute(
+    home: Offset?, exit: Offset?, active: Boolean, ground: Color, ink: Color, accent: Color,
+    paint: android.text.TextPaint,
+) {
+    if (home == null) return
+    if (active && exit != null && exit != home) {
+        val route = Path().apply {
+            moveTo(home.x, home.y)
+            quadraticTo((home.x + exit.x) / 2,
+                min(home.y, exit.y) - min(32.dp.toPx(), kotlin.math.abs(home.x - exit.x) * 0.25f),
+                exit.x, exit.y)
+        }
+        drawPath(route, accent, style = Stroke(1.15.dp.toPx()))
+    }
+    drawCircle(ground, 4.dp.toPx(), home)
+    drawCircle(ink, 2.dp.toPx(), home)
+    paint.color = ink.toArgb()
+    paint.textSize = 10.sp.toPx()
+    val label = "Вы"
+    val gap = 7.dp.toPx()
+    val left = if (home.x >= paint.measureText(label) + gap) home.x - paint.measureText(label) - gap else home.x + gap
+    drawIntoCanvas { canvas ->
+        canvas.nativeCanvas.drawText(label, left, home.y + paint.textSize / 3, paint)
+    }
+}
+
+@Composable
+private fun rememberMap(): MapGeo? {
+    val assets = LocalContext.current.assets
+    var map by remember(assets) { mutableStateOf<MapGeo?>(null) }
+    LaunchedEffect(assets) {
+        map = withContext(Dispatchers.Default) {
+            runCatching {
+                assets.open("map.json").bufferedReader().use { MapGeo.parse(it.readText()) }
+                    .also { it.landCells }
+            }.getOrNull()
+        }
+    }
+    return map
 }
 
 /** Страна, где лежит хотя бы один сервер, с их числом и лучшим замером. */
@@ -82,17 +195,9 @@ private fun MapScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val store = remember { sharedStore(context) }
     val probes = remember { sharedProbes(context) }
-    var geo by remember { mutableStateOf<MapGeo?>(null) }
+    val geo = rememberMap()
     var notice by remember { mutableStateOf<String?>(null) }
     var revision by remember { mutableStateOf(0) }
-
-    LaunchedEffect(Unit) {
-        geo = withContext(Dispatchers.IO) {
-            runCatching {
-                context.assets.open("map.json").bufferedReader().use { MapGeo.parse(it.readText()) }
-            }.getOrNull()
-        }
-    }
 
     val servers = remember(revision) { store.servers }
     val selected = remember(revision) { store.selected() }
@@ -128,6 +233,10 @@ private fun MapScreen(onBack: () -> Unit) {
         servers.firstOrNull { it.id == id }
     } ?: selected
     val exitCode = exit?.let { Country.code(it.name)?.uppercase() }
+    val homeCode = sharedLeaks(context).report?.direct?.countryCode?.uppercase()
+    val homePaint = remember { android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG) }
+    val ground = MaterialTheme.colorScheme.surface
+    val ink = MaterialTheme.colorScheme.onSurface
     // Жест читает свежие данные: `pointerInput` живёт в корутине, созданной при
     // первой композиции с готовой картой, и без `rememberUpdatedState` второй
     // тап видел бы список серверов и выбор до первого тапа — в том числе
@@ -204,13 +313,15 @@ private fun MapScreen(onBack: () -> Unit) {
                     else warm.copy(alpha = 0.30f + 0.15f * min(3, (warmth * 3).roundToInt()))
                     drawCircle(color, radius, Offset(x, y))
                 }
-                exitCode?.let { code ->
-                    map.centers[code]?.let { center ->
-                        val x = rect.left + map.projectX(center[1]).toFloat() * rect.width
-                        val y = rect.top + map.projectY(center[0]).toFloat() * rect.height
-                        drawCircle(warm, radius = step * 1.6f, center = Offset(x, y))
-                        drawCircle(warm.copy(alpha = 0.4f), radius = step * 3f, center = Offset(x, y))
-                    }
+                fun point(code: String?) = map.centers[code]?.let { center ->
+                    Offset(rect.left + map.projectX(center[1]).toFloat() * rect.width,
+                        rect.top + map.projectY(center[0]).toFloat() * rect.height)
+                }
+                val pin = point(exitCode)
+                drawHomeRoute(point(homeCode), pin, live, ground, ink, warm, homePaint)
+                if (pin != null) {
+                    drawCircle(warm, radius = step * 1.6f, center = pin)
+                    drawCircle(warm.copy(alpha = 0.4f), radius = step * 3f, center = pin)
                 }
             }
             Column(Modifier.align(Alignment.TopCenter).padding(top = 8.dp),

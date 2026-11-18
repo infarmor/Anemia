@@ -7,38 +7,60 @@
 param(
     [ValidateSet("win-x64", "win-arm64")]
     [string]$Arch = "win-x64",
-    [switch]$SelfContained
+    [switch]$SelfContained,
+    [string]$Dotnet = "dotnet",
+    [string]$Go = "go"
 )
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 $Out  = Join-Path $Root "publish"
-if (Test-Path $Out) { Remove-Item $Out -Recurse -Force }
-New-Item -ItemType Directory -Force -Path $Out | Out-Null
+$Resources = Join-Path $Root "Resources"
+$Native = @("xray.exe", "tun2socks.exe", "wintun.dll")
 
-# NOTE: tun2socks upstream ships amd64 builds only; on win-arm64 the app runs
-# natively but TUN mode needs x64 emulation or an arm64 tun2socks build.
-if ($Arch -eq "win-arm64") {
-    Write-Warning "win-arm64: tun2socks/wintun artifacts in Resources\ must be arm64 builds"
+foreach ($Binary in $Native) {
+    $Path = Join-Path $Resources $Binary
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw "Missing $Binary. Run Scripts\fetch-cores.ps1 for the win-x64 dependencies."
+    }
+    $Reader = [IO.BinaryReader]::new([IO.File]::OpenRead($Path))
+    try {
+        $Reader.BaseStream.Position = 0x3c
+        $Offset = $Reader.ReadInt32()
+        $Reader.BaseStream.Position = $Offset
+        if ($Reader.ReadUInt32() -ne 0x4550) { throw "Invalid Windows binary: $Binary" }
+        $Expected = if ($Arch -eq "win-arm64") { 0xaa64 } else { 0x8664 }
+        if ($Reader.ReadUInt16() -ne $Expected) { throw "$Binary is not a $Arch binary" }
+    } finally { $Reader.Dispose() }
 }
 
+New-Item -ItemType Directory -Force -Path $Out | Out-Null
 $sc = if ($SelfContained) { "--self-contained", "true" } else { "--self-contained", "false" }
 
-dotnet publish (Join-Path $Root "src\AnemiaApp\AnemiaApp.csproj") `
+& $Dotnet publish (Join-Path $Root "src\AnemiaApp\AnemiaApp.csproj") `
     -c Release -r $Arch @sc -nologo -o $Out
 if ($LASTEXITCODE -ne 0) { throw "AnemiaApp publish failed" }
 
-dotnet publish (Join-Path $Root "src\AnemiaHelper\AnemiaHelper.csproj") `
+& $Dotnet publish (Join-Path $Root "src\AnemiaHelper\AnemiaHelper.csproj") `
     -c Release -r $Arch @sc -nologo -o $Out
 if ($LASTEXITCODE -ne 0) { throw "AnemiaHelper publish failed" }
 
-# Native cores (from fetch-cores.ps1) ride along next to the binaries.
-$resources = Join-Path $Root "Resources"
-if (Test-Path $resources) {
-    Copy-Item (Join-Path $resources "*") $Out -Force
-    Write-Host "[ok] native artifacts copied"
-} else {
-    Write-Warning "Resources\ not found — run fetch-cores.ps1 first; TUN mode and the engine will be missing"
+Push-Location -LiteralPath (Join-Path $Root "engine")
+$PreviousOS = $env:GOOS
+$PreviousArch = $env:GOARCH
+$PreviousCgo = $env:CGO_ENABLED
+try {
+    $env:GOOS = "windows"
+    $env:GOARCH = if ($Arch -eq "win-arm64") { "arm64" } else { "amd64" }
+    $env:CGO_ENABLED = "0"
+    & $Go build -mod=readonly -trimpath -buildvcs=false -ldflags "-s -w" -o (Join-Path $Out "anemia-engine.exe") .
+    if ($LASTEXITCODE -ne 0) { throw "AmneziaWG and firewall engine build failed" }
+} finally {
+    $env:GOOS = $PreviousOS
+    $env:GOARCH = $PreviousArch
+    $env:CGO_ENABLED = $PreviousCgo
+    Pop-Location
 }
+foreach ($Binary in $Native) { Copy-Item -LiteralPath (Join-Path $Resources $Binary) -Destination $Out -Force }
 
 Write-Host "Done -> $Out"

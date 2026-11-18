@@ -34,10 +34,10 @@ $Out  = Join-Path $Root "Resources"
 $Pins = @(
     @{
         Name  = "xray.exe"
-        Url   = "https://github.com/XTLS/Xray-core/releases/download/v25.9.11/Xray-windows-64.zip"
+        Url   = "https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-windows-64.zip"
         Entry = "xray.exe"
-        Sha256 = "d8db96eb39d7bc8cae484b2e59b651ff3c04f21e26d66e310f6a44e256ed1cc4"
-        EntrySha256 = "c478ce1f56ff0b09ad804868e16bf4bbc4020a7f1f09c2ae9df20f5068c8e23a"
+        Sha256 = "d004c39288ce9ada487c6f398c7c545f7d749e44bdfdd59dbc9f865afba4e1ad"
+        EntrySha256 = "15c2d007954ac53ba69b80ec91242786b3c0b71d52649165b4ca1d5cc96ef8f1"
         Zip = $true
     },
     @{

@@ -7,10 +7,11 @@ import android.net.VpnService
 import androidx.core.content.ContextCompat
 import java.net.NetworkInterface
 import java.net.SocketException
-import app.anemia.core.ProxyServer
+import app.anemia.core.StatePersistence
 import app.anemia.ui.RecoveryEpisode
 import app.anemia.ui.sharedStore
 import app.anemia.vpn.AnemiaVpnService
+import java.io.File
 
 /**
  * Подключение без экрана: плитке Quick Settings нужна ровно та же пара шагов,
@@ -87,21 +88,29 @@ object SessionStarter {
      */
     fun start(context: Context): String? {
         val app = context.applicationContext
-        val store = sharedStore(app)
-        val server: ProxyServer = store.selected() ?: return "Нет выбранного сервера"
+        val setup = selectedSetup(app, sharedStore(app)) ?: return "Нет выбранного сервера"
         if (consent(app) != null) return "Разрешите Anemia создавать VPN-подключения"
-        val setup = TunnelSetup(
-            server = server,
-            masking = store.maskingFor(server),
-            splitTunnel = store.state.splitTunnel,
-            adBlock = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getBoolean(PREF_ADBLOCK, false),
-        )
         ContextCompat.startForegroundService(
             app,
             Intent(app, AnemiaVpnService::class.java).putExtra(AnemiaVpnService.EXTRA_SETUP, setup.toJson()),
         )
         return null
+    }
+
+    /** Android can start an always-on VPN in a fresh service process without activity extras. */
+    fun restoreSetup(context: Context): TunnelSetup? = selectedSetup(
+        context, ServerStore(StatePersistence(File(context.filesDir, "state.json"))),
+    )
+
+    private fun selectedSetup(context: Context, store: ServerStore): TunnelSetup? {
+        val server = store.selected() ?: return null
+        return TunnelSetup(
+            server = server,
+            masking = store.maskingFor(server),
+            splitTunnel = store.state.splitTunnel,
+            adBlock = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(PREF_ADBLOCK, false),
+        )
     }
 
     /** Команда «отключись» самому сервису: `stopService()` туннель не рвёт. */

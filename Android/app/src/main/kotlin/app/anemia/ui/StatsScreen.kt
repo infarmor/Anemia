@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -23,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +66,7 @@ fun StatsScreen(
     // догонит настоящие цифры.
     var snapshot by remember { mutableStateOf(TrafficStore.snapshot(TrafficLedger())) }
     var confirming by remember { mutableStateOf(false) }
+    var speedPage by rememberSaveable { mutableStateOf(false) }
     // Номер перерисовки для замера: его состояние живёт в рабочем потоке, и
     // Compose о нём сам не узнаёт.
     var revision by remember { mutableIntStateOf(0) }
@@ -90,6 +93,19 @@ fun StatsScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) { Text("← Назад") }
             Text("Статистика", style = MaterialTheme.typography.headlineSmall)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = !speedPage, onClick = { speedPage = false }, label = { Text("Трафик") })
+            FilterChip(selected = speedPage, onClick = { speedPage = true }, label = { Text("Скорость") })
+        }
+        if (speedPage) {
+            SpeedSection(
+                speed = speed,
+                revision = revision,
+                onStart = { speed.start { view.post { revision++ } } },
+                onStop = { speed.stop(); view.post { revision++ } },
+            )
+            return@Column
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Summary("Сегодня", snapshot.today, Modifier.weight(1f))
@@ -131,14 +147,6 @@ fun StatsScreen(
                 }
             }
         }
-        SpeedSection(
-            speed = speed,
-            revision = revision,
-            onStart = { speed.start { view.post { revision++ } } },
-            // Кнопка меняет состояние вне Compose: без этого ряда экран остался
-            // бы с «Остановить» и с курсом предыдущего замера.
-            onStop = { speed.stop(); view.post { revision++ } },
-        )
         OutlinedButton(onClick = { confirming = true }) { Text("Сбросить статистику") }
     }
 

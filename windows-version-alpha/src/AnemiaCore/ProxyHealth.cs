@@ -15,8 +15,9 @@ public static class ProxyHealth
         var handler = new SocketsHttpHandler
         {
             ConnectTimeout = timeout,
-            UseProxy = false,
+            UseProxy = true,
             Proxy = new WebProxy($"socks5://127.0.0.1:{socksPort}"),
+            AllowAutoRedirect = false,
         };
         return handler;
     }
@@ -35,9 +36,9 @@ public static class ProxyHealth
         {
             var start = Stopwatch.GetTimestamp();
             using var resp = await client.GetAsync(
-                "http://cp.cloudflare.com/generate_204",
+                "https://cp.cloudflare.com/generate_204",
                 HttpCompletionOption.ResponseHeadersRead, cts.Token);
-            if ((int)resp.StatusCode is < 200 or > 399) return null;
+            if (resp.StatusCode != HttpStatusCode.NoContent) return null;
             return (int)Stopwatch.GetElapsedTime(start).TotalMilliseconds;
         }
         catch (Exception)

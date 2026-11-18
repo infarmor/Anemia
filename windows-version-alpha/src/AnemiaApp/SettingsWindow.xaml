@@ -1,62 +1,77 @@
-<Window x:Class="AnemiaApp.SettingsWindow"
+<local:AnemiaToolWindow x:Class="AnemiaApp.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Settings" Width="420" Height="Auto" SizeToContent="Height"
-        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
-        Background="{DynamicResource BgGradient}">
-    <ScrollViewer Padding="18,14">
-        <StackPanel>
-            <Border Style="{DynamicResource CardTile}" Padding="6">
-                <StackPanel>
-                    <Grid Margin="10,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="System proxy" FontSize="13" FontWeight="Medium"
-                                       Foreground="{DynamicResource Text}" />
-                            <TextBlock Text="Point Windows at the local SOCKS inbound" FontSize="11"
-                                       Margin="0,2,0,0" Foreground="{DynamicResource TextDim}" />
-                        </StackPanel>
-                        <CheckBox Grid.Column="1" x:Name="SystemProxyBox" Click="OnSystemProxyToggle"
-                                  VerticalAlignment="Center" />
-                    </Grid>
-                    <Rectangle Style="{DynamicResource Hairline}" />
-                    <Grid Margin="10,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Connect at launch" FontSize="13" FontWeight="Medium"
-                                       Foreground="{DynamicResource Text}" />
-                            <TextBlock Text="Dial the selected (or fastest) server on startup" FontSize="11"
-                                       Margin="0,2,0,0" Foreground="{DynamicResource TextDim}" />
-                        </StackPanel>
-                        <CheckBox Grid.Column="1" x:Name="AutoConnectBox" Click="OnAutoConnectToggle"
-                                  VerticalAlignment="Center" />
-                    </Grid>
-                    <Rectangle Style="{DynamicResource Hairline}" />
-                    <Grid Margin="10,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Subscription auto-refresh" FontSize="13" FontWeight="Medium"
-                                       Foreground="{DynamicResource Text}" />
-                            <TextBlock Text="Re-fetch subscriptions every 6 hours" FontSize="11"
-                                       Margin="0,2,0,0" Foreground="{DynamicResource TextDim}" />
-                        </StackPanel>
-                        <CheckBox Grid.Column="1" x:Name="SubRefreshBox" Click="OnSubRefreshToggle"
-                                  VerticalAlignment="Center" />
-                    </Grid>
-                </StackPanel>
-            </Border>
-            <TextBlock FontSize="11" Margin="4,10,4,0" Foreground="{DynamicResource TextDim}"
-                       TextWrapping="Wrap"
-                       Text="Anemia · Xray engine · Reality/XTLS-Vision, ClientHello fragmentation, junk noise and stealth-SNI mimicry against DPI. The kill switch is fail-closed: traffic is blocked, never leaked, until you reconnect." />
-        </StackPanel>
-    </ScrollViewer>
-</Window>
+        xmlns:local="clr-namespace:AnemiaApp"
+        Title="Настройки" Width="600" Height="510" MinWidth="520" MinHeight="390"
+        WindowStartupLocation="CenterOwner" UseLayoutRounding="True"
+        Background="{DynamicResource BgGradient}" Foreground="{DynamicResource Text}">
+    <local:AnemiaToolWindow.Resources>
+        <Style x:Key="SettingsTab" TargetType="TabItem">
+            <Setter Property="Foreground" Value="{DynamicResource TextDim}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="tab" Background="{TemplateBinding Background}" CornerRadius="9"
+                                Margin="2,0" Padding="{TemplateBinding Padding}" BorderThickness="1">
+                            <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="tab" Property="Background" Value="{DynamicResource Idle}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="tab" Property="Background" Value="{DynamicResource CardHi}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Text}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="tab" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SettingsPane" TargetType="ScrollViewer">
+            <Setter Property="VerticalScrollBarVisibility" Value="Hidden" />
+            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+        </Style>
+    </local:AnemiaToolWindow.Resources>
+
+    <DockPanel Margin="20,16,20,18">
+        <TextBlock DockPanel.Dock="Top" Text="Настройки" Style="{DynamicResource Display}"
+                   FontSize="25" FontWeight="SemiBold" Margin="0,0,0,12" />
+        <TabControl x:Name="Tabs" ItemContainerStyle="{StaticResource SettingsTab}">
+            <TabControl.Template>
+                <ControlTemplate TargetType="TabControl">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Background="{DynamicResource Card}" CornerRadius="12"
+                                Padding="3" Margin="0,0,0,14">
+                            <TabPanel IsItemsHost="True" HorizontalAlignment="Center" />
+                        </Border>
+                        <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent" />
+                    </DockPanel>
+                </ControlTemplate>
+            </TabControl.Template>
+            <TabItem Header="Общие">
+                <ScrollViewer Style="{StaticResource SettingsPane}"><StackPanel x:Name="GeneralPane" /></ScrollViewer>
+            </TabItem>
+            <TabItem Header="Защита">
+                <ScrollViewer Style="{StaticResource SettingsPane}"><StackPanel x:Name="ProtectionPane" /></ScrollViewer>
+            </TabItem>
+            <TabItem Header="Сеть">
+                <ScrollViewer Style="{StaticResource SettingsPane}"><StackPanel x:Name="NetworkPane" /></ScrollViewer>
+            </TabItem>
+            <TabItem x:Name="DiagnosticsTab" Header="Диагностика">
+                <ScrollViewer Style="{StaticResource SettingsPane}"><StackPanel x:Name="DiagnosticsPane" /></ScrollViewer>
+            </TabItem>
+            <TabItem Header="О программе">
+                <ScrollViewer Style="{StaticResource SettingsPane}"><StackPanel x:Name="AboutPane" /></ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</local:AnemiaToolWindow>

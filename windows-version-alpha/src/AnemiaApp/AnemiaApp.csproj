@@ -25,10 +25,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AnemiaCore\AnemiaCore.csproj" />
+    <PackageReference Include="QRCoder" Version="1.8.1" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="Assets\anemia.ico" Condition="Exists('Assets\anemia.ico')" />
+    <Resource Include="../../../Android/app/src/main/assets/map.json" Link="Assets/map.json" />
+    <Resource Include="../../../Sources/LoaderApp/Resources/AnemiaLogo.png" Link="Assets/anemia-mark.png" />
   </ItemGroup>
 
 </Project>

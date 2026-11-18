@@ -18,12 +18,11 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 source "$HERE/dotnet-env.sh"
 
 echo "→ сборка решения"
-"$DOTNET_ROOT/dotnet" build "$ROOT/windows-version-alpha/Anemia.sln" -v q --nologo 2>&1 |
-    grep -E "error|warning CS|Build succ" || true
+"$DOTNET_ROOT/dotnet" build "$ROOT/windows-version-alpha/Anemia.sln" -v q --nologo
 
 echo "→ xunit"
 "$DOTNET_ROOT/dotnet" test "$ROOT/windows-version-alpha/tests/AnemiaCoreTests/AnemiaCoreTests.csproj" \
-    --nologo -v q 2>&1 | grep -E "error|Passed!|Failed!"
+    --nologo -v q
 
 echo "→ xray принимает конфиги C#"
 bash "$HERE/verify-configs.sh" 2>&1 | tail -2

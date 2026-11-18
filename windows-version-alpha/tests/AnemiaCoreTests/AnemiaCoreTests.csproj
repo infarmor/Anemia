@@ -18,4 +18,9 @@
     <ProjectReference Include="..\..\src\AnemiaCore\AnemiaCore.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="../../../Android/app/src/main/assets/map.json" LogicalName="Anemia.Map.Geometry" />
+    <EmbeddedResource Include="../../../Android/core/src/test/resources/map/dots.golden.txt" LogicalName="Anemia.Map.SwiftDots" />
+  </ItemGroup>
+
 </Project>

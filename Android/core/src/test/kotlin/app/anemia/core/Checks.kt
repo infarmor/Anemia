@@ -2424,40 +2424,44 @@ private fun stateFileLayer() {
             StatePersistence(store).load().state.servers.map { it.name }, listOf("Финляндия"),
             "последняя запись полная: ",
         )
-        // Настоящая гонка: имя временного файла должно быть уникальным, а не
-        // выводиться из часов. Иначе читатель ловит полфайла — на старом
-        // варианте (`<имя>.tmp-<мс>`) это 92 пустых и 8 обрезанных чтения.
-        val torn = java.util.concurrent.atomic.AtomicInteger()
-        val racing = java.util.concurrent.atomic.AtomicBoolean(true)
-        val readers = List(2) {
-            Thread {
-                while (racing.get()) {
-                    val text = runCatching { store.readText() }.getOrDefault("")
-                    if (!text.startsWith("{") || !text.endsWith("}")) torn.incrementAndGet()
-                }
-            }.apply { start() }
-        }
-        val writers = List(2) {
-            Thread {
-                repeat(200) { frozen.save(PersistedState(servers = listOf(if (it % 2 == 0) server else second))) }
-            }.apply { start() }
-        }
-        writers.forEach { it.join() }
-        racing.set(false)
-        readers.forEach { it.join() }
-        expect(torn.get(), 0, "ни одной оборванной записи в гонке: ")
-        // Единственный .tmp в каталоге — тот самый чужой осколок, который мы
-        // намеренно оставили в покое: наши записи не после себя ничего не несут.
-        expect(
-            (directory.list { _, name -> name.endsWith(".tmp") } ?: emptyArray()).sorted().toList(),
-            listOf("state.json.999.tmp"), "своих осколков не осталось: ",
-        )
+        // The Android/Linux behavior depends on POSIX rename and file permissions.
+        // Windows cannot replace an open file through java.nio ATOMIC_MOVE.
+        if ("posix" in java.nio.file.FileSystems.getDefault().supportedFileAttributeViews()) {
+            // Настоящая гонка: имя временного файла должно быть уникальным, а не
+            // выводиться из часов. Иначе читатель ловит полфайла — на старом
+            // варианте (`<имя>.tmp-<мс>`) это 92 пустых и 8 обрезанных чтения.
+            val torn = java.util.concurrent.atomic.AtomicInteger()
+            val racing = java.util.concurrent.atomic.AtomicBoolean(true)
+            val readers = List(2) {
+                Thread {
+                    while (racing.get()) {
+                        val text = runCatching { store.readText() }.getOrDefault("")
+                        if (!text.startsWith("{") || !text.endsWith("}")) torn.incrementAndGet()
+                    }
+                }.apply { start() }
+            }
+            val writers = List(2) {
+                Thread {
+                    repeat(200) { frozen.save(PersistedState(servers = listOf(if (it % 2 == 0) server else second))) }
+                }.apply { start() }
+            }
+            writers.forEach { it.join() }
+            racing.set(false)
+            readers.forEach { it.join() }
+            expect(torn.get(), 0, "ни одной оборванной записи в гонке: ")
+            // Единственный .tmp в каталоге — тот самый чужой осколок, который мы
+            // намеренно оставили в покое: наши записи не после себя ничего не несут.
+            expect(
+                (directory.list { _, name -> name.endsWith(".tmp") } ?: emptyArray()).sorted().toList(),
+                listOf("state.json.999.tmp"), "своих осколков не осталось: ",
+            )
 
-        // Права 0600, а не 0644 по умолчанию: в файле приватные ключи.
-        expect(
-            java.nio.file.Files.getPosixFilePermissions(store.toPath()).map { it.name }.sorted(),
-            listOf("OWNER_READ", "OWNER_WRITE"), "права файла состояния: ",
-        )
+            // Права 0600, а не 0644 по умолчанию: в файле приватные ключи.
+            expect(
+                java.nio.file.Files.getPosixFilePermissions(store.toPath()).map { it.name }.sorted(),
+                listOf("OWNER_READ", "OWNER_WRITE"), "права файла состояния: ",
+            )
+        }
 
         // Метка — миллисекунды: два повреждения в одну секунду затёрли бы друг
         // друга, а с фиксированными часами это не проверить.
@@ -2498,11 +2502,16 @@ private fun stateFileLayer() {
         backups().forEach { java.io.File(directory, it).delete() }
         store.writeText(broken)
         store.setReadable(false)
-        val denied = persistence.load()
-        store.setReadable(true)
-        expect(denied.state, PersistedState(), "нечитаемый файл читается как пустой: ")
-        expect(denied.decoded, true, "и не считается порчей: ")
-        expect(backups(), emptyList(), "и не порождает страховку: ")
+        try {
+            if (!store.canRead()) {
+                val denied = persistence.load()
+                expect(denied.state, PersistedState(), "нечитаемый файл читается как пустой: ")
+                expect(denied.decoded, true, "и не считается порчей: ")
+                expect(backups(), emptyList(), "и не порождает страховку: ")
+            }
+        } finally {
+            store.setReadable(true)
+        }
 
         // Каталог вместо файла: читается как пустой, пишется с ошибкой и не
         // сносит сам себя.

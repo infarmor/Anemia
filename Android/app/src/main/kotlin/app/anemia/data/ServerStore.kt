@@ -450,6 +450,10 @@ class ServerStore(
         mutate { it.copy(maskingProfile = profile) }
     }
 
+    fun setSubscriptionAutoRefresh(enabled: Boolean) {
+        mutate { it.copy(subscriptionAutoRefresh = enabled) }
+    }
+
     /**
      * С каким маскированием подключать сервер: выученный для него профиль
      * (`LearnedMasking`, тот же в состоянии, что на macOS/iOS и приезжающий в
@@ -479,6 +483,10 @@ class ServerStore(
                 entries = parsed.entries.map { entry -> entry.value } + parsed.rejected.map { it.line },
             ),
         )
+    }
+
+    fun setBypassEnabled(enabled: Boolean) {
+        mutate { it.copy(splitTunnel = it.splitTunnel.copy(enabled = enabled)) }
     }
 
     private fun adding(text: String, parse: (String) -> ProxyServer): Import = try {

@@ -17,27 +17,18 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -50,22 +41,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import app.anemia.core.Country
-import app.anemia.core.Formatting
 import app.anemia.core.MaskingProfile
 import app.anemia.core.ProxyServer
 import app.anemia.core.AutoSwitchPolicy
-import app.anemia.core.SplitTunnelParser
 import app.anemia.core.StatePersistence
 import app.anemia.data.TrafficStore
 import app.anemia.data.PanelStore
@@ -79,25 +66,22 @@ import app.anemia.data.LeakChecker
 import app.anemia.data.SpeedTest
 import app.anemia.data.SpeedTester
 import app.anemia.data.TunnelSetup
-import app.anemia.core.Subscription
 import app.anemia.vpn.AnemiaVpnService
 import app.anemia.vpn.StatusChannel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import kotlin.concurrent.thread
+import java.util.UUID
 
 /**
- * Экран подключения: список серверов, подписки, обход, статус. Аналог
- * `ServersView` + `RootView`, сжатый до одного экрана — карта, диагностика и
- * рейтинг на Android ещё не перенесены.
+ * Экран подключения, список серверов и настройки используют один источник
+ * состояния, чтобы переключение экрана не прерывало наблюдение за туннелем.
  *
  * Состояние туннеля здесь не хранится: раз в три секунды его присылает процесс
  * `:vpn` широким сообщением. Свои часы нужны ровно для одного — «нет вестей»
@@ -217,7 +201,7 @@ class MainActivity : ComponentActivity() {
             awaitFirstTick { checker.run(this, TunnelLive.up, TunnelLive.sessionId) { } }
         }
         setContent {
-            MaterialTheme {
+            AnemiaTheme {
                 Surface(Modifier.fillMaxSize()) {
                     var screen by remember { mutableStateOf(Screen.Main) }
                     when (screen) {
@@ -273,6 +257,8 @@ class MainActivity : ComponentActivity() {
 
 /** Экраны одного Activity: список серверов, статистика трафика и замеров, утечки. */
 enum class Screen { Main, Stats, Leak }
+
+private enum class HomePage { Connection, Servers, Settings }
 
 /**
  * Сброс ряда трафика — командой процессу туннеля, всегда, даже когда
@@ -367,6 +353,9 @@ private fun Connect(
 ) {
     val context = LocalContext.current
     var revision by remember { mutableIntStateOf(0) }
+    var page by rememberSaveable { mutableStateOf(HomePage.Connection) }
+    LaunchedEffect(incoming) { if (!incoming.isNullOrBlank()) page = HomePage.Servers }
+    BackHandler(page != HomePage.Connection) { page = HomePage.Connection }
     // Поля ввода переживают поворот: в `draft` человек вставляет список из
     // сорока ссылок или wg-quick конфига, и потерять его на повороте экрана
     // значит заставить набирать заново. Ключ — `incoming`: без него сохранённый
@@ -377,12 +366,23 @@ private fun Connect(
     var draft by rememberSaveable(incoming) { mutableStateOf(incoming ?: "") }
     var notice by remember { mutableStateOf<String?>(null) }
     var bypass by rememberSaveable { mutableStateOf(store.state.splitTunnel.entries.joinToString("\n")) }
+    var savedBypass by rememberSaveable { mutableStateOf(store.state.splitTunnel.entries.joinToString("\n")) }
     var adBlock by remember { mutableStateOf(prefs.getBoolean(PREF_ADBLOCK, false)) }
     var status by remember { mutableStateOf(store.warning ?: "отключено") }
     var subscriptionUrl by rememberSaveable { mutableStateOf("") }
     var busy by remember { mutableStateOf<java.util.UUID?>(null) }
-    var lastTick by remember { mutableLongStateOf(0L) }
+    var lastTick by remember { mutableLongStateOf(TunnelLive.at) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var pendingId by remember { mutableStateOf<java.util.UUID?>(null) }
+    var health by remember { mutableStateOf<Int?>(null) }
+    var failure by remember { mutableStateOf(false) }
+    var liveId by remember { mutableStateOf(TunnelLive.sessionId.takeIf { TunnelLive.up }) }
+    var findingBest by remember { mutableStateOf(false) }
+    var lockdown by remember { mutableStateOf<Boolean?>(null) }
+    var totals by remember { mutableStateOf<Pair<Long, Long>?>(null) }
+    var rates by remember { mutableStateOf<List<Pair<Long, Long>>>(emptyList()) }
+    var trafficSampleAt by remember { mutableLongStateOf(0L) }
+    var trafficSession by remember { mutableLongStateOf(0L) }
 
     var autoSwitch by remember { mutableStateOf(prefs.getBoolean(PREF_AUTOSWITCH, true)) }
     // Флаг AdGuard принадлежит настройкам, а не этому экрану: перенос `.anemia`
@@ -392,7 +392,13 @@ private fun Connect(
     val settingsOwner = LocalLifecycleOwner.current
     DisposableEffect(settingsOwner) {
         val watcher = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) adBlock = prefs.getBoolean(PREF_ADBLOCK, false)
+            if (event == Lifecycle.Event.ON_RESUME) {
+                adBlock = prefs.getBoolean(PREF_ADBLOCK, false)
+                val latestBypass = store.state.splitTunnel.entries.joinToString("\n")
+                if (bypass == savedBypass) bypass = latestBypass
+                savedBypass = latestBypass
+                revision++
+            }
         }
         settingsOwner.lifecycle.addObserver(watcher)
         onDispose { settingsOwner.lifecycle.removeObserver(watcher) }
@@ -406,7 +412,30 @@ private fun Connect(
 
     val servers = remember(revision) { store.servers }
     val selected = remember(revision) { store.selected() }
-    val rejected = remember(bypass) { SplitTunnelParser.parse(bypass).rejected }
+    val scope = rememberCoroutineScope()
+    fun runSubscriptionAction(id: UUID = UUID(0, 0), action: suspend () -> String) {
+        if (busy != null) return
+        busy = id
+        notice = null
+        scope.launch {
+            try {
+                notice = action()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.w("Anemia", "Subscription action failed: ${error.javaClass.simpleName}")
+                notice = "Не удалось обновить подписки"
+            } finally {
+                revision++
+                busy = null
+            }
+        }
+    }
+
+    fun saveAdBlock(enabled: Boolean) {
+        adBlock = enabled
+        prefs.edit().putBoolean(PREF_ADBLOCK, enabled).apply()
+    }
 
     fun startSession(server: ProxyServer, masking: MaskingProfile) {
         // ApplicationContext, а не Activity: отложенный шаг лестницы может
@@ -439,6 +468,9 @@ private fun Connect(
         }
         lastTick = System.currentTimeMillis()
         status = "подключение…"
+        pendingId = server.id
+        health = null
+        failure = false
     }
 
     /**
@@ -504,7 +536,7 @@ private fun Connect(
     }
 
     val connect: () -> Unit = {
-        val server = selected
+        val server = store.selected()
         if (server == null) {
             notice = "Сначала выберите сервер"
         } else {
@@ -529,7 +561,7 @@ private fun Connect(
         // уведомлением, а в шторке пусто, и пользователю не сказать нечего.
         if (it.resultCode != Activity.RESULT_OK) {
             status = "Разрешение на создание VPN-подключений не выдано"
-        } else if (
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         ) {
@@ -537,6 +569,36 @@ private fun Connect(
         } else {
             connect()
         }
+    }
+
+    fun requestConnection() {
+        val ask = VpnService.prepare(context)
+        val notificationsGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        when {
+            ask != null -> consent.launch(ask)
+            !notificationsGranted -> notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+            else -> connect()
+        }
+    }
+
+    fun disconnect() {
+        if (lockdown == true) {
+            context.startActivity(Intent(android.provider.Settings.ACTION_VPN_SETTINGS))
+            return
+        }
+        RecoveryEpisode.abort()
+        context.startService(Intent(context, AnemiaVpnService::class.java)
+            .putExtra(AnemiaVpnService.EXTRA_DISCONNECT, true))
+        pendingId = null
+        liveId = null
+        health = null
+        totals = null
+        rates = emptyList()
+        failure = false
+        lastTick = 0L
+        status = "отключено"
     }
 
     DisposableEffect(Unit) {
@@ -559,6 +621,35 @@ private fun Connect(
                     } else {
                         null
                     }
+                if (pendingId == null || session == pendingId || stopped) {
+                    if (session == pendingId && (TunnelLive.up || failed) || stopped) pendingId = null
+                    liveId = session.takeIf { TunnelLive.up }
+                    health = healthFailures
+                    failure = failed
+                    lockdown = if (intent?.hasExtra(StatusChannel.EXTRA_LOCKDOWN) == true)
+                        intent.getBooleanExtra(StatusChannel.EXTRA_LOCKDOWN, false) else lockdown
+                    val started = intent?.getLongExtra(StatusChannel.EXTRA_SESSION_START, 0L) ?: 0L
+                    val down = intent?.getLongExtra(StatusChannel.EXTRA_DOWN_BYTES, -1L) ?: -1L
+                    val up = intent?.getLongExtra(StatusChannel.EXTRA_UP_BYTES, -1L) ?: -1L
+                    if (started > 0 && up >= 0 && down >= 0) {
+                        val sampleAt = android.os.SystemClock.elapsedRealtime()
+                        val elapsed = sampleAt - trafficSampleAt
+                        val before = totals
+                        if (trafficSession != started) rates = emptyList()
+                        else if (before != null && elapsed > 0) {
+                            val rate = (((down - before.first).coerceAtLeast(0) * 1000) / elapsed) to
+                                (((up - before.second).coerceAtLeast(0) * 1000) / elapsed)
+                            rates = rates.takeLast(35) + rate
+                        }
+                        trafficSession = started
+                        trafficSampleAt = sampleAt
+                        totals = down to up
+                    } else if (!TunnelLive.up) {
+                        totals = null
+                        rates = emptyList()
+                        trafficSession = 0
+                    }
+                }
                 when {
                     // Остановка по команде — не обрыв: снятая из шторки плитка
                     // иначе воскрешала бы туннель через секунду, потому что
@@ -671,368 +762,230 @@ private fun Connect(
         }
     }
     val quiet = lastTick != 0L && now - lastTick > STALE_MS
-
-    Column(
-        Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text("Anemia", style = MaterialTheme.typography.headlineSmall)
-
-        if (servers.isEmpty()) {
-            Text("Серверов пока нет — вставьте ссылку или несколько строк сразу",
-                style = MaterialTheme.typography.bodyMedium)
-        }
-        val best = remember(revision) { probes.bestServer(servers) }
-        val probing = probes.running
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                if (probing) "замер…" else counted(servers.size, "сервер", "сервера", "серверов"),
-                Modifier.weight(1f),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            OutlinedButton(
-                enabled = servers.isNotEmpty() && !probing,
-                onClick = {
-                    // «tunnelLive» и id сессии — из сообщения сервиса, а не
-                    // из догадок: пока туннель поднят, проба идёт клиент →
-                    // текущий выход → сервер, и в историю такой отсчёт
-                    // попадает только для самого подключённого сервера.
-                    probes.start(
-                        servers = servers,
-                        tunnelLive = TunnelLive.up,
-                        directServerId = TunnelLive.sessionId,
-                        onChanged = { view.post { revision++ } },
-                    )
-                    revision++
-                },
-            ) { Text(if (probing) "идёт замер" else "Замерить") }
-            OutlinedButton(
-                enabled = best != null,
-                onClick = {
-                    val target = best
-                    if (target != null) {
-                        store.select(target.id)
-                        // `?: 0` иначе рисовало «0 мс» — лучший из возможных
-                        // ответов — для сервера, который в этом процессе ещё
-                        // не мерили (ряд-то пришёл из истории на диске).
-                        val ping = probes.pingOf(target.id)
-                        notice = "выбран лучший: " + target.name +
-                            if (ping != null) " · $ping мс" else ""
-                    }
-                    revision++
-                },
-            ) { Text("Лучший") }
-        }
-        servers.forEach { server ->
-            ServerRow(
-                server = server,
-                chosen = server.id == selected?.id,
-                ping = probes.pingOf(server.id),
-                measured = probes.measured(server.id),
-                measuring = probes.isMeasuring(server.id),
-                best = server.id == best?.id,
-                onPick = { store.select(server.id); revision++ },
-                onForget = {
-                    store.remove(server.id)
-                    probes.retain(store.servers)
-                    revision++
-                },
-            )
-        }
-
-        val subscriptions = remember(revision) { store.subscriptions() }
-        if (subscriptions.isNotEmpty()) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Подписки", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-                OutlinedButton(
-                    enabled = busy == null,
-                    onClick = {
-                        // Кнопка человека — тот же смысл, что тулбар
-                        // «Refresh Subscriptions» на macOS: раунд обходит и
-                        // TLS-гейт, и интервал панели.
-                        busy = java.util.UUID(0, 0)
-                        thread(start = true) {
-                            val round = store.refreshStale(allowInsecure = true)
-                            val text = round?.let {
-                                "обновлено " + counted(it.loaded, "панель", "панели", "панелей") +
-                                    if (it.failed == 0) "" else ", отказов: " +
-                                        counted(it.failed, "панель", "панели", "панелей")
-                            } ?: "круг обновления уже идёт"
-                            // В окно — через `post`: `revision++` это
-                            // чтение-модификация-запись, и с чужого потока она
-                            // теряла обновление (ряд показывал число серверов до
-                            // круга), а Compose-состояние вообще пишется из
-                            // потока интерфейса.
-                            view.post {
-                                // Порядок важен: `busy = null` раньше `notice`
-                                // оставляло кнопку активную со старым текстом, и
-                                // второй клик не дал бы никакого ответа.
-                                notice = text
-                                revision++
-                                busy = null
-                            }
-                        }
-                    },
-                ) { Text("Обновить все") }
-            }
-            subscriptions.forEach { subscription ->
-                val panel = store.infoOf(subscription.id)
-                val name = panel?.title?.takeIf { it.isNotBlank() } ?: subscription.name
-                val details = buildString {
-                    append(counted(subscription.servers.size, "сервер", "сервера", "серверов"))
-                    if (!subscription.tlsProtected) append(" · без шифрования")
-                    panel?.remaining?.let { append(" · осталось ${Formatting.bytes(it)}") }
-                    panel?.expires?.takeIf { it in 1..PLAUSIBLE_EPOCH_SECONDS }?.let {
-                        append(" · до ${DATE.format(Date(it * 1000))}")
-                    }
-                    subscription.lastUpdatedEpochSeconds?.takeIf { it > 0 }?.let {
-                        append(" · обновлена ${DATE.format(Date((it * 1000).toLong()))}")
-                    }
-                }
-                Row(
-                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(name, style = MaterialTheme.typography.bodyLarge)
-                        Text(details, style = MaterialTheme.typography.bodySmall)
-                    }
-                    TextButton(
-                        enabled = busy == null,
-                        onClick = {
-                            busy = subscription.id
-                            // Сеть вне главной нити: панель может держать
-                            // соединение до 30 с, и всё это время экран живёт.
-                            val id = subscription.id
-                            thread(start = true) {
-                                val result = store.refresh(id)
-                                val text = result.error ?: "обновлено: " +
-                                    counted(result.subscription?.servers?.size ?: 0, "сервер", "сервера", "серверов")
-                                view.post {
-                                    notice = text
-                                    revision++
-                                    busy = null
-                                }
-                            }
-                        },
-                    ) { Text(if (busy == subscription.id) "…" else "обновить") }
-                    TextButton(
-                        enabled = busy != subscription.id,
-                        onClick = { store.removeSubscription(subscription.id); revision++ },
-                    ) { Text("удалить") }
-                }
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = subscriptionUrl,
-                onValueChange = { subscriptionUrl = it },
-                label = { Text("Ссылка подписки (https://…)") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-            )
-            Button(
-                enabled = subscriptionUrl.isNotBlank() && busy == null,
-                onClick = {
-                    val url = subscriptionUrl.trim()
-                    busy = java.util.UUID(0, 0)
-                    thread(start = true) {
-                        // Подписка добавляется только если загрузка вышла:
-                        // опечатка в URL не должна оставлять пустую строку.
-                        val result = store.addSubscription("", url)
-                        val text = result.error ?: "добавлено: " +
-                            counted(result.subscription?.servers?.size ?: 0, "сервер", "сервера", "серверов") +
-                            if (result.subscription?.tlsProtected == false)
-                                " (http: панель может подменить список)" else ""
-                        // И этот круг — в поток интерфейса (см. «Обновить все»).
-                        view.post {
-                            notice = text
-                            revision++
-                            // Чистить поле только если за 30 с ожидания человек
-                            // ничего не успел в него набрать заново.
-                            if (result.error == null && subscriptionUrl.trim() == url) subscriptionUrl = ""
-                            busy = null
-                        }
-                    }
-                },
-            ) { Text("Подписка") }
-        }
-
-        OutlinedTextField(
-            value = draft,
-            onValueChange = { draft = it },
-            label = { Text("Добавить: vless://, ss://, awg://, подписка, wg-quick конфиг") },
-            minLines = 2,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Button(
-                enabled = draft.isNotBlank(),
-                onClick = {
-                    val result = store.importLink(draft)
-                    val added = counted(result.added.size, "сервер", "сервера", "серверов")
-                    notice = result.error ?: when {
-                        result.skipped > 0 -> "добавлено $added, пропущено " +
-                            counted(result.skipped, "битая строка", "битые строки", "битых строк")
-                        else -> "добавлено $added"
-                    }
-                    if (result.ok) {
-                        draft = ""
-                        revision++
-                    }
-                },
-            ) { Text("Добавить") }
-            notice?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-            }
-        }
-
-        OutlinedTextField(
-            value = bypass,
-            onValueChange = { bypass = it },
-            label = { Text("Мимо VPN: домены и сети, через запятую или с новой строки") },
-            supportingText = {
-                if (rejected.isNotEmpty()) {
-                    Text(rejected.joinToString("; ") { "${it.line}: ${it.reason}" })
-                }
-            },
-            minLines = 2,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        TextButton(onClick = {
-            store.setBypass(bypass)
-            revision++
-            notice = "список обхода сохранён, применится при следующем подключении"
-        }) { Text("Сохранить обход") }
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
-                checked = adBlock,
-                onCheckedChange = {
-                    adBlock = it
-                    prefs.edit().putBoolean(PREF_ADBLOCK, it).apply()
-                },
-            )
-            Text("Блокировать рекламу (AdGuard DNS)")
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
-                checked = autoSwitch,
-                onCheckedChange = {
-                    autoSwitch = it
-                    prefs.edit().putBoolean(PREF_AUTOSWITCH, it).apply()
-                    // Выключили посреди эпизода — отложенная ступенька не должна
-                    // всё равно поднять сервис.
-                    if (!it) RecoveryEpisode.abort()
-                },
-            )
-            Text(
-                "Переподключаться сам: при обрыве — тот же сервер, сильнее " +
-                    "маскирование, потом сосед; если выход перестал пропускать " +
-                    "трафик — сразу сосед.",
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Маскирование:", style = MaterialTheme.typography.labelLarge)
-            MaskingProfile.entries.forEach { profile ->
-                if (profile == store.state.maskingProfile) {
-                    Text(profile.title, fontFamily = FontFamily.Monospace)
-                } else {
-                    TextButton(onClick = {
-                        store.setMasking(profile)
-                        revision++
-                    }) { Text(profile.title, fontFamily = FontFamily.Monospace) }
-                }
-            }
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(enabled = selected != null, onClick = {
-                val ask = VpnService.prepare(context)
-                val granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
-                    PackageManager.PERMISSION_GRANTED
-                when {
-                    ask != null -> consent.launch(ask)
-                    !granted -> notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    else -> connect()
-                }
-            }) { Text("Подключить") }
-            OutlinedButton(onClick = {
-                // Не `stopService`, а команда сервису: пока туннель жив, его
-                // нельзя остановить извне (см. `EXTRA_DISCONNECT`).
-                RecoveryEpisode.abort()
-                context.startService(
-                    Intent(context, AnemiaVpnService::class.java)
-                        .putExtra(AnemiaVpnService.EXTRA_DISCONNECT, true),
-                )
-                lastTick = 0L
-                status = "отключено"
-            }) { Text("Отключить") }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { onOpen(Screen.Stats) }) { Text("Статистика") }
-            OutlinedButton(onClick = { onOpen(Screen.Leak) }) { Text("Утечки") }
-        }
-        Text(
-            if (quiet) "$status · процесс туннеля молчит ${((now - lastTick) / 1000).toInt()} с" else status,
-            style = MaterialTheme.typography.bodyMedium,
-            fontFamily = FontFamily.Monospace,
-        )
+    val best = remember(revision) { probes.bestServer(servers) }
+    val active = liveId.takeUnless { quiet || pendingId != null }
+    val connecting = !quiet && (pendingId != null || RecoveryEpisode.ladder.inProgress)
+    val shownServer = if (active != null) servers.firstOrNull { it.id == active } else selected
+    val confirmed = active != null && health == 0
+    fun choose(server: ProxyServer) {
+        notice = null
+        store.select(server.id)
+        revision++
+        if (active != server.id || !confirmed) requestConnection()
     }
-}
+    fun connectBest() {
+        val ranked = best ?: servers.singleOrNull()
+        when {
+            ranked != null -> choose(ranked)
+            else -> {
+                findingBest = probes.start(servers, TunnelLive.up, TunnelLive.sessionId) {
+                    view.post { revision++ }
+                }
+                if (findingBest) revision++
+            }
+        }
+    }
+    fun measure() {
+        if (probes.start(servers, TunnelLive.up, TunnelLive.sessionId) { view.post { revision++ } }) revision++
+    }
+    LaunchedEffect(revision, findingBest) {
+        if (findingBest && !probes.running) {
+            findingBest = false
+            val ranked = probes.bestServer(store.servers)
+            if (ranked != null) choose(ranked) else notice = "У серверов пока нет успешных замеров"
+        }
+    }
 
-@Composable
-private fun ServerRow(
-    server: ProxyServer,
-    chosen: Boolean,
-    ping: Int?,
-    measured: Boolean,
-    measuring: Boolean,
-    best: Boolean,
-    onPick: () -> Unit,
-    onForget: () -> Unit,
-) {
-    val code = Country.code(server.name)
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onPick).padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(if (code != null) Country.flag(code) else "·", style = MaterialTheme.typography.titleMedium)
-        Column(Modifier.weight(1f)) {
-            Text(server.name, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                "${server.proto.raw} · ${server.address}:${server.port}",
-                style = MaterialTheme.typography.bodySmall,
+    if (page == HomePage.Connection) {
+        val checker = sharedLeaks(context)
+        val report = checker.report
+        val leakClean = confirmed && report?.direct?.countryCode != null && report.exit?.countryCode != null &&
+            report.checkedAt >= trafficSession &&
+            !report.sameCountryAsHome && checker.isCurrent(true, active) &&
+            report.verdict == LeakChecker.Report.Verdict.CLEAN
+        val elapsed = if (active != null && trafficSession > 0)
+            ((android.os.SystemClock.elapsedRealtime() - trafficSession).coerceAtLeast(0) / 1000) else null
+        val duration = elapsed?.let {
+            val minutes = it / 60
+            "$minutes:" + (it % 60).toString().padStart(2, '0')
+        }
+        Column(
+            Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ConnectionHome(
+                title = when {
+                    connecting -> "Подключение…"
+                    confirmed -> "Защищено"
+                    active != null && (health ?: 0) > 0 -> "Нет связи с сервером"
+                    active != null -> "VPN подключён"
+                    quiet -> "Статус VPN неизвестен"
+                    failure -> "Ошибка подключения"
+                    else -> "Не подключено"
+                },
+                detail = when {
+                    quiet -> "Нет ответа от службы VPN"
+                    findingBest -> "Замеряем задержку серверов"
+                    confirmed && duration != null -> listOfNotNull(duration,
+                        shownServer?.let { probes.pingOf(it.id) }?.let { "$it мс" }).joinToString(" · ")
+                    active != null || failure -> status
+                    connecting -> shownServer?.name
+                    notice != null -> notice
+                    selected == null -> "Добавьте сервер, чтобы подключиться"
+                    else -> "Включите VPN переключателем вверху"
+                },
+                confirmed = confirmed,
+                connecting = connecting,
+                unhealthy = failure || quiet || (active != null && (health ?: 0) > 0),
+                tunnelUp = active != null,
+                on = active != null || connecting,
+                canConnect = selected != null,
+                server = shownServer,
+                countries = remember(servers) { servers.mapNotNull { Country.code(it.name) }.distinct() },
+                serverCount = servers.size,
+                ping = shownServer?.let { probes.pingOf(it.id) },
+                homeCountry = report?.direct?.countryCode,
+                leakClean = leakClean,
+                canConnectFastest = servers.isNotEmpty() && !connecting && !probes.running,
+                canMeasure = servers.isNotEmpty() && !probes.running,
+                totals = totals.takeIf { active != null },
+                traffic = if (active != null) rates else emptyList(),
+                masking = store.state.maskingProfile,
+                adBlock = adBlock,
+                lockdown = lockdown,
+                onToggle = { if (it) requestConnection() else disconnect() },
+                onServers = { page = HomePage.Servers },
+                onFastest = ::connectBest,
+                onMeasure = ::measure,
+                onSettings = { page = HomePage.Settings },
+                onMap = { context.startActivity(Intent(context, MapActivity::class.java)) },
+                onStats = { onOpen(Screen.Stats) },
+                onLeaks = { onOpen(Screen.Leak) },
+                onMasking = { store.setMasking(it); revision++ },
+                onAdBlock = ::saveAdBlock,
+                onLockdown = { context.startActivity(Intent(android.provider.Settings.ACTION_VPN_SETTINGS)) },
             )
         }
-        // Задержка отдельным полем, а не в подписи: она меняется каждый круг,
-        // и «нет ответа» должно быть видно так же явно, как 40 мс.
-        Text(
-            when {
-                measuring -> "…"
-                ping != null -> "$ping мс"
-                !measured -> "—"
-                else -> "нет ответа"
+        return
+    }
+
+    val back = { page = HomePage.Connection }
+    if (page == HomePage.Servers) {
+        ServerCatalog(
+            store = store,
+            probes = probes,
+            revision = revision,
+            selected = selected?.id,
+            active = active,
+            best = best?.id,
+            connecting = connecting,
+            notice = notice,
+            busy = busy,
+            draft = draft,
+            incoming = incoming,
+            subscriptionUrl = subscriptionUrl,
+            onDraft = { draft = it },
+            onSubscriptionUrl = { subscriptionUrl = it },
+            onBack = back,
+            onMeasure = ::measure,
+            onFastest = { back(); connectBest() },
+            onSelect = { server ->
+                store.select(server.id)
+                revision++
+                back()
+                if (active != null && active != server.id) requestConnection()
             },
-            style = MaterialTheme.typography.bodySmall,
-            color = if (ping == null && measured && !measuring) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
+            onConnect = { server -> back(); choose(server) },
+            onRemoveServer = {
+                store.remove(it)
+                probes.retain(store.servers)
+                revision++
+            },
+            onRefreshAll = {
+                runSubscriptionAction {
+                    val round = withContext(Dispatchers.IO) { store.refreshStale(allowInsecure = true) }
+                    round?.let {
+                        "Обновлено " + counted(it.loaded, "панель", "панели", "панелей") +
+                            if (it.failed == 0) "" else ", отказов: " +
+                                counted(it.failed, "панель", "панели", "панелей")
+                    } ?: "Круг обновления уже идёт"
+                }
+            },
+            onRefresh = { id ->
+                runSubscriptionAction(id) {
+                    val result = withContext(Dispatchers.IO) { store.refresh(id) }
+                    result.error ?: "Обновлено: " +
+                        counted(result.subscription?.servers?.size ?: 0, "сервер", "сервера", "серверов")
+                }
+            },
+            onRemoveSubscription = {
+                store.removeSubscription(it)
+                probes.retain(store.servers)
+                revision++
+            },
+            onAddSubscription = {
+                val url = subscriptionUrl.trim()
+                runSubscriptionAction {
+                    val result = withContext(Dispatchers.IO) { store.addSubscription("", url) }
+                    if (result.error == null && subscriptionUrl.trim() == url) subscriptionUrl = ""
+                    result.error ?: "Добавлено: " +
+                        counted(result.subscription?.servers?.size ?: 0, "сервер", "сервера", "серверов") +
+                        if (result.subscription?.tlsProtected == false) " · подписка без HTTPS" else ""
+                }
+            },
+            onImport = {
+                val result = store.importLink(draft)
+                val added = counted(result.added.size, "сервер", "сервера", "серверов")
+                notice = result.error ?: when {
+                    result.skipped > 0 -> "Добавлено $added, пропущено " +
+                        counted(result.skipped, "строка", "строки", "строк")
+                    else -> "Добавлено $added"
+                }
+                if (result.ok) {
+                    draft = ""
+                    revision++
+                }
+                result.ok
+            },
         )
-        if (best) Text("лучший", style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary)
-        if (chosen) Text("выбран", style = MaterialTheme.typography.labelMedium)
-        TextButton(onClick = onForget) { Text("убрать") }
+    } else {
+        SettingsScreen(
+            store = store,
+            state = store.state,
+            autoSwitch = autoSwitch,
+            adBlock = adBlock,
+            lockdown = lockdown,
+            connection = when {
+                quiet -> "Статус неизвестен"
+                connecting -> "Подключаемся"
+                confirmed -> "Подключён, трафик проходит"
+                active != null && (health ?: 0) > 0 -> "Подключён, проверка туннеля не прошла"
+                active != null -> "Подключён"
+                failure -> "Ошибка подключения"
+                else -> "Не подключён"
+            },
+            bypassDraft = bypass,
+            onBypassDraft = { bypass = it },
+            onSaveBypass = {
+                store.setBypass(bypass)
+                savedBypass = store.state.splitTunnel.entries.joinToString("\n")
+                bypass = savedBypass
+                revision++
+            },
+            onSaved = { revision++ },
+            onBack = back,
+            onServers = { page = HomePage.Servers },
+            onAutoSwitch = {
+                autoSwitch = it
+                prefs.edit().putBoolean(PREF_AUTOSWITCH, it).apply()
+                if (!it) RecoveryEpisode.abort()
+            },
+            onAdBlock = ::saveAdBlock,
+            onVpnSettings = { context.startActivity(Intent(android.provider.Settings.ACTION_VPN_SETTINGS)) },
+            onApps = { context.startActivity(Intent(context, AppsActivity::class.java)) },
+            onTransfer = { context.startActivity(Intent(context, TransferActivity::class.java)) },
+            onLeaks = { onOpen(Screen.Leak) },
+        )
     }
 }
 
@@ -1115,12 +1068,6 @@ private fun debuggableOnly(context: Context, intent: android.content.Intent?, ke
 /** Флаг отладочной сборки (`--es leak_run 1`); в релизе не действует. */
 private fun debugFlag(context: Context, intent: android.content.Intent?, key: String): Boolean =
     debuggable(context) && intent?.getStringExtra(key) == "1"
-
-private val DATE = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT)
-
-/** Дальше этой даты панельные сроки не живут: `Long.MAX_VALUE` из заголовка
-    Swift тоже печатает бессмыслицу, а не 1753 год. */
-private const val PLAUSIBLE_EPOCH_SECONDS = 4_102_444_800L  // 2100-01-01
 
 private const val STATE_FILE = "state.json"
 private const val PREFS = "anemia"

@@ -49,7 +49,6 @@ public sealed class XrayController
     /// happen while the system resolver is pointed at the (dying) tunnel,
     /// where a fresh lookup of the server's own domain can loop; the cache
     /// pins the hosts entry anyway.</summary>
-    private readonly Dictionary<string, string> _resolvedServerIps = new();
     /// <summary>Server+profile shapes that already passed `xray run -test`
     /// this session — reconnecting to a validated shape skips the validator
     /// spawn. Session-scoped on purpose.</summary>
@@ -142,14 +141,15 @@ public sealed class XrayController
 
     /// <summary>Write the config for `server` and launch xray. Throws if
     /// already running or the binary is missing.</summary>
-    public async Task StartAsync(ProxyServer server, AntiCensorshipOptions anti)
+    public async Task StartAsync(ProxyServer server, AntiCensorshipOptions anti, string endpointAddress, bool adBlock)
     {
         if (IsRunning || _starting) throw new XrayException(XrayErrorKind.AlreadyRunning);
         _starting = true;
         _stopRequested = false;
         try
         {
-            var binary = ResolveBinary() ?? throw new XrayException(XrayErrorKind.BinaryNotFound);
+            var binary = ResolveBinary() ?? throw new XrayException(XrayErrorKind.BinaryNotFound,
+                "В папке Anemia отсутствует xray.exe");
 
             // Pick free ports so a lingering process or another app can't
             // block the bind and crash the engine on start.
@@ -160,27 +160,13 @@ public sealed class XrayController
             if (_builder.ApiPort is { } ap)
                 _builder.ApiPort = PortFinder.Pick(ap, new HashSet<int> { socks, http });
 
-            // Resolve the server's IP (for the DNS hosts pin) with a deadline:
-            // getaddrinfo honors no timeout of its own, and on a wedged
-            // resolver it hangs for the system's full resolver timeout — which
-            // used to stall the whole connect. Race it against 3 s and fall
-            // back to the cached IP.
             var serverHost = server.Address;
-            var resolveTask = Task.Run(() => DirectResolver.IPv4(serverHost));
-            var resolveDone = await Task.WhenAny(resolveTask, Task.Delay(TimeSpan.FromSeconds(3)));
-            var ips = resolveDone == resolveTask ? await resolveTask : null;
-            if (_stopRequested) { CleanupConfig(); throw new XrayException(XrayErrorKind.Cancelled); }
-
-            // Pin the server's domain → IP into the engine's DNS hosts. After
-            // the helper points the system resolver at the tunnel, any lookup
-            // of the server's own domain would otherwise loop: tunnel →
-            // engine → DoH through the proxy → and reaching the proxy requires
-            // resolving that same domain.
-            if (ips is { Count: > 0 }) _resolvedServerIps[serverHost] = ips[0];
             var hosts = new Dictionary<string, string>();
-            if (!DirectResolver.IsIPv4(serverHost) && _resolvedServerIps.TryGetValue(serverHost, out var pinned))
-                hosts[serverHost] = pinned;
+            if (!DirectResolver.IsIPAddress(serverHost)) hosts[serverHost] = endpointAddress;
             _builder.DnsHosts = hosts;
+            _builder.RemoteDns = adBlock
+                ? new List<string> { "https://dns.adguard-dns.com/dns-query" }
+                : new XrayConfigBuilder().RemoteDns;
 
             var data = _builder.MakeConfigData(server, anti);
             var configPath = Path.Combine(Path.GetTempPath(), $"anemia-xray-{Guid.NewGuid():N}.json");
@@ -191,7 +177,7 @@ public sealed class XrayController
             // bad profile fails with a clear message instead of a crash loop.
             // The verdict is fully determined by the server+profile shape, so
             // a shape that already passed this session skips the re-spawn.
-            var key = ValidationKey(server, anti);
+            var key = ValidationKey(server, anti) + "|" + endpointAddress + "|" + adBlock;
             if (!_validatedKeys.Contains(key))
             {
                 var check = await Task.Run(() => ValidateConfig(binary, configPath));

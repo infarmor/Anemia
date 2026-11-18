@@ -11,16 +11,11 @@ so the whole core is unit-tested and cross-buildable from any host.
 
 ## UI
 
-The WPF window mirrors the macOS RootView design (warm Claude theme,
-ported from `Theme.swift` — ivory/charcoal gradient, terracotta accent,
-serif display type, soft-shadow card tiles). Top bar carries the brand,
-the status cluster (lamp · status · session timer · latency · live
-throughput), the connect switch and settings; below it the server card
-(opens the server picker sheet), Fastest/Ping actions, a one-tile
-traffic readout, the protection tile (kill switch / DPI masking /
-traffic mode) and the log tail. Light and dark palettes are both
-first-class and follow the system appearance live. The tray icon
-exposes the same connect toggle and a fast server submenu.
+The WPF dashboard follows the macOS RootView, Theme and MiniMap. It uses
+the same map geometry, warm light and dark palettes, status over the map,
+server picker, live traffic graph and grouped protection controls. The first
+Windows and Android interfaces use Russian labels.
+
 
 ## Layout
 
@@ -100,11 +95,13 @@ Production publish (both binaries land side by side, which is what the
 helper expects, with native cores copied in from `Resources\`):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File Scripts\publish.ps1            # win-x64
+powershell -ExecutionPolicy Bypass -File Scripts\fetch-cores.ps1        # win-x64 native dependencies\npowershell -ExecutionPolicy Bypass -File Scripts\publish.ps1            # also builds the Go helper
 powershell -ExecutionPolicy Bypass -File Scripts\publish.ps1 -SelfContained
 ```
 
 ## Native dependencies
+
+The publish script needs Go 1.26 or newer for the AmneziaWG and WFP helper.
 
 `Scripts/fetch-cores.ps1` downloads and SHA256-pins into `Resources\`:
 
@@ -163,33 +160,18 @@ session.
   is on; refreshes preserve identity keys, so selection and ping history
   survive updates.
 
-## TUN mode & kill switch
+## System VPN and kill switch
 
-When the kill switch (or TUN routing) is on, the helper:
+Windows uses a Wintun adapter for both protocols. Xray uses the bundled SOCKS
+bridge internally. AmneziaWG uses the same pinned Go engine version as the
+mobile port. The app checks the helper's adapter state and probes through the
+adapter before showing the protected state.
 
-1. flips the firewall to **default-deny outbound** in all profiles
-   (fail-closed — the seal exists before any exception does);
-2. allows only loopback, `xray.exe` / `tun2socks.exe` / `Anemia.exe`,
-   DHCP renewals, and the VPN server's IP (the /32 bypass);
-3. spawns tun2socks on device `anemia`, addresses it `198.18.0.1/24`,
-   routes default via `198.18.0.2` and the server's /32 via the
-   *original* gateway;
-4. points system DNS at the tunnel (the engine hijacks :53 → DoH);
-5. installs the local-bypass routes on that original gateway, and the
-   firewall allow rules for the same destinations — a route into a
-   sealed machine is a destination that resolves and never connects.
-
-Teardown is the reverse and idempotent; the helper also repairs
-crash-orphaned state on every boot. Neither the routes nor the rules it
-touches have been run on a Windows machine yet — see the split-tunnel
-note under *Not ported yet*.
-
-## Proxy-only mode
-
-Without the helper (UAC declined, binary missing), the client falls back
-to a plain local proxy: SOCKS `127.0.0.1:10808`, HTTP `127.0.0.1:10809`,
-optionally set as the system proxy via WinINet — always cleared on
-disconnect, never left stale.
+The optional kill switch installs session-scoped Windows Filtering Platform
+rules for IPv4 and IPv6. It is off by default. The helper keeps the rules while
+an armed tunnel reconnects and releases them on explicit disconnect. The
+filtering session itself is tied to the helper's child process, which removes
+its rules if that process terminates.
 
 ## State
 
@@ -204,14 +186,8 @@ and backed up as `.corrupt-<ts>.bak` before reset.
 Stated out loud, because none of it fails loudly today — a link of an unknown
 scheme is simply refused as `UnsupportedScheme`:
 
-- **AmneziaWG data plane**: the parsing, the key/number validator and the UAPI
-  script are ported and pinned (2026-09-27), but nothing spawns
-  `amneziawg-go` on Windows yet — the plan is a `GOOS=windows` build beside
-  `xray.exe` driving the same wintun adapter tun2socks owns. **The Amnezia
-  `vpn://` container is parsed now** (2026-09-29): Qt's qCompress envelope, the
-  double-serialized `last_config`, the Xray container that hands its vless link
-  back to the ordinary parser, and the 3x-ui form that puts a wg-quick conf
-  straight in the payload — all 16 corpus rows match Swift.
+- **AmneziaWG** has a Wintun connection path in this checkout. Run a live
+  peer test on Windows to validate the data plane and recovery.
 - **Hysteria is ported** (2026-09-27): both generations parse (`hysteria://`,
   `hysteria2://`, `hy2://`, port hopping in the authority or `mport=`), the client
   YAML matches Swift byte for byte on all 44 corpus cases, and every one of the 34
